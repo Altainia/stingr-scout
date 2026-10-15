@@ -44,7 +44,7 @@ export default defineConfig({
     name: 'app',
     environment: 'jsdom',
     include: ['test/**/*.test.ts'],
-    setupFiles: ['fake-indexeddb/auto'],
+    setupFiles: ['fake-indexeddb/auto', '@testing-library/svelte/vitest'], // the latter unmounts components after each test
     // Packages are hoisted to the repo root, outside this project; let Vite compile their .svelte.js files.
     server: { deps: { inline: [/@testing-library\/svelte/] } },
   },
