@@ -15,6 +15,7 @@ import Rating from '../src/components/questions/Rating.svelte';
 import TextField from '../src/components/questions/TextField.svelte';
 import Timer from '../src/components/questions/Timer.svelte';
 import Toggle from '../src/components/questions/Toggle.svelte';
+import { describeAnswer } from '../src/lib/describe';
 import { tapToPoint } from '../src/lib/fieldmap';
 
 const counter: CounterQuestion = { key: 'coral', label: 'Coral scored', type: 'counter', required: true, min: 0, max: 3, step: 1, default: 0 };
@@ -238,5 +239,20 @@ describe('ConfirmDialog', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
     expect(oncancel).toHaveBeenCalledTimes(1);
     expect(onconfirm).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('describeAnswer', () => {
+  it('shows each kind of answer the way a scout would read it', () => {
+    expect(describeAnswer(counter, 3)).toBe('3');
+    expect(describeAnswer(toggle, false)).toBe('No');
+    expect(describeAnswer(choice, 'deep')).toBe('Deep');
+    expect(describeAnswer(multi, ['near', 'far'])).toBe('Near, Far');
+    expect(describeAnswer(timer, 2.5)).toBe('2.5 s');
+    expect(describeAnswer(map, [{ x: 0.1, y: 0.2 }])).toBe('1 point');
+    expect(describeAnswer(map, [{ x: 0.1, y: 0.2 }, { x: 0.3, y: 0.4 }])).toBe('2 points');
+    expect(describeAnswer(text, 'fast')).toBe('fast');
+    expect(describeAnswer(rating, null)).toBe('—');
+    expect(describeAnswer(multi, [])).toBe('—');
   });
 });

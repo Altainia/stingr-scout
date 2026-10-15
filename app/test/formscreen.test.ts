@@ -53,6 +53,19 @@ describe('FormScreen', () => {
     expect(store.records[0].rec).toMatchObject({ missed: [], answers: { climb: 'deep' } });
   });
 
+  it('summarizes every answer on the Review tab', async () => {
+    await openMatchForm();
+    await fireEvent.click(within(screen.getByRole('region', { name: 'Coral scored' })).getByLabelText('plus'));
+    await fireEvent.click(within(screen.getByRole('region', { name: 'Left starting zone' })).getByRole('button', { name: 'Yes' }));
+    await click('Review');
+    const summary = screen.getByRole('region', { name: 'Your answers' });
+    const answer = (label: string) => within(summary).getByText(label).nextElementSibling?.textContent;
+    expect(answer('Coral scored')).toBe('1');
+    expect(answer('Left starting zone')).toBe('Yes');
+    expect(answer('Climb')).toBe('—');
+    expect(answer('Start position')).toBe('—');
+  });
+
   it('moves between sections with Next and Back', async () => {
     await openMatchForm();
     await click('Next ›');

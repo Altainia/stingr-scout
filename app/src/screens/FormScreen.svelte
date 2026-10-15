@@ -4,6 +4,7 @@
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import Photos from '../components/Photos.svelte';
   import QuestionCard from '../components/QuestionCard.svelte';
+  import { describeAnswer } from '../lib/describe';
   import { recordTitle } from '../lib/session';
   import type { AppStore } from '../lib/store.svelte';
   import { keepScreenOn } from '../lib/wakeLock';
@@ -90,6 +91,17 @@
       {#if rec.kind === 'pit'}<Photos {store} />{/if}
       {#if unanswered.length}<p class="banner warn">Not answered yet: {unanswered.map(label).join(', ')}</p>{/if}
       {#if rec.missed.length}<p>Marked as missed: {rec.missed.map(label).join(', ')}</p>{/if}
+      <section class="summary" aria-label="Your answers">
+        {#each sections as s (s.id)}
+          <h3>{s.title}</h3>
+          <dl>
+            {#each s.questions as q (q.key)}
+              <dt>{q.label}</dt>
+              <dd>{rec.missed.includes(q.key) ? 'Missed' : describeAnswer(q, rec.answers[q.key])}</dd>
+            {/each}
+          </dl>
+        {/each}
+      </section>
       <div class="nav">
         <button type="button" onclick={() => show(tab - 1)}>‹ Back</button>
         <button type="button" class="primary big" disabled={saving || store.savingPhotos > 0} onclick={() => (unanswered.length ? (confirming = 'submit') : submit())}>Submit</button>

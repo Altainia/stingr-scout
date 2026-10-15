@@ -62,3 +62,6 @@ main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .qr svg { width: 100%; height: auto; }
 .thumbs { display: flex; gap: 12px; flex-wrap: wrap; }
 .thumbs img { width: 160px; height: 120px; object-fit: cover; border-radius: 8px; }
+.summary dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 24px; margin: 0 0 12px; }
+.summary dt { font-weight: 600; }
+.summary dd { margin: 0; }
