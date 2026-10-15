@@ -3,7 +3,7 @@
   import type { AppStore } from '../lib/store.svelte';
 
   let { store }: { store: AppStore } = $props();
-  let busy = $state(false);
+  let busy = $derived(store.savingPhotos > 0);
   let error = $state<string | null>(null);
 
   let thumbs = $derived(
@@ -23,15 +23,14 @@
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    busy = true;
     error = null;
     try {
-      const blob = await resizeImage(file);
-      await store.addPhoto(await blob.arrayBuffer(), blob.type || 'image/jpeg');
+      await store.trackPhoto(async () => {
+        const blob = await resizeImage(file);
+        await store.addPhoto(await blob.arrayBuffer(), blob.type || 'image/jpeg');
+      });
     } catch {
       error = "Couldn't save that photo. Please try again.";
-    } finally {
-      busy = false;
     }
   }
 </script>

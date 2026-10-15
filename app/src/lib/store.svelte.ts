@@ -25,10 +25,13 @@ export class AppStore {
   draft = $state<Draft | null>(null);
   extraTeams = $state<number[]>([]);
   screen = $state<Screen>({ name: 'home' });
+  /** Photos being resized or stored right now; Submit waits for them. */
+  savingPhotos = $state(0);
 
   readonly db: StingrDb;
   private readonly now: () => string;
   private readonly newId: () => string;
+  private readonly photoJobs = new Set<Promise<void>>();
 
   constructor(deps: StoreDeps) {
     this.db = deps.db;
@@ -116,7 +119,19 @@ export class AppStore {
     if (this.draft) await this.setDraft({ ...this.draft, rec });
   }
 
+  /** Run a photo save (resize + store). Submit and discard wait for it, so a photo is never left out of its record. */
+  trackPhoto(job: () => Promise<void>): Promise<void> {
+    this.savingPhotos++;
+    const p: Promise<void> = job().finally(() => {
+      this.savingPhotos--;
+      this.photoJobs.delete(p);
+    });
+    this.photoJobs.add(p);
+    return p;
+  }
+
   async submitDraft(): Promise<void> {
+    await Promise.allSettled([...this.photoJobs]);
     const d = this.draft;
     if (!d) return;
     const rec = $state.snapshot(d.rec) as ScoutRecord;
@@ -129,6 +144,7 @@ export class AppStore {
   }
 
   async discardDraft(): Promise<void> {
+    await Promise.allSettled([...this.photoJobs]);
     const d = this.draft;
     if (!d) return;
     const kept = new Set(this.records.find(r => r.id === d.rec.id)?.rec.photoIds ?? []);
@@ -154,11 +170,17 @@ export class AppStore {
   }
 
   async addPhoto(data: ArrayBuffer, mime: string): Promise<void> {
-    const d = this.draft;
-    if (!d) return;
+    const recordId = this.draft?.rec.id;
+    if (!recordId) return;
     const id = this.newId();
-    await this.db.putPhoto({ id, recordId: d.rec.id, mime, data, uploaded: false, createdAt: this.now() });
-    await this.updateDraft({ ...d.rec, photoIds: [...d.rec.photoIds, id] });
+    await this.db.putPhoto({ id, recordId, mime, data, uploaded: false, createdAt: this.now() });
+    // Re-read the draft after the await: other edits may have happened meanwhile.
+    const cur = this.draft;
+    if (!cur || cur.rec.id !== recordId) {
+      await this.db.deletePhoto(id);
+      return;
+    }
+    await this.updateDraft({ ...cur.rec, photoIds: [...cur.rec.photoIds, id] });
     this.photos = await this.db.listPhotos();
   }
 
@@ -167,7 +189,8 @@ export class AppStore {
     if (!d) return;
     const submitted = this.records.find(r => r.id === d.rec.id)?.rec.photoIds ?? [];
     if (!submitted.includes(id)) await this.db.deletePhoto(id);
-    await this.updateDraft({ ...d.rec, photoIds: d.rec.photoIds.filter(x => x !== id) });
+    const cur = this.draft;
+    if (cur && cur.rec.id === d.rec.id) await this.updateDraft({ ...cur.rec, photoIds: cur.rec.photoIds.filter(x => x !== id) });
     this.photos = await this.db.listPhotos();
   }
 

@@ -112,6 +112,34 @@ describe('AppStore', () => {
     expect(store.venueRedSide).toBe('right');
   });
 
+  it('waits for a photo that is still saving before submitting', async () => {
+    const { store } = await makeStore();
+    await store.startPit(5098);
+    let release!: () => void;
+    const gate = new Promise<void>(r => { release = r; });
+    const job = store.trackPhoto(async () => {
+      await gate;
+      await store.addPhoto(new Uint8Array([1]).buffer, 'image/jpeg');
+    });
+    expect(store.savingPhotos).toBe(1);
+    const submitting = store.submitDraft();
+    release();
+    await job;
+    await submitting;
+    expect(store.records[0].rec.photoIds).toEqual(['id-2']);
+    expect(store.savingPhotos).toBe(0);
+  });
+
+  it('keeps every photo when several are saved at once', async () => {
+    const { store } = await makeStore();
+    await store.startPit(5098);
+    await Promise.all([
+      store.addPhoto(new Uint8Array([1]).buffer, 'image/jpeg'),
+      store.addPhoto(new Uint8Array([2]).buffer, 'image/jpeg'),
+    ]);
+    expect(store.draft?.rec.photoIds).toHaveLength(2);
+  });
+
   it('remembers teams added by hand', async () => {
     const { store, db } = await makeStore();
     await store.addExtraTeam(254);

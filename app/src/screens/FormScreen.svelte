@@ -92,7 +92,7 @@
       {#if rec.missed.length}<p>Marked as missed: {rec.missed.map(label).join(', ')}</p>{/if}
       <div class="nav">
         <button type="button" onclick={() => show(tab - 1)}>‹ Back</button>
-        <button type="button" class="primary big" disabled={saving} onclick={() => (unanswered.length ? (confirming = 'submit') : submit())}>Submit</button>
+        <button type="button" class="primary big" disabled={saving || store.savingPhotos > 0} onclick={() => (unanswered.length ? (confirming = 'submit') : submit())}>Submit</button>
       </div>
     </section>
   {/if}
