@@ -75,7 +75,7 @@ describe('runSync', () => {
     expect(await db.getKv('config')).toEqual(CONFIG);
     expect(await db.getKv('lastSyncAt')).toBe(NOW);
     expect(result).toEqual({ acked: 2, rejected: 0, photos: 0, config: CONFIG });
-    expect(progress).toEqual([{ done: 0, total: 1 }, { done: 1, total: 1 }]);
+    expect(progress).toEqual([{ done: 0, total: 2 }, { done: 2, total: 2 }]); // counts records, not batches
   });
 
   it('still fetches the hub config when nothing is waiting', async () => {
@@ -93,6 +93,14 @@ describe('runSync', () => {
     const hub = okHub();
     await runSync(deps(db, hub.fetchImpl));
     expect(hub.calls.map(c => posted(c.init).records.length)).toEqual([25, 5]);
+  });
+
+  it('reports progress in records and photos', async () => {
+    const db = await fresh();
+    for (let i = 0; i < 30; i++) await db.putRecord(record(matchForm()));
+    const progress: SyncProgress[] = [];
+    await runSync(deps(db, okHub().fetchImpl), p => progress.push(p));
+    expect(progress).toEqual([{ done: 0, total: 30 }, { done: 25, total: 30 }, { done: 30, total: 30 }]);
   });
 
   it('marks rejected records and tries them again next time', async () => {
@@ -127,6 +135,21 @@ describe('runSync', () => {
     const photos = await db.listPhotos();
     expect(photos.find(p => p.id === 'p1')?.uploaded).toBe(true);
     expect(photos.find(p => p.id === 'p2')?.uploaded).toBe(false);
+  });
+
+  it("does not upload a photo the synced record doesn't list", async () => {
+    const db = await fresh();
+    const pit = record(pitForm(), { photoIds: ['p1'] });
+    await db.putRecord(pit);
+    await db.markSynced([{ id: pit.id, revision: 1 }]);
+    // p2 belongs to an edit of this record that hasn't been submitted (and may be discarded).
+    for (const id of ['p1', 'p2']) {
+      await db.putPhoto({ id, recordId: pit.id, mime: 'image/jpeg', data: new Uint8Array([1]).buffer, uploaded: false, createdAt: NOW });
+    }
+    const hub = okHub();
+    await runSync(deps(db, hub.fetchImpl));
+    expect(hub.calls.filter(c => c.init?.method === 'PUT').map(c => c.url)).toEqual([`/api/photos/p1?recordId=${pit.id}`]);
+    expect((await db.listPhotos()).find(p => p.id === 'p2')?.uploaded).toBe(false);
   });
 
   it('keeps photos queued when the connection drops mid-upload', async () => {

@@ -50,7 +50,7 @@ export async function runSync(deps: SyncDeps, onProgress: (p: SyncProgress) => v
   for (let i = 0; i < waiting.length; i += BATCH) batches.push(waiting.slice(i, i + BATCH));
   if (batches.length === 0) batches.push([]); // still fetch the latest forms and schedule
   const photos = (await db.listPhotos()).filter(p => !p.uploaded);
-  const progress: SyncProgress = { done: 0, total: batches.length + photos.length };
+  const progress: SyncProgress = { done: 0, total: waiting.length + photos.length };
   onProgress({ ...progress });
 
   let config: HubConfig | null = null;
@@ -68,17 +68,18 @@ export async function runSync(deps: SyncDeps, onProgress: (p: SyncProgress) => v
     for (const r of body.rejected) await db.markRejected(r, r.reason);
     rejected += body.rejected.length;
     config = body.config;
-    progress.done++;
+    progress.done += records.length;
     onProgress({ ...progress });
   }
   if (config) await db.setKv('config', config);
   await db.setKv('lastSyncAt', deps.now());
 
-  // Upload every waiting photo whose record the hub now has. PUT is idempotent on the hub.
-  const synced = new Set((await db.listRecords()).filter(r => r.sync === 'synced').map(r => r.id));
+  // Upload every waiting photo that a record the hub now has actually lists (not photos from an
+  // unsubmitted or discarded edit). PUT is idempotent on the hub.
+  const listed = new Set((await db.listRecords()).filter(r => r.sync === 'synced').flatMap(r => r.rec.photoIds));
   let uploaded = 0;
   for (const p of photos) {
-    if (synced.has(p.recordId)) {
+    if (listed.has(p.id)) {
       await send(deps, `/api/photos/${encodeURIComponent(p.id)}?recordId=${encodeURIComponent(p.recordId)}`, {
         method: 'PUT',
         headers: { 'content-type': p.mime },
