@@ -71,6 +71,26 @@ describe('Home', () => {
     await waitFor(() => expect(store.draft?.rec).toMatchObject({ matchKey: 'qm12', team: 254 }));
   });
 
+  it('fills in the match once the first schedule arrives', async () => {
+    const { store, db } = await makeStore({ config: null });
+    render(Home, { store });
+    expect(value('Match number')).toBe('1');
+    await db.setKv('config', structuredClone(CONFIG));
+    await store.reload();
+    await waitFor(() => expect(value('Match')).toBe('qm1'));
+    expect(value('Team')).toBe('5098');
+  });
+
+  it("keeps the scout's own match choice when a schedule arrives", async () => {
+    const { store, db } = await makeStore({ config: { ...CONFIG, schedule: [] } });
+    render(Home, { store });
+    await fireEvent.input(screen.getByLabelText('Match number'), { target: { value: '12' } });
+    await db.setKv('config', structuredClone(CONFIG));
+    await store.reload();
+    await waitFor(() => expect(value('Match')).toBe('__other'));
+    expect(value('Match number')).toBe('12');
+  });
+
   it('explains when nothing has been loaded from the hub', async () => {
     const { store } = await makeStore({ config: null });
     render(Home, { store });

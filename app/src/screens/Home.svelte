@@ -1,5 +1,6 @@
 <script lang="ts">
   import { matchLabel, normalizeMatchKey, SLOTS, type Slot } from '@stingr/shared';
+  import { untrack } from 'svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import { nextMatchKey, parseTeamInput, slotLabel, teamFor } from '../lib/session';
   import type { AppStore } from '../lib/store.svelte';
@@ -15,6 +16,7 @@
   let teamOverride = $state<string | null>(null);
   let confirmNoShow = $state(false);
   let busy = $state(false);
+  let matchTouched = $state(false); // the scout picked or typed a match themselves
 
   /** Pick the next match for this tablet; called on open and after recording a no-show. */
   function suggestMatch() {
@@ -26,6 +28,12 @@
     teamOverride = null;
   }
   suggestMatch();
+
+  // A schedule can arrive (first sync) while this screen is open: suggest again unless the scout already chose.
+  $effect(() => {
+    void schedule.length;
+    if (!untrack(() => matchTouched)) untrack(suggestMatch);
+  });
 
   let matchKey = $derived(schedule.length && matchChoice !== OTHER ? matchChoice : normalizeMatchKey(otherMatch));
   let scheduledTeam = $derived(matchKey ? teamFor(schedule, matchKey, slot) : null);
@@ -87,7 +95,7 @@
   <div class="row">
     {#if schedule.length}
       <label>Match
-        <select aria-label="Match" value={matchChoice} onchange={e => { matchChoice = e.currentTarget.value; teamOverride = null; }}>
+        <select aria-label="Match" value={matchChoice} onchange={e => { matchChoice = e.currentTarget.value; matchTouched = true; teamOverride = null; }}>
           {#each schedule as m (m.matchKey)}<option value={m.matchKey}>{matchLabel(m.matchKey)}</option>{/each}
           <option value={OTHER}>Other…</option>
         </select>
@@ -96,7 +104,7 @@
     {#if !schedule.length || matchChoice === OTHER}
       <label>Match number
         <input aria-label="Match number" value={otherMatch} inputmode="numeric" placeholder="e.g. 12 or sf3m1"
-          oninput={e => { otherMatch = e.currentTarget.value; teamOverride = null; }} />
+          oninput={e => { otherMatch = e.currentTarget.value; matchTouched = true; teamOverride = null; }} />
       </label>
     {/if}
     <label>Team
