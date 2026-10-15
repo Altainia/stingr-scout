@@ -145,7 +145,12 @@ export class AppStore {
     const form = this.formOf(rec);
     if (!form) throw new Error(`Form version ${rec.formVersion} is not on this tablet`);
     // Save first so the next screen already sees the new record, then leave the form, then clear the draft.
-    await this.saveRecord(finalizeSubmit(form, rec, this.now()));
+    const submitted = finalizeSubmit(form, rec, this.now());
+    await this.saveRecord(submitted);
+    // Photos this record no longer lists (removed during an edit) aren't needed on the tablet any more.
+    const keep = new Set(submitted.photoIds);
+    for (const p of this.photos) if (p.recordId === submitted.id && !keep.has(p.id)) await this.db.deletePhoto(p.id);
+    this.photos = await this.db.listPhotos();
     this.screen = { name: rec.kind === 'pit' ? 'pit' : 'home' };
     await this.setDraft(null);
   }

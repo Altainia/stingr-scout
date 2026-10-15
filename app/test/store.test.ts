@@ -163,6 +163,18 @@ describe('AppStore', () => {
     expect(store.draft?.rec.photoIds).toHaveLength(2);
   });
 
+  it('deletes photos removed from a record once the edit is submitted', async () => {
+    const { store } = await makeStore();
+    await store.startPit(5098);
+    await store.addPhoto(new Uint8Array([1]).buffer, 'image/jpeg');
+    await store.submitDraft();
+    await store.editRecord(store.records[0].id);
+    await store.removePhoto('id-2');
+    expect(store.photos).toHaveLength(1); // still needed if the edit is discarded
+    await store.submitDraft();
+    expect(store.photos).toEqual([]);
+  });
+
   it('remembers teams added by hand', async () => {
     const { store, db } = await makeStore();
     await store.addExtraTeam(254);
