@@ -3,5 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "dependencies": { "@stingr/shared": "*" }
+  "dependencies": {
+    "@fastify/static": "^10.1.6",
+    "@stingr/shared": "*",
+    "fastify": "^5.12.7"
+  }
 }
