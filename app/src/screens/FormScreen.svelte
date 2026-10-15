@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { type AnswerValue, findQuestion, markMissed, setAnswer, unansweredRequired, unmarkMissed } from '@stingr/shared';
+  import { type AnswerValue, describeAnswer, findQuestion, markMissed, setAnswer, unansweredRequired, unmarkMissed } from '@stingr/shared';
   import { onMount } from 'svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import Photos from '../components/Photos.svelte';
   import QuestionCard from '../components/QuestionCard.svelte';
-  import { describeAnswer } from '../lib/describe';
   import { recordTitle } from '../lib/session';
   import type { AppStore } from '../lib/store.svelte';
   import { keepScreenOn } from '../lib/wakeLock';

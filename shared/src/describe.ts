@@ -1,4 +1,5 @@
-import { type AnswerValue, isAnswered, type Point, type Question } from '@stingr/shared';
+import { isAnswered } from './record';
+import type { AnswerValue, Point, Question } from './types';
 
 /** An answer as a short, readable value for the Review tab. Unanswered shows "—". */
 export function describeAnswer(q: Question, v: AnswerValue | undefined): string {
