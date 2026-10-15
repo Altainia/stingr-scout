@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.13" },
-  "workspaces": ["shared", "hub/*"],
+  "workspaces": ["shared", "hub/*", "app"],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json",
+    "build": "npm run build -w @stingr/app",
+    "dev:app": "npm run dev -w @stingr/app",
     "hub": "tsx hub/server/src/main.ts"
   },
   "devDependencies": {

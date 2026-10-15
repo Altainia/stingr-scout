@@ -1,0 +1,64 @@
+:root {
+  --yellow: #f5b400; --black: #1a1a1a; --red: #c62828; --blue: #1565c0; --green: #2e7d32; --grey: #666; --bg: #fafafa;
+  font-family: system-ui, Roboto, sans-serif; font-size: 18px; color: var(--black); background: var(--bg);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, select, input, textarea { font: inherit; }
+button { min-height: 48px; min-width: 48px; padding: 0 16px; border: 2px solid var(--black); border-radius: 8px; background: #fff; color: var(--black); }
+button:disabled { opacity: 0.4; }
+button.primary { background: var(--yellow); }
+button.big { min-height: 64px; font-size: 1.3rem; }
+button[aria-pressed='true'] { background: var(--black); color: #fff; }
+button.link { border: none; background: none; text-decoration: underline; color: var(--grey); }
+input, select, textarea { min-height: 48px; padding: 8px; border: 2px solid #999; border-radius: 8px; background: #fff; }
+textarea { width: 100%; }
+label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.topbar { display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: var(--black); color: #fff; }
+.topbar .brand { color: var(--yellow); font-weight: 700; }
+.topbar .event { flex: 1; }
+.badge { padding: 4px 12px; border-radius: 999px; background: var(--red); }
+.badge.ok { background: var(--green); }
+main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+.banner { margin: 0 0 12px; padding: 8px 16px; border-radius: 8px; }
+.warn { background: #fff3cd; }
+.error { color: var(--red); }
+.hint { color: var(--grey); }
+.row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin: 12px 0; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.question { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
+.question header { display: flex; justify-content: space-between; align-items: center; }
+.question h3 { margin: 0; font-size: 1.1rem; }
+.question.missed { opacity: 0.7; border-style: dashed; }
+.req { color: var(--red); }
+.counter { display: flex; align-items: center; gap: 16px; }
+.counter output { font-size: 2rem; min-width: 3ch; text-align: center; }
+.counter button { width: 80px; height: 64px; font-size: 2rem; }
+.tabs { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.nav { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+.bar { display: flex; align-items: center; gap: 12px; }
+.bar h1 { flex: 1; font-size: 1.3rem; }
+.tag { background: var(--yellow); padding: 2px 8px; border-radius: 6px; }
+.fieldmap { position: relative; max-width: 640px; }
+.fieldmap img { width: 100%; display: block; user-select: none; }
+.fieldmap .dot { position: absolute; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; margin: -14px 0 0 -14px; border-radius: 50%; background: var(--yellow); }
+.timer { display: flex; gap: 12px; align-items: center; }
+.timer .readout { font-size: 1.8rem; border: none; }
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.dialog { background: #fff; border-radius: 12px; padding: 24px; max-width: 560px; width: 90%; }
+.dialog .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
+.sync-overlay { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #fff; text-align: center; padding: 32px; }
+.sync-overlay.syncing { background: var(--blue); }
+.sync-overlay.done { background: var(--green); }
+.sync-overlay.error { background: var(--red); }
+.sync-overlay h2 { font-size: 2.4rem; margin: 0; }
+.sync-overlay progress { width: 60%; height: 32px; }
+.list { list-style: none; padding: 0; }
+.list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #ddd; }
+.list li .grow { flex: 1; }
+.status.done, .synced { color: var(--green); }
+.status.noshow, .rejected { color: var(--red); }
+.qr { width: min(70vh, 90vw); margin: 0 auto; }
+.qr svg { width: 100%; height: auto; }
+.thumbs { display: flex; gap: 12px; flex-wrap: wrap; }
+.thumbs img { width: 160px; height: 120px; object-fit: cover; border-radius: 8px; }

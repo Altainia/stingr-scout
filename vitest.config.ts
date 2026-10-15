@@ -1,5 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: { include: ['shared/**/*.test.ts', 'hub/server/**/*.test.ts'] },
+  test: {
+    projects: [
+      { test: { name: 'node', include: ['shared/**/*.test.ts', 'hub/server/**/*.test.ts'] } },
+      './app/vite.config.ts',
+    ],
+  },
 });
