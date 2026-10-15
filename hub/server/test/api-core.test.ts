@@ -25,12 +25,20 @@ describe('events', () => {
     await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027OHCL', name: 'Buckeye' } });
     const res = await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027mokc', name: 'Heartland' } });
     expect(res.json()).toEqual({
-      events: [{ key: '2027mokc', name: 'Heartland' }, { key: '2027ohcl', name: 'Buckeye' }],
-      current: { key: '2027ohcl', name: 'Buckeye' },
+      events: [{ key: '2027mokc', name: 'Heartland', redSide: 'left' }, { key: '2027ohcl', name: 'Buckeye', redSide: 'left' }],
+      current: { key: '2027ohcl', name: 'Buckeye', redSide: 'left' },
     });
     const switched = await app.inject({ method: 'PUT', url: '/api/events/current', payload: { key: '2027mokc' } });
     expect(switched.json().current.key).toBe('2027mokc');
   });
+  it('sets which side Red is on without losing the name', async () => {
+    const app = await makeApp();
+    await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027ohcl', name: 'Buckeye' } });
+    const res = await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027ohcl', redSide: 'right' } });
+    expect(res.json().current).toEqual({ key: '2027ohcl', name: 'Buckeye', redSide: 'right' });
+    expect((await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027ohcl', redSide: 'up' } })).statusCode).toBe(400);
+  });
+
   it('rejects bad keys and unknown events', async () => {
     const app = await makeApp();
     expect((await app.inject({ method: 'POST', url: '/api/events', payload: { key: 'Bad Key!' } })).statusCode).toBe(400);

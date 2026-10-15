@@ -112,7 +112,7 @@ describe('schedule import routes', () => {
     await app.inject({ method: 'PUT', url: '/api/settings', payload: { tbaKey: 'key123' } });
     const res = await app.inject({ method: 'POST', url: '/api/schedule/tba' });
     expect(res.json()).toEqual({ matches: 3, teams: 3, scheduleReplaced: true });
-    expect((await app.inject({ url: '/api/events' })).json().current).toEqual({ key: '2027test', name: 'Test Regional' });
+    expect((await app.inject({ url: '/api/events' })).json().current).toEqual({ key: '2027test', name: 'Test Regional', redSide: 'left' });
     expect((await app.inject({ url: '/api/teams' })).json()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 5098]);
   });
 

@@ -1,10 +1,10 @@
-import type { HubConfig, RecordRef, ScoutRecord, Slot } from '@stingr/shared';
+import type { HubConfig, RecordRef, ScoutRecord, Side, Slot } from '@stingr/shared';
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb';
 
 export type SyncState = 'pending' | 'synced' | 'rejected';
 export interface LocalRecord { id: string; rec: ScoutRecord; sync: SyncState; reason?: string }
 export interface LocalPhoto { id: string; recordId: string; mime: string; data: ArrayBuffer; uploaded: boolean; createdAt: string }
-export interface Settings { deviceId: string; deviceName: string; defaultSlot: Slot; scout: string }
+export interface Settings { deviceId: string; deviceName: string; defaultSlot: Slot; scout: string; redSideOverride?: 'event' | Side }
 export interface Draft { rec: ScoutRecord; isEdit: boolean }
 export interface KvMap { settings: Settings; config: HubConfig; draft: Draft; extraTeams: number[]; lastSyncAt: string }
 

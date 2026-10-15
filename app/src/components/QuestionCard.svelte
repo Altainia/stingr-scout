@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { AnswerValue, Question, Slot } from '@stingr/shared';
+  import { type AnswerValue, isRotated, type Question, type Side } from '@stingr/shared';
   import Choice from './questions/Choice.svelte';
   import Counter from './questions/Counter.svelte';
   import FieldMap from './questions/FieldMap.svelte';
@@ -10,13 +10,13 @@
   import Timer from './questions/Timer.svelte';
   import Toggle from './questions/Toggle.svelte';
 
-  let { question, value, missed, onchange, onmissed, slot, assets }: {
+  let { question, value, missed, onchange, onmissed, venueRedSide, assets }: {
     question: Question;
     value: AnswerValue;
     missed: boolean;
     onchange: (v: AnswerValue) => void;
     onmissed: (missed: boolean) => void;
-    slot?: Slot;
+    venueRedSide: Side;
     assets: Record<string, string>;
   } = $props();
 </script>
@@ -50,6 +50,6 @@
   {:else if question.type === 'timer'}
     <Timer {question} {value} {onchange} />
   {:else if question.type === 'fieldmap'}
-    <FieldMap {question} {value} {onchange} {slot} image={assets[question.assetId]} />
+    <FieldMap {question} {value} {onchange} rotated={isRotated(question.redSide ?? 'left', venueRedSide)} image={assets[question.assetId]} />
   {/if}
 </section>

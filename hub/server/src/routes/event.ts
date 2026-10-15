@@ -1,3 +1,4 @@
+import type { Side } from '@stingr/shared';
 import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
 import { bodyObject, HttpError, requireEvent } from '../http';
@@ -24,8 +25,14 @@ export function eventRoutes(app: FastifyInstance, ctx: HubContext): void {
     if (!EVENT_KEY_RE.test(key)) {
       throw new HttpError(400, 'Event key must be 2-32 characters: lowercase letters, digits, - or _ (for example 2027ohcl)');
     }
-    const name = typeof b.name === 'string' && b.name.trim() ? b.name.trim() : key;
-    upsertEvent(ctx.db, { key, name });
+    let redSide: Side | undefined;
+    if (b.redSide !== undefined) {
+      if (b.redSide !== 'left' && b.redSide !== 'right') throw new HttpError(400, "redSide must be 'left' or 'right'");
+      redSide = b.redSide;
+    }
+    const existing = listEvents(ctx.db).find(e => e.key === key);
+    const name = typeof b.name === 'string' && b.name.trim() ? b.name.trim() : existing?.name ?? key;
+    upsertEvent(ctx.db, { key, name, redSide });
     if (!currentEvent(ctx.db)) setCurrentEvent(ctx.db, key);
     return eventsView();
   });

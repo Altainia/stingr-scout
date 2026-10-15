@@ -1,6 +1,7 @@
 export type FormKind = 'match' | 'pit';
 export type Slot = 'red1' | 'red2' | 'red3' | 'blue1' | 'blue2' | 'blue3';
 export const SLOTS: Slot[] = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'];
+export type Side = 'left' | 'right';
 export type SummaryKind = 'avg' | 'pct' | 'distribution' | 'list' | 'scatter' | 'none';
 
 interface QuestionBase {
@@ -20,7 +21,7 @@ export interface NumberQuestion extends QuestionBase { type: 'number'; min?: num
 export interface TextQuestion extends QuestionBase { type: 'text'; multiline: boolean }
 export interface RatingQuestion extends QuestionBase { type: 'rating'; max: number }
 export interface TimerQuestion extends QuestionBase { type: 'timer' }
-export interface FieldMapQuestion extends QuestionBase { type: 'fieldmap'; assetId: string; maxPoints: number; mirrorForRed: boolean }
+export interface FieldMapQuestion extends QuestionBase { type: 'fieldmap'; assetId: string; maxPoints: number; redSide: Side }
 
 export type Question =
   | CounterQuestion | ToggleQuestion | ChoiceQuestion | MultiQuestion | NumberQuestion
@@ -60,7 +61,7 @@ export interface ScoutRecord {
   updatedAt: string;
 }
 
-export interface EventInfo { key: string; name: string }
+export interface EventInfo { key: string; name: string; redSide?: Side }
 export interface ScheduleMatch { matchKey: string; red: [number, number, number]; blue: [number, number, number] }
 export interface DeviceInfo { id: string; name: string }
 

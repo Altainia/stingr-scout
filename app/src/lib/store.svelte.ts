@@ -1,6 +1,6 @@
 import {
   type EventInfo, finalizeSubmit, type FormDef, type FormKind, type HubConfig, markNoShow, newRecord,
-  reviseRecord, type ScoutRecord, type Slot, undoNoShow,
+  reviseRecord, type ScoutRecord, type Side, type Slot, undoNoShow,
 } from '@stingr/shared';
 import type { Draft, LocalPhoto, LocalRecord, Settings, StingrDb } from './db';
 import { formVersion, latestForm } from './session';
@@ -63,6 +63,12 @@ export class AppStore {
 
   get pendingCount(): number {
     return this.records.filter(r => r.sync !== 'synced').length;
+  }
+
+  /** Which side Red is on as seen from the stands: this tablet's override, else the event's setting. */
+  get venueRedSide(): Side {
+    const o = this.settings.redSideOverride;
+    return o === 'left' || o === 'right' ? o : this.event?.redSide ?? 'left';
   }
 
   form(kind: FormKind): FormDef | null {

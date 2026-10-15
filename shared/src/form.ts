@@ -72,6 +72,7 @@ function typeErrors(q: Question, form: FormDef): string[] {
     case 'fieldmap':
       if (!(q.assetId in form.assets)) e.push('field image is missing');
       if (!(Number.isInteger(q.maxPoints) && q.maxPoints >= 1)) e.push('maxPoints must be at least 1');
+      if (q.redSide !== 'left' && q.redSide !== 'right') e.push("redSide must be 'left' or 'right'");
       break;
     case 'text':
     case 'timer':

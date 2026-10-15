@@ -26,7 +26,7 @@ const number: NumberQuestion = { key: 'weight', label: 'Weight', type: 'number',
 const text: TextQuestion = { key: 'notes', label: 'Notes', type: 'text', required: false, multiline: true };
 const rating: RatingQuestion = { key: 'defense', label: 'Defense', type: 'rating', required: false, max: 5 };
 const timer: TimerQuestion = { key: 'climb_time', label: 'Climb time', type: 'timer', required: false };
-const map: FieldMapQuestion = { key: 'start', label: 'Start', type: 'fieldmap', required: false, assetId: 'field', maxPoints: 2, mirrorForRed: true };
+const map: FieldMapQuestion = { key: 'start', label: 'Start', type: 'fieldmap', required: false, assetId: 'field', maxPoints: 2, redSide: 'left' };
 
 const stubRect = (el: Element) => {
   el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 200, height: 100, right: 200, bottom: 100, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
@@ -170,25 +170,26 @@ describe('FieldMap', () => {
 
   it('records taps for a blue scout as-is', async () => {
     const onchange = vi.fn();
-    render(FieldMap, { question: map, value: null, onchange, slot: 'blue1', image: 'data:image/png;base64,x' });
+    render(FieldMap, { question: map, value: null, onchange, rotated: false, image: 'data:image/png;base64,x' });
     const img = screen.getByAltText('Field');
     stubRect(img);
     await fireEvent.click(img, { clientX: 50, clientY: 25 });
     expect(onchange).toHaveBeenLastCalledWith([{ x: 0.25, y: 0.25 }]);
   });
 
-  it('mirrors taps for a red scout', async () => {
+  it('shows the field rotated and stores taps in the image frame when rotated', async () => {
     const onchange = vi.fn();
-    render(FieldMap, { question: map, value: null, onchange, slot: 'red1', image: 'data:image/png;base64,x' });
+    render(FieldMap, { question: map, value: null, onchange, rotated: true, image: 'data:image/png;base64,x' });
     const img = screen.getByAltText('Field');
     stubRect(img);
     await fireEvent.click(img, { clientX: 50, clientY: 25 });
     expect(onchange).toHaveBeenLastCalledWith([{ x: 0.75, y: 0.75 }]);
+    expect(img.style.transform).toBe('rotate(180deg)');
   });
 
   it('replaces the point when only one is allowed, and removes a tapped dot', async () => {
     const onchange = vi.fn();
-    render(FieldMap, { question: { ...map, maxPoints: 1 }, value: [{ x: 0.1, y: 0.1 }], onchange, slot: 'blue1', image: 'x' });
+    render(FieldMap, { question: { ...map, maxPoints: 1 }, value: [{ x: 0.1, y: 0.1 }], onchange, rotated: false, image: 'x' });
     const img = screen.getByAltText('Field');
     stubRect(img);
     await fireEvent.click(img, { clientX: 50, clientY: 25 });
@@ -199,7 +200,7 @@ describe('FieldMap', () => {
 
   it('ignores taps once the maximum is reached', async () => {
     const onchange = vi.fn();
-    render(FieldMap, { question: map, value: [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.2 }], onchange, slot: 'blue1', image: 'x' });
+    render(FieldMap, { question: map, value: [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.2 }], onchange, rotated: false, image: 'x' });
     const img = screen.getByAltText('Field');
     stubRect(img);
     await fireEvent.click(img, { clientX: 50, clientY: 25 });
@@ -210,7 +211,7 @@ describe('FieldMap', () => {
 describe('QuestionCard', () => {
   it('shows the label, marks required questions and offers "I missed this"', async () => {
     const onmissed = vi.fn();
-    render(QuestionCard, { question: counter, value: 1, missed: false, onchange: vi.fn(), onmissed, assets: {} });
+    render(QuestionCard, { question: counter, value: 1, missed: false, onchange: vi.fn(), onmissed, assets: {}, venueRedSide: 'left' });
     const card = screen.getByRole('region', { name: 'Coral scored' });
     expect(within(card).getByTitle('Required')).toBeTruthy();
     expect(within(card).getByLabelText('value').textContent).toBe('1');
@@ -219,7 +220,7 @@ describe('QuestionCard', () => {
   });
   it('hides the input of a missed question and can undo', async () => {
     const onmissed = vi.fn();
-    render(QuestionCard, { question: counter, value: null, missed: true, onchange: vi.fn(), onmissed, assets: {} });
+    render(QuestionCard, { question: counter, value: null, missed: true, onchange: vi.fn(), onmissed, assets: {}, venueRedSide: 'left' });
     expect(screen.getByText('Marked as missed.')).toBeTruthy();
     expect(screen.queryByLabelText('plus')).toBeNull();
     await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));

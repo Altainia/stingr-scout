@@ -25,8 +25,10 @@ describe('Settings', () => {
     render(Settings, { store });
     expect(screen.getByText('dev-1')).toBeTruthy();
     await fireEvent.input(screen.getByLabelText('Tablet name'), { target: { value: 'Tablet 9' } });
+    await fireEvent.change(screen.getByLabelText('Red alliance side'), { target: { value: 'right' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(store.settings.deviceName).toBe('Tablet 9'));
+    expect(store.settings.redSideOverride).toBe('right');
     expect(await screen.findByText('Saved ✓')).toBeTruthy();
     await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(store.screen).toEqual({ name: 'home' });

@@ -2,7 +2,7 @@ import { setAnswer } from '@stingr/shared';
 import { describe, expect, it } from 'vitest';
 import { openStingrDb } from '../src/lib/db';
 import { AppStore } from '../src/lib/store.svelte';
-import { makeStore } from './helpers';
+import { CONFIG, makeStore } from './helpers';
 
 const match = { matchKey: 'qm1', slot: 'red1' as const, team: 5098 };
 
@@ -101,6 +101,15 @@ describe('AppStore', () => {
     await store.removePhoto('id-2');
     expect(store.draft?.rec.photoIds).toEqual([]);
     expect(store.photos).toEqual([]);
+  });
+
+  it("uses the event's Red side unless this tablet overrides it", async () => {
+    const { store } = await makeStore({ config: { ...CONFIG, event: { key: '2027test', name: 'Test Event', redSide: 'right' } } });
+    expect(store.venueRedSide).toBe('right');
+    await store.saveSettings({ redSideOverride: 'left' });
+    expect(store.venueRedSide).toBe('left');
+    await store.saveSettings({ redSideOverride: 'event' });
+    expect(store.venueRedSide).toBe('right');
   });
 
   it('remembers teams added by hand', async () => {

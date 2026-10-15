@@ -13,11 +13,11 @@ describe('openDb', () => {
     try {
       const path = join(dir, 'x.db');
       const a = openDb(path);
-      expect(schemaVersion(a)).toBe(1);
+      expect(schemaVersion(a)).toBe(2);
       upsertEvent(a, { key: '2027a', name: 'A' });
       a.close();
       const b = openDb(path);
-      expect(listEvents(b)).toEqual([{ key: '2027a', name: 'A' }]);
+      expect(listEvents(b)).toEqual([{ key: '2027a', name: 'A', redSide: 'left' }]);
       b.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -44,10 +44,17 @@ describe('events', () => {
     upsertEvent(db, { key: '2027b', name: 'B' });
     upsertEvent(db, { key: '2027a', name: 'A' });
     upsertEvent(db, { key: '2027a', name: 'A2' });
-    expect(listEvents(db)).toEqual([{ key: '2027a', name: 'A2' }, { key: '2027b', name: 'B' }]);
+    expect(listEvents(db)).toEqual([{ key: '2027a', name: 'A2', redSide: 'left' }, { key: '2027b', name: 'B', redSide: 'left' }]);
     setCurrentEvent(db, '2027b');
-    expect(currentEvent(db)).toEqual({ key: '2027b', name: 'B' });
+    expect(currentEvent(db)).toEqual({ key: '2027b', name: 'B', redSide: 'left' });
     expect(() => setCurrentEvent(db, 'nope')).toThrow('Unknown event "nope"');
+  });
+
+  it('stores which side Red is on and keeps it when only the name changes', () => {
+    const db = openDb(':memory:');
+    upsertEvent(db, { key: 'e', name: 'E', redSide: 'right' });
+    upsertEvent(db, { key: 'e', name: 'E renamed' });
+    expect(listEvents(db)).toEqual([{ key: 'e', name: 'E renamed', redSide: 'right' }]);
   });
 });
 

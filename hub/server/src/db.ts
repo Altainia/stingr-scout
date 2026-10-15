@@ -28,6 +28,7 @@ const MIGRATIONS: string[] = [
   CREATE TABLE photos (id TEXT PRIMARY KEY, record_id TEXT NOT NULL, mime TEXT NOT NULL, data BLOB NOT NULL, received_at TEXT NOT NULL);
   CREATE TABLE devices (id TEXT PRIMARY KEY, name TEXT NOT NULL, last_sync_at TEXT);
   `,
+  `ALTER TABLE events ADD COLUMN red_side TEXT NOT NULL DEFAULT 'left';`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

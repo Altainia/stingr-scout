@@ -7,6 +7,7 @@
   let { store }: { store: AppStore } = $props();
   let name = $state(store.settings.deviceName);
   let slot = $state<Slot>(store.settings.defaultSlot);
+  let redSide = $state<'event' | 'left' | 'right'>(store.settings.redSideOverride ?? 'event');
   let saved = $state(false);
   let lastSync = $state<string | null>(null);
 
@@ -15,7 +16,7 @@
   });
 
   async function save() {
-    await store.saveSettings({ deviceName: name.trim() || store.settings.deviceName, defaultSlot: slot });
+    await store.saveSettings({ deviceName: name.trim() || store.settings.deviceName, defaultSlot: slot, redSideOverride: redSide });
     saved = true;
   }
 </script>
@@ -30,6 +31,13 @@
     <label>Default slot
       <select aria-label="Default slot" value={slot} onchange={e => { slot = e.currentTarget.value as Slot; saved = false; }}>
         {#each SLOTS as s (s)}<option value={s}>{slotLabel(s)}</option>{/each}
+      </select>
+    </label>
+    <label>Red alliance, seen from the stands
+      <select aria-label="Red alliance side" value={redSide} onchange={e => { redSide = e.currentTarget.value as 'event' | 'left' | 'right'; saved = false; }}>
+        <option value="event">Use the event's setting ({store.event?.redSide === 'right' ? 'right' : 'left'})</option>
+        <option value="left">On our left</option>
+        <option value="right">On our right</option>
       </select>
     </label>
     <button type="button" class="primary" onclick={save}>Save</button>

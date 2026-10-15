@@ -78,6 +78,14 @@ describe('validateFormDef', () => {
     ]);
   });
 
+  it('checks which side Red is on in a field image', () => {
+    const f = matchForm();
+    const map = findQuestion(f, 'start_pos');
+    if (map?.type !== 'fieldmap') throw new Error('fixture changed');
+    (map as { redSide: string }).redSide = 'top';
+    expect(validateFormDef(f).errors).toEqual(["Question \"start_pos\": redSide must be 'left' or 'right'"]);
+  });
+
   it('warns when a key changes type between versions', () => {
     const v1 = matchForm(1);
     const v2 = matchForm(2);

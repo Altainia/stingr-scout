@@ -77,7 +77,7 @@
         missed={rec.missed.includes(q.key)}
         onchange={v => change(q.key, v)}
         onmissed={m => setMissed(q.key, m)}
-        slot={rec.slot}
+        venueRedSide={store.venueRedSide}
         assets={form.assets}
       />
     {/each}
