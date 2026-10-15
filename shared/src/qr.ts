@@ -100,7 +100,8 @@ function payloadToRecord(p: unknown, getForm: FormLookup): ScoutRecord {
 }
 
 async function pipeBytes(bytes: Uint8Array, transform: CompressionStream | DecompressionStream): Promise<Uint8Array> {
-  const stream = new Blob([bytes.slice()]).stream().pipeThrough(transform);
+  // A Response body rather than Blob.stream(): it exists everywhere this code runs, including jsdom in tests.
+  const stream = new Response(bytes.slice()).body!.pipeThrough(transform);
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
