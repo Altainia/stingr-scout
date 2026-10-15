@@ -8,6 +8,7 @@ import { HttpError } from './http';
 import { eventRoutes } from './routes/event';
 import { formRoutes } from './routes/forms';
 import { recordRoutes } from './routes/records';
+import { scheduleImportRoutes } from './routes/scheduleImport';
 import { syncRoutes } from './routes/sync';
 
 export interface HubContext {
@@ -59,6 +60,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   recordRoutes(app, ctx);
   formRoutes(app, ctx);
   eventRoutes(app, ctx);
+  scheduleImportRoutes(app, ctx);
 
   await registerStatic(app, opts.staticRoots ?? {});
   return app;
