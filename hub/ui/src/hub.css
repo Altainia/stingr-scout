@@ -41,3 +41,5 @@ dl.pit { display: grid; grid-template-columns: max-content 1fr; gap: 4px 24px; }
 dl.pit dd { margin: 0; }
 .figures { display: flex; gap: 32px; flex-wrap: wrap; }
 .figures strong { font-size: 1.6rem; }
+.scanlog li.ok { color: var(--green); }
+.scanlog li.bad { color: var(--red); }
