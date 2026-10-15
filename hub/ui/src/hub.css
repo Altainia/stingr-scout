@@ -30,3 +30,5 @@ th.blue { color: var(--blue); }
 .scatter .pt { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--yellow); border: 1px solid var(--black); }
 .photos img { width: 220px; height: 165px; object-fit: cover; border-radius: 8px; margin: 0 8px 8px 0; }
 video.camera { width: 100%; max-width: 640px; background: #000; border-radius: 8px; }
+img.thumb { max-width: 320px; display: block; margin: 8px 0; border-radius: 8px; }
+label.inline { flex-direction: row; align-items: center; gap: 8px; }

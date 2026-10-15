@@ -1,0 +1,81 @@
+import type { FormDef } from '@stingr/shared';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { matchForm } from '../../../shared/test/fixtures';
+import Preview from '../src/components/Preview.svelte';
+import QuestionProps from '../src/components/QuestionProps.svelte';
+import { addQuestion, emptyForm } from '../src/lib/formEdit';
+
+function setup(form: FormDef, si: number, qi: number, locked: string[] = []) {
+  const onchange = vi.fn();
+  render(QuestionProps, { form, si, qi, lockedKeys: new Set(locked), lockedOptions: new Map(), onchange });
+  const last = () => onchange.mock.lastCall![0] as FormDef;
+  return { onchange, q: () => last().sections[si].questions[qi] };
+}
+
+describe('QuestionProps', () => {
+  it("edits a counter's settings", async () => {
+    const { q } = setup(matchForm(), 0, 1); // auto_coral
+    await fireEvent.input(screen.getByLabelText('Points each'), { target: { value: '5' } });
+    expect(q()).toMatchObject({ key: 'auto_coral', points: 5 });
+    await fireEvent.input(screen.getByLabelText('Maximum'), { target: { value: '12' } });
+    expect(q()).toMatchObject({ max: 12 });
+    await fireEvent.input(screen.getByLabelText('Maximum'), { target: { value: '' } });
+    expect(q()).not.toHaveProperty('max', 12);
+  });
+
+  it('locks a key that is in published data', async () => {
+    const { q } = setup(matchForm(), 0, 1, ['auto_coral']);
+    expect((screen.getByLabelText('Key') as HTMLInputElement).disabled).toBe(true);
+    await fireEvent.input(screen.getByLabelText('Label'), { target: { value: 'Coral pieces' } });
+    expect(q()).toMatchObject({ label: 'Coral pieces', key: 'auto_coral' });
+  });
+
+  it('lets the key follow the label of a new question', async () => {
+    const { q } = setup(addQuestion(emptyForm('match'), 0, 'counter'), 0, 0);
+    await fireEvent.input(screen.getByLabelText('Label'), { target: { value: 'Algae removed' } });
+    expect(q()).toMatchObject({ label: 'Algae removed', key: 'algae_removed' });
+  });
+
+  it('edits options and their points', async () => {
+    const { q } = setup(matchForm(), 1, 0); // climb
+    await fireEvent.input(screen.getByLabelText('Option 2 points'), { target: { value: '7' } });
+    expect(q()).toMatchObject({ options: [{ value: 'none' }, { value: 'shallow', points: 7 }, { value: 'deep' }] });
+    await fireEvent.click(screen.getByRole('button', { name: 'Add option' }));
+    const climb = q();
+    expect(climb.type === 'choice' ? climb.options : []).toHaveLength(4);
+  });
+
+  it('switches the question type', async () => {
+    const { q } = setup(matchForm(), 0, 1);
+    await fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'toggle' } });
+    expect(q()).toMatchObject({ key: 'auto_coral', type: 'toggle', default: false });
+  });
+
+  it('sets which side Red is on in a field image', async () => {
+    const { q } = setup(matchForm(), 0, 2); // start_pos
+    const group = screen.getByRole('group', { name: 'Red side of this image' });
+    await fireEvent.click(within(group).getByRole('button', { name: 'Red on the right' }));
+    expect(q()).toMatchObject({ redSide: 'right' });
+  });
+
+  it('refuses field images over 2 MB', async () => {
+    const { onchange } = setup(matchForm(), 0, 2);
+    const big = new File([new Uint8Array(3 * 1024 * 1024)], 'field.png', { type: 'image/png' });
+    await fireEvent.change(screen.getByLabelText('Field image file'), { target: { files: [big] } });
+    expect(await screen.findByText('Use a smaller image (under 2 MB).')).toBeTruthy();
+    expect(onchange).not.toHaveBeenCalled();
+  });
+});
+
+describe('Preview', () => {
+  it('shows the form as the tablet will, section by section', async () => {
+    render(Preview, { form: matchForm() });
+    const preview = screen.getByRole('region', { name: 'Tablet preview' });
+    const coral = within(preview).getByRole('region', { name: 'Coral scored' });
+    await fireEvent.click(within(coral).getByLabelText('plus'));
+    expect(within(coral).getByLabelText('value').textContent).toBe('1');
+    await fireEvent.click(within(preview).getByRole('button', { name: 'Endgame' }));
+    expect(within(preview).getByRole('region', { name: 'Climb' })).toBeTruthy();
+  });
+});
