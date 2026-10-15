@@ -65,6 +65,22 @@ describe('AdbWatcher', () => {
     expect(calls).toContain(BACK);
   });
 
+  it('does not press Back if the prompt closed before it could', async () => {
+    const prompt = '  mCurrentFocus=Window{940dbf0 u0 com.android.settings/com.android.settings.usb.USBChangeConfigDialog}';
+    const app = '  mCurrentFocus=Window{3a60e2b u0 com.android.chrome/org.chromium.chrome.browser.webapps.WebappActivity}';
+    const focusAnswers = [prompt, app]; // the scout closes the prompt between the two checks
+    const calls: string[] = [];
+    const exec: AdbExec = async args => {
+      const cmd = args.join(' ');
+      calls.push(cmd);
+      if (cmd === 'devices') return LISTING;
+      if (cmd === FOCUS) return focusAnswers.shift() ?? app;
+      return '';
+    };
+    await new AdbWatcher(exec, 5098).poll();
+    expect(calls).not.toContain(BACK);
+  });
+
   it('keeps polling when the focus check fails', async () => {
     const { exec } = fakeAdb({ devices: LISTING, '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098': '', [FOCUS]: new Error('exit 1') });
     const status = await new AdbWatcher(exec, 5098).poll();

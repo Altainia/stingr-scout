@@ -71,8 +71,14 @@ export class AdbWatcher {
 
   private async dismissUsbPrompt(serial: string): Promise<void> {
     try {
-      const focus = await this.exec(['-s', serial, 'shell', 'dumpsys window | grep mCurrentFocus']);
-      if (USB_PROMPTS.some(p => focus.includes(p))) await this.exec(['-s', serial, 'shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+      const promptShowing = async () => {
+        const focus = await this.exec(['-s', serial, 'shell', 'dumpsys window | grep mCurrentFocus']);
+        return USB_PROMPTS.some(p => focus.includes(p));
+      };
+      // Check twice so Back is never sent to the app if the scout closed the prompt in the meantime.
+      if ((await promptShowing()) && (await promptShowing())) {
+        await this.exec(['-s', serial, 'shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+      }
     } catch {
       // The tablet may be mid-unplug, or grep found nothing; try again on the next poll.
     }
