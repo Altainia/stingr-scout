@@ -74,7 +74,14 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
 
 async function registerStatic(app: FastifyInstance, roots: { app?: string; hubUi?: string }): Promise<void> {
   if (roots.app && existsSync(roots.app)) {
-    await app.register(fastifyStatic, { root: roots.app, prefix: '/' });
+    await app.register(fastifyStatic, {
+      root: roots.app,
+      prefix: '/',
+      // The app shell must be re-checked on every load so tablets notice a new version.
+      setHeaders: (reply, path) => {
+        if (/(^|[\\/])(index\.html|sw\.js|build\.json|manifest\.webmanifest)$/.test(path)) reply.header('cache-control', 'no-cache');
+      },
+    });
   } else {
     app.get('/', async (_req, reply) => reply.type('text/plain').send('The tablet app has not been built yet (npm run build).'));
   }

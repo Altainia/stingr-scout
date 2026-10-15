@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AdbWatcher, nodeAdbExec } from './adb';
+import { resolveAppBuild } from './appBuild';
 import { buildApp } from './app';
 import { openDb } from './db';
 
@@ -26,7 +27,7 @@ const app = await buildApp({
   db,
   dbPath,
   adb,
-  appBuild: process.env.STINGR_APP_BUILD ?? 'dev',
+  appBuild: resolveAppBuild(join(webRoot, 'app', 'dist')),
   staticRoots: { app: join(webRoot, 'app', 'dist'), hubUi: join(webRoot, 'hub', 'ui', 'dist') },
 });
 
