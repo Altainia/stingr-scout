@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { AdbWatcher } from './adb';
 import type { Db } from './db';
 import { HttpError } from './http';
+import { dataRoutes } from './routes/data';
 import { eventRoutes } from './routes/event';
 import { formRoutes } from './routes/forms';
 import { recordRoutes } from './routes/records';
@@ -61,6 +62,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   formRoutes(app, ctx);
   eventRoutes(app, ctx);
   scheduleImportRoutes(app, ctx);
+  dataRoutes(app, ctx);
 
   await registerStatic(app, opts.staticRoots ?? {});
   return app;
