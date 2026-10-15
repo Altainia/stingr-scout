@@ -5,6 +5,7 @@ export default defineConfig({
     projects: [
       { test: { name: 'node', include: ['shared/**/*.test.ts', 'hub/server/**/*.test.ts'] } },
       './app/vite.config.ts',
+      './hub/ui/vite.config.ts',
     ],
   },
 });
