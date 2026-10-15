@@ -62,6 +62,22 @@ describe('validateFormDef', () => {
     ]);
   });
 
+  it('rejects structurally invalid questions', () => {
+    const f = matchForm();
+    f.sections[0].questions.push(
+      { key: 'odd', label: 'Odd', type: 'bogus', required: false } as never,
+      { key: 'loose', label: 'Loose', type: 'counter', required: 'yes', step: 1 } as never,
+      { key: 'pick', label: 'Pick', type: 'choice', required: false, display: 'buttons' } as never,
+    );
+    expect(validateFormDef(f).errors).toEqual([
+      'Question "odd": unknown type "bogus"',
+      'Question "loose": required must be true or false',
+      'Question "loose": min must be a number',
+      'Question "loose": default must be a number',
+      'Question "pick": needs at least one option',
+    ]);
+  });
+
   it('warns when a key changes type between versions', () => {
     const v1 = matchForm(1);
     const v2 = matchForm(2);

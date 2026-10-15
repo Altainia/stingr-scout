@@ -1,6 +1,7 @@
 import type { AnswerValue, Answers, FormDef, Question, SummaryKind } from './types';
 
 const KEY_RE = /^[a-z][a-z0-9_]*$/;
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 export function allQuestions(form: FormDef): Question[] {
   return form.sections.flatMap(s => s.questions);
@@ -40,19 +41,29 @@ function typeErrors(q: Question, form: FormDef): string[] {
   const e: string[] = [];
   switch (q.type) {
     case 'counter':
+      if (!isNum(q.min)) e.push('min must be a number');
+      if (!isNum(q.default)) e.push('default must be a number');
+      if (q.max !== undefined && !isNum(q.max)) e.push('max must be a number');
       if (!(q.step > 0)) e.push('step must be greater than 0');
       if (q.max !== undefined && q.max < q.min) e.push('max must be at least min');
-      if (q.default < q.min || (q.max !== undefined && q.default > q.max)) e.push('default must be between min and max');
+      if (isNum(q.min) && isNum(q.default) && (q.default < q.min || (q.max !== undefined && q.default > q.max))) e.push('default must be between min and max');
+      break;
+    case 'toggle':
+      if (typeof q.default !== 'boolean') e.push('default must be true or false');
       break;
     case 'choice':
     case 'multi': {
-      if (q.options.length === 0) e.push('needs at least one option');
+      if (!Array.isArray(q.options) || q.options.length === 0) {
+        e.push('needs at least one option');
+        break;
+      }
       const values = q.options.map(o => o.value);
       if (values.some(v => !v.trim())) e.push('option values must not be empty');
       if (new Set(values).size !== values.length) e.push('option values must be unique');
       break;
     }
     case 'number':
+      if ((q.min !== undefined && !isNum(q.min)) || (q.max !== undefined && !isNum(q.max))) e.push('min and max must be numbers');
       if (q.min !== undefined && q.max !== undefined && q.max < q.min) e.push('max must be at least min');
       break;
     case 'rating':
@@ -62,6 +73,11 @@ function typeErrors(q: Question, form: FormDef): string[] {
       if (!(q.assetId in form.assets)) e.push('field image is missing');
       if (!(Number.isInteger(q.maxPoints) && q.maxPoints >= 1)) e.push('maxPoints must be at least 1');
       break;
+    case 'text':
+    case 'timer':
+      break;
+    default:
+      e.push(`unknown type "${String((q as { type: unknown }).type)}"`);
   }
   return e;
 }
@@ -87,6 +103,7 @@ export function validateFormDef(form: FormDef, earlier: FormDef[] = []): { error
     if (keys.has(q.key)) errors.push(`${where}: duplicate key`);
     keys.add(q.key);
     if (!q.label.trim()) errors.push(`${where}: label is empty`);
+    if (typeof q.required !== 'boolean') errors.push(`${where}: required must be true or false`);
     for (const msg of typeErrors(q, form)) errors.push(`${where}: ${msg}`);
   }
 

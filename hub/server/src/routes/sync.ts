@@ -21,6 +21,7 @@ export function syncRoutes(app: FastifyInstance, ctx: HubContext): void {
     const mime = (req.headers['content-type'] ?? '').split(';')[0].trim();
     if (!PHOTO_TYPES.includes(mime)) throw new HttpError(415, 'Photos must be JPEG, PNG or WebP');
     if (!recordId) throw new HttpError(400, 'recordId is required');
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) throw new HttpError(400, 'The photo is empty');
     putPhoto(ctx.db, id, recordId, mime, req.body as Buffer, ctx.now());
     return reply.status(204).send();
   });

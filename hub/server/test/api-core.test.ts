@@ -77,8 +77,8 @@ describe('forms', () => {
     expect((await app.inject({ url: '/api/forms/robot/draft' })).statusCode).toBe(404);
     const noOptions = { sections: [{ id: 'a', title: 'A', questions: [{ type: 'choice', key: 'c', label: 'C', required: false }] }], assets: {} };
     const res = await app.inject({ method: 'PUT', url: '/api/forms/match/draft', payload: noOptions });
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error).toBe('The form is malformed');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().errors).toEqual(['Question "c": needs at least one option']);
   });
 });
 
@@ -116,6 +116,12 @@ describe('photos', () => {
     const put = await app.inject({ method: 'PUT', url: '/api/photos/ph-1?recordId=r', headers: { 'content-type': 'text/plain' }, payload: 'hi' });
     expect(put.statusCode).toBe(415);
     expect((await app.inject({ url: '/api/photos/nope' })).statusCode).toBe(404);
+  });
+  it('rejects an empty photo so the tablet can resend it', async () => {
+    const app = await makeApp();
+    const put = await app.inject({ method: 'PUT', url: '/api/photos/ph-1?recordId=r', headers: { 'content-type': 'image/jpeg' }, payload: Buffer.alloc(0) });
+    expect(put.statusCode).toBe(400);
+    expect((await app.inject({ url: '/api/photos/ph-1' })).statusCode).toBe(404);
   });
 });
 

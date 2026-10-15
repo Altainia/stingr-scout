@@ -6,9 +6,13 @@ import type { TeamSummary } from './summaries';
 
 type Cell = string | number | boolean | null | undefined;
 
+/** Spreadsheet apps treat text cells starting with these characters as formulas. */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
 export function csvCell(v: Cell): string {
   if (v === null || v === undefined) return '';
-  const s = String(v);
+  let s = String(v);
+  if (typeof v === 'string' && FORMULA_START.test(s)) s = `'${s}`;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -16,12 +20,9 @@ export function toCsv(header: string[], rows: Cell[][]): string {
   return [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
-/** Spreadsheet apps treat cells starting with these characters as formulas. */
-const FORMULA_START = /^[=+\-@\t\r]/;
-
 export function formatAnswer(v: AnswerValue | undefined): string | number | boolean | null {
   if (v === null || v === undefined) return null;
-  if (typeof v === 'string') return FORMULA_START.test(v) ? `'${v}` : v;
+  if (typeof v === 'string') return v;
   if (Array.isArray(v)) return v.map(x => (typeof x === 'string' ? x : `${(x as Point).x},${(x as Point).y}`)).join(';');
   return v;
 }

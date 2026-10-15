@@ -33,6 +33,15 @@ describe('matchesCsv', () => {
     expect(csv).toContain(",'-slow\r\n");
     expect(csv.split('\r\n').filter(Boolean)).toHaveLength(4);
   });
+
+  it('blocks formulas in every text column, not just answers', () => {
+    const f = matchForm();
+    const r = setAnswer(record(f, { id: 'z', scout: '=HYPERLINK("x")' }), 'zones', ['=bad']);
+    const csv = matchesCsv('2027test', [f], [r]);
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    expect(csv).toContain(",'=bad,");
+    expect(csv).not.toMatch(/(^|,)=/m);
+  });
 });
 
 describe('pitCsv', () => {
@@ -62,7 +71,7 @@ describe('export route', () => {
     const res = await app.inject({ url: '/api/export/matches.csv' });
     expect(res.headers['content-type']).toBe('text/csv; charset=utf-8');
     expect(res.headers['content-disposition']).toBe('attachment; filename="2027test-matches.csv"');
-    expect(res.body.startsWith('event,match,slot')).toBe(true);
+    expect(res.body.startsWith('\uFEFFevent,match,slot')).toBe(true);
     expect((await app.inject({ url: '/api/export/teams.csv' })).statusCode).toBe(200);
     expect((await app.inject({ url: '/api/export/pit.csv' })).statusCode).toBe(200);
     expect((await app.inject({ url: '/api/export/secrets.csv' })).statusCode).toBe(404);

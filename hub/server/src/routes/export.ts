@@ -31,6 +31,6 @@ export function exportRoutes(app: FastifyInstance, ctx: HubContext): void {
     return reply
       .type('text/csv; charset=utf-8')
       .header('content-disposition', `attachment; filename="${ev.key}-${file}"`)
-      .send(csv);
+      .send(`\uFEFF${csv}`); // byte-order mark so Excel reads UTF-8 correctly
   });
 }
