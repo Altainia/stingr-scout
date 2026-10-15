@@ -1,0 +1,85 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
+import { describe, expect, it } from 'vitest';
+import FormScreen from '../src/screens/FormScreen.svelte';
+import { makeStore } from './helpers';
+
+async function openMatchForm() {
+  const ctx = await makeStore();
+  await ctx.store.startMatch({ matchKey: 'qm1', slot: 'red1', team: 5098 });
+  render(FormScreen, { store: ctx.store });
+  return ctx;
+}
+const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
+
+describe('FormScreen', () => {
+  it('shows the first section and saves every change', async () => {
+    const { store, db } = await openMatchForm();
+    expect(screen.getByRole('heading', { name: 'Qual 1 · Red 1 · Team 5098' })).toBeTruthy();
+    const coral = screen.getByRole('region', { name: 'Coral scored' });
+    await fireEvent.click(within(coral).getByLabelText('plus'));
+    expect(store.draft?.rec.answers.auto_coral).toBe(1);
+    await waitFor(async () => expect((await db.getKv('draft'))?.rec.answers.auto_coral).toBe(1));
+  });
+
+  it('lets the scout mark a question as missed', async () => {
+    const { store } = await openMatchForm();
+    const coral = screen.getByRole('region', { name: 'Coral scored' });
+    await fireEvent.click(within(coral).getByRole('button', { name: 'I missed this' }));
+    expect(within(coral).getByText('Marked as missed.')).toBeTruthy();
+    expect(store.draft?.rec.missed).toEqual(['auto_coral']);
+    expect(store.draft?.rec.answers.auto_coral).toBeNull();
+  });
+
+  it('asks before submitting with unanswered required questions', async () => {
+    const { store } = await openMatchForm();
+    await click('Review');
+    expect(screen.getByText('Not answered yet: Climb')).toBeTruthy();
+    await click('Submit');
+    const dialog = screen.getByRole('dialog', { name: 'Submit with missing answers?' });
+    expect(within(dialog).getByText("You didn't answer: Climb.")).toBeTruthy();
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Submit and mark as missed' }));
+    await waitFor(() => expect(store.screen).toEqual({ name: 'home' }));
+    expect(store.records[0]).toMatchObject({ sync: 'pending', rec: { missed: ['climb'] } });
+  });
+
+  it('submits straight away when everything required is answered', async () => {
+    const { store } = await openMatchForm();
+    await click('Endgame');
+    await fireEvent.click(within(screen.getByRole('region', { name: 'Climb' })).getByRole('button', { name: 'Deep' }));
+    await click('Review');
+    await click('Submit');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(store.screen).toEqual({ name: 'home' }));
+    expect(store.records[0].rec).toMatchObject({ missed: [], answers: { climb: 'deep' } });
+  });
+
+  it('moves between sections with Next and Back', async () => {
+    await openMatchForm();
+    await click('Next ›');
+    expect(screen.getByRole('region', { name: 'Climb' })).toBeTruthy();
+    await click('‹ Back');
+    expect(screen.getByRole('region', { name: 'Coral scored' })).toBeTruthy();
+  });
+
+  it('discards only after confirmation', async () => {
+    const { store } = await openMatchForm();
+    await click('Cancel');
+    await click('Keep editing');
+    expect(store.draft).not.toBeNull();
+    await click('Cancel');
+    await click('Discard');
+    await waitFor(() => expect(store.draft).toBeNull());
+    expect(store.records).toEqual([]);
+  });
+
+  it('shows and removes robot photos on a pit form', async () => {
+    const { store } = await makeStore();
+    await store.startPit(5098);
+    await store.addPhoto(new Uint8Array([1]).buffer, 'image/jpeg');
+    render(FormScreen, { store });
+    await click('Review');
+    expect(screen.getByAltText('Robot photo')).toBeTruthy();
+    await click('Remove');
+    await waitFor(() => expect(store.draft?.rec.photoIds).toEqual([]));
+  });
+});
