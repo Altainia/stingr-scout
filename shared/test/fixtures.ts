@@ -1,4 +1,5 @@
-import type { FormDef } from '../src/types';
+import { newRecord } from '../src/record';
+import type { FormDef, ScoutRecord } from '../src/types';
 
 export function matchForm(version = 1): FormDef {
   return {
@@ -50,4 +51,19 @@ export function pitForm(version = 1): FormDef {
       },
     ],
   };
+}
+
+let seq = 0;
+export function record(form: FormDef, over: Partial<ScoutRecord> = {}): ScoutRecord {
+  const base = newRecord({
+    id: over.id ?? `rec-${++seq}`,
+    form,
+    eventKey: '2027test',
+    team: 5098,
+    scout: 'Ada',
+    deviceId: 'dev-1',
+    now: '2027-03-01T10:00:00.000Z',
+    ...(form.kind === 'match' ? { matchKey: 'qm1', slot: 'red1' as const } : {}),
+  });
+  return { ...base, ...over };
 }
