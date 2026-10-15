@@ -4,3 +4,4 @@ export * from './matchKey';
 export * from './fieldmap';
 export * from './record';
 export * from './scoring';
+export * from './qr';
