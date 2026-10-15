@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["shared", "hub/server", "app/src", "app/test", "app/vite.config.ts", "vitest.config.ts"]
+  "include": ["shared", "hub/server", "app/src", "app/test", "app/vite.config.ts", "vitest.config.ts", "e2e", "playwright.config.ts"]
 }

@@ -2,17 +2,25 @@
   "name": "stingr-scout",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.13" },
-  "workspaces": ["shared", "hub/*", "app"],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "workspaces": [
+    "shared",
+    "hub/*",
+    "app"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json",
     "build": "npm run build -w @stingr/app",
     "dev:app": "npm run dev -w @stingr/app",
-    "hub": "tsx hub/server/src/main.ts"
+    "hub": "tsx hub/server/src/main.ts",
+    "e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@types/node": "^22.13.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2",

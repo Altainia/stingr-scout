@@ -10,9 +10,12 @@ Requires Node.js 22.13 or newer.
 
 ```bash
 npm install
-npm test            # all unit and API tests
+npm test            # unit, component and API tests
 npm run typecheck
+npm run build       # build the tablet app into app/dist (the hub serves it)
 npm run hub         # start the hub at http://localhost:5098/hub/ (add `-- --no-open` to skip the browser)
+npm run dev:app     # tablet app with live reload at http://localhost:5173 (talks to a hub on 5098)
+npm run e2e         # end-to-end tests: real hub + Chromium
 ```
 
 Environment overrides for the hub: `STINGR_PORT`, `STINGR_DATA_DIR`, `STINGR_WEB_ROOT`, `STINGR_APP_BUILD`, `ADB`.
