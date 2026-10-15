@@ -37,6 +37,29 @@ describe('AppStore', () => {
     expect(again.draft?.rec.answers.auto_coral).toBe(4);
   });
 
+  it('drops a reopened draft that had already been submitted', async () => {
+    const { store, db } = await makeStore();
+    await store.startMatch(match);
+    const draft = await db.getKv('draft');
+    await store.submitDraft();
+    await db.setKv('draft', draft!); // as if Chrome died between saving the record and clearing the draft
+    const again = new AppStore({ db });
+    await again.load();
+    expect(again.draft).toBeNull();
+    expect(again.screen).toEqual({ name: 'home' });
+    expect(await db.getKv('draft')).toBeUndefined();
+  });
+
+  it('keeps a reopened edit that is newer than the saved record', async () => {
+    const { store, db } = await makeStore();
+    await store.startMatch(match);
+    await store.submitDraft();
+    await store.editRecord(store.records[0].id);
+    const again = new AppStore({ db });
+    await again.load();
+    expect(again.draft).toMatchObject({ isEdit: true, rec: { revision: 2 } });
+  });
+
   it('refuses to start before forms arrive from the hub', async () => {
     const { store } = await makeStore({ config: null });
     await expect(store.startMatch(match)).rejects.toThrow('No match form has been loaded from the hub yet');

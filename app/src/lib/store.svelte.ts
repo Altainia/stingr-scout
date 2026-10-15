@@ -44,8 +44,15 @@ export class AppStore {
     this.settings = saved ?? { deviceId: this.newId(), deviceName: '', defaultSlot: 'red1', scout: '' };
     if (!saved) await this.db.setKv('settings', $state.snapshot(this.settings));
     this.extraTeams = (await this.db.getKv('extraTeams')) ?? [];
-    this.draft = (await this.db.getKv('draft')) ?? null;
+    let draft = (await this.db.getKv('draft')) ?? null;
     await this.reload();
+    // If the app stopped right after saving a record but before clearing its draft, the draft is stale.
+    const stored = draft ? this.records.find(r => r.id === draft?.rec.id) : undefined;
+    if (draft && stored && stored.rec.revision >= draft.rec.revision) {
+      await this.db.deleteKv('draft');
+      draft = null;
+    }
+    this.draft = draft;
     this.screen = !this.settings.deviceName ? { name: 'setup' } : this.draft ? { name: 'form' } : { name: 'home' };
   }
 
