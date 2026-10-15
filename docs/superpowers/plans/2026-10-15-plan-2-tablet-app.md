@@ -4381,3 +4381,358 @@ Write `docs/superpowers/notes/2026-10-15-tablet-app-device-check.md` with a tabl
 git add scripts/seed-demo.ts docs/superpowers/notes/2026-10-15-tablet-app-device-check.md
 git commit -m "docs: tablet app checked on the ZenPad; demo seeding script"
 ```
+
+---
+
+## Amendment (2026-10-15, after the first real-tablet check)
+
+The human partner asked for (1) a venue setting for which side Red is on as seen from the stands, replacing the per-question "mirror for red" switch, set per event on the hub with an optional per-tablet override; and (2) an end to the ASUS "Use USB for file transfer?" dialog that covers the app on every plug-in. The spec was updated (§4.1, §5.1, §6.2, §6.3). Task 15's step 8 (app update) runs after Tasks 16–17 so the update it checks is real.
+
+### Task 16: Field orientation by venue
+
+**Files:**
+- Modify: `shared/src/types.ts`, `shared/src/fieldmap.ts`, `shared/src/form.ts`, `shared/test/fixtures.ts`, `shared/test/fieldmap.test.ts`, `shared/test/form.test.ts`
+- Modify: `hub/server/src/db.ts`, `hub/server/src/store/events.ts`, `hub/server/src/routes/event.ts`, and the event assertions in `hub/server/test/store.test.ts`, `hub/server/test/api-core.test.ts`, `hub/server/test/schedule-import.test.ts`
+- Modify: `app/src/lib/db.ts`, `app/src/lib/store.svelte.ts`, `app/src/components/questions/FieldMap.svelte`, `app/src/components/QuestionCard.svelte`, `app/src/screens/FormScreen.svelte`, `app/src/screens/Settings.svelte`, `app/test/questions.test.ts`, `app/test/store.test.ts`, `app/test/setup.test.ts`
+
+**Interfaces:**
+- `type Side = 'left' | 'right'` (shared).
+- `FieldMapQuestion` loses `mirrorForRed` and gains `redSide: Side` — where Red is in the image. Validation error: `redSide must be 'left' or 'right'`.
+- `EventInfo` gains optional `redSide?: Side` — Red's side seen from the stands; the hub always returns it (default `'left'`).
+- Shared field-map helpers become `isRotated(imageRedSide: Side, venueRedSide: Side): boolean`, `toCanonical(p: Point, rotated: boolean): Point`, `toDisplay` (same as `toCanonical`); `mirrorPoint` unchanged.
+- Hub: schema version 2 adds `events.red_side TEXT NOT NULL DEFAULT 'left'`. `upsertEvent` keeps the stored side when `redSide` is omitted. `POST /api/events` accepts optional `redSide` (400 otherwise) and keeps the existing name when `name` is omitted for a known event.
+- App: `Settings.redSideOverride?: 'event' | Side` (missing = `'event'`); `AppStore.venueRedSide: Side` getter; `QuestionCard` takes `venueRedSide: Side` instead of `slot`; `FieldMap` takes `rotated: boolean` instead of `slot` and shows the image with `transform: rotate(180deg)` when rotated; Settings has a "Red alliance side" select (`event` / `left` / `right`).
+
+- [ ] **Step 1: Write the failing tests**
+
+Replace `shared/test/fieldmap.test.ts` with:
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { isRotated, mirrorPoint, toCanonical, toDisplay } from '../src/fieldmap';
+
+describe('field map orientation', () => {
+  it('rotates a point 180 degrees', () => {
+    expect(mirrorPoint({ x: 0.25, y: 0.1 })).toEqual({ x: 0.75, y: 0.9 });
+  });
+  it('rotates the view when the venue puts Red on the other side from the image', () => {
+    expect(isRotated('left', 'left')).toBe(false);
+    expect(isRotated('left', 'right')).toBe(true);
+    expect(isRotated('right', 'left')).toBe(true);
+  });
+  it('converts taps on a rotated view back to the image frame', () => {
+    const p = { x: 0.2, y: 0.3 };
+    expect(toCanonical(p, true)).toEqual({ x: 0.8, y: 0.7 });
+    expect(toCanonical(p, false)).toEqual(p);
+    expect(toDisplay(toCanonical(p, true), true)).toEqual(p);
+  });
+});
+```
+
+In `shared/test/fixtures.ts` change the `start_pos` question's `mirrorForRed: true` to `redSide: 'left'`.
+
+In `shared/test/form.test.ts`, inside `describe('validateFormDef')`, add:
+
+```ts
+  it('checks which side Red is on in a field image', () => {
+    const f = matchForm();
+    const map = findQuestion(f, 'start_pos');
+    if (map?.type !== 'fieldmap') throw new Error('fixture changed');
+    (map as { redSide: string }).redSide = 'top';
+    expect(validateFormDef(f).errors).toEqual(["Question \"start_pos\": redSide must be 'left' or 'right'"]);
+  });
+```
+
+In `hub/server/test/store.test.ts`, change the event expectations to include the side, and add a test:
+
+```ts
+// in 'creates the schema once…': expect(schemaVersion(a)).toBe(2); and listEvents → [{ key: '2027a', name: 'A', redSide: 'left' }]
+// in 'upserts, lists…': [{ key: '2027a', name: 'A2', redSide: 'left' }, { key: '2027b', name: 'B', redSide: 'left' }] and current { key: '2027b', name: 'B', redSide: 'left' }
+
+  it('stores which side Red is on and keeps it when only the name changes', () => {
+    const db = openDb(':memory:');
+    upsertEvent(db, { key: 'e', name: 'E', redSide: 'right' });
+    upsertEvent(db, { key: 'e', name: 'E renamed' });
+    expect(listEvents(db)).toEqual([{ key: 'e', name: 'E renamed', redSide: 'right' }]);
+  });
+```
+
+In `hub/server/test/api-core.test.ts`, update the `'creates events and selects the first as current'` expectation objects to include `redSide: 'left'`, and add to `describe('events')`:
+
+```ts
+  it('sets which side Red is on without losing the name', async () => {
+    const app = await makeApp();
+    await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027ohcl', name: 'Buckeye' } });
+    const res = await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027ohcl', redSide: 'right' } });
+    expect(res.json().current).toEqual({ key: '2027ohcl', name: 'Buckeye', redSide: 'right' });
+    expect((await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027ohcl', redSide: 'up' } })).statusCode).toBe(400);
+  });
+```
+
+In `hub/server/test/schedule-import.test.ts` change the TBA expectation to `{ key: '2027test', name: 'Test Regional', redSide: 'left' }`.
+
+In `app/test/questions.test.ts`:
+- change `map` to `{ key: 'start', label: 'Start', type: 'fieldmap', required: false, assetId: 'field', maxPoints: 2, redSide: 'left' }`;
+- in every `render(FieldMap, …)` replace `slot: 'blue1'` with `rotated: false` and `slot: 'red1'` with `rotated: true`;
+- rename the red test to `'shows the field rotated and stores taps in the image frame when rotated'` and add `expect(img.style.transform).toBe('rotate(180deg)');`;
+- in both `render(QuestionCard, …)` calls add `venueRedSide: 'left'`.
+
+In `app/test/store.test.ts` add:
+
+```ts
+  it("uses the event's Red side unless this tablet overrides it", async () => {
+    const { store } = await makeStore({ config: { ...CONFIG, event: { key: '2027test', name: 'Test Event', redSide: 'right' } } });
+    expect(store.venueRedSide).toBe('right');
+    await store.saveSettings({ redSideOverride: 'left' });
+    expect(store.venueRedSide).toBe('left');
+    await store.saveSettings({ redSideOverride: 'event' });
+    expect(store.venueRedSide).toBe('right');
+  });
+```
+
+(add `CONFIG` to the `./helpers` import).
+
+In `app/test/setup.test.ts`, inside the Settings test before clicking Save, add:
+
+```ts
+    await fireEvent.change(screen.getByLabelText('Red alliance side'), { target: { value: 'right' } });
+```
+
+and after the `deviceName` wait add `expect(store.settings.redSideOverride).toBe('right');`.
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `npm test 2>&1 | tail -30`
+Expected: FAIL — `isRotated` is not exported, schema version is 1, events lack `redSide`, `venueRedSide` is undefined, the image has no rotation, there is no "Red alliance side" control.
+
+- [ ] **Step 3: Implement — shared**
+
+In `shared/src/types.ts` add `export type Side = 'left' | 'right';`, replace `mirrorForRed: boolean` in `FieldMapQuestion` with `redSide: Side`, and make `EventInfo` `{ key: string; name: string; redSide?: Side }`.
+
+Replace `shared/src/fieldmap.ts` with:
+
+```ts
+import type { Point, Side } from './types';
+
+export function mirrorPoint(p: Point): Point {
+  return { x: 1 - p.x, y: 1 - p.y };
+}
+
+/** Show the image rotated 180° when Red sits on the other side at this venue, so it matches the view from the stands. */
+export function isRotated(imageRedSide: Side, venueRedSide: Side): boolean {
+  return imageRedSide !== venueRedSide;
+}
+
+/** Convert a tap on the image as displayed into the image's own frame. */
+export function toCanonical(p: Point, rotated: boolean): Point {
+  return rotated ? mirrorPoint(p) : p;
+}
+
+/** Convert a stored point into where it appears on the displayed image (a 180° turn is its own inverse). */
+export const toDisplay = toCanonical;
+```
+
+In `shared/src/form.ts`, in the `fieldmap` case of `typeErrors`, add:
+
+```ts
+      if (q.redSide !== 'left' && q.redSide !== 'right') e.push("redSide must be 'left' or 'right'");
+```
+
+- [ ] **Step 4: Implement — hub**
+
+In `hub/server/src/db.ts` append a second migration to `MIGRATIONS`:
+
+```ts
+  `ALTER TABLE events ADD COLUMN red_side TEXT NOT NULL DEFAULT 'left';`,
+```
+
+Replace the bodies in `hub/server/src/store/events.ts`:
+
+```ts
+type EventRow = { key: string; name: string; red_side: Side };
+const toEvent = (r: EventRow): EventInfo => ({ key: r.key, name: r.name, redSide: r.red_side });
+
+export function upsertEvent(db: Db, ev: EventInfo): void {
+  db.prepare(
+    'INSERT INTO events (key, name, red_side) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET name = excluded.name, red_side = COALESCE(?, events.red_side)',
+  ).run(ev.key, ev.name, ev.redSide ?? 'left', ev.redSide ?? null);
+}
+
+export function listEvents(db: Db): EventInfo[] {
+  return (db.prepare('SELECT key, name, red_side FROM events ORDER BY key').all() as unknown as EventRow[]).map(toEvent);
+}
+
+export function currentEvent(db: Db): EventInfo | null {
+  const key = getSetting(db, 'current_event');
+  if (!key) return null;
+  const row = db.prepare('SELECT key, name, red_side FROM events WHERE key = ?').get(key) as unknown as EventRow | undefined;
+  return row ? toEvent(row) : null;
+}
+```
+
+(import `type Side` alongside `EventInfo` from `@stingr/shared`; `setCurrentEvent` is unchanged).
+
+In `hub/server/src/routes/event.ts`, replace the body of `POST /api/events` after the key check with:
+
+```ts
+    let redSide: Side | undefined;
+    if (b.redSide !== undefined) {
+      if (b.redSide !== 'left' && b.redSide !== 'right') throw new HttpError(400, "redSide must be 'left' or 'right'");
+      redSide = b.redSide;
+    }
+    const existing = listEvents(ctx.db).find(e => e.key === key);
+    const name = typeof b.name === 'string' && b.name.trim() ? b.name.trim() : existing?.name ?? key;
+    upsertEvent(ctx.db, { key, name, redSide });
+    if (!currentEvent(ctx.db)) setCurrentEvent(ctx.db, key);
+    return eventsView();
+```
+
+(add `import type { Side } from '@stingr/shared';`).
+
+- [ ] **Step 5: Implement — app**
+
+In `app/src/lib/db.ts`, `Settings` becomes `{ deviceId: string; deviceName: string; defaultSlot: Slot; scout: string; redSideOverride?: 'event' | Side }` (import `Side`).
+
+In `app/src/lib/store.svelte.ts` add the getter (import `type Side`):
+
+```ts
+  /** Which side Red is on as seen from the stands: this tablet's override, else the event's setting. */
+  get venueRedSide(): Side {
+    const o = this.settings.redSideOverride;
+    return o === 'left' || o === 'right' ? o : this.event?.redSide ?? 'left';
+  }
+```
+
+`app/src/components/questions/FieldMap.svelte` — replace the `<script>` block and the `<img>` line:
+
+```svelte
+<script lang="ts">
+  import { type AnswerValue, type FieldMapQuestion, type Point, toCanonical, toDisplay } from '@stingr/shared';
+  import { tapToPoint } from '../../lib/fieldmap';
+
+  let { question, value, onchange, rotated, image }: {
+    question: FieldMapQuestion; value: AnswerValue; onchange: (v: AnswerValue) => void; rotated: boolean; image?: string;
+  } = $props();
+
+  let points = $derived(Array.isArray(value) ? (value as Point[]) : []);
+  let shown = $derived(points.map(p => toDisplay(p, rotated)));
+
+  function tap(e: MouseEvent & { currentTarget: HTMLImageElement }) {
+    const p = toCanonical(tapToPoint(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect()), rotated);
+    if (question.maxPoints === 1) onchange([p]);
+    else if (points.length < question.maxPoints) onchange([...points, p]);
+  }
+</script>
+```
+
+```svelte
+  <img src={image} alt="Field" draggable="false" style:transform={rotated ? 'rotate(180deg)' : undefined} onclick={tap} />
+```
+
+`app/src/components/QuestionCard.svelte` — in the props replace `slot?: Slot;` with `venueRedSide: Side;` (destructure `venueRedSide` instead of `slot`; import `Side` instead of `Slot`, plus `isRotated` from `@stingr/shared`), and render the field map as:
+
+```svelte
+    <FieldMap {question} {value} {onchange} rotated={isRotated(question.redSide, venueRedSide)} image={assets[question.assetId]} />
+```
+
+`app/src/screens/FormScreen.svelte` — in the `QuestionCard` props replace `slot={rec.slot}` with `venueRedSide={store.venueRedSide}`.
+
+`app/src/screens/Settings.svelte` — add state `let redSide = $state(store.settings.redSideOverride ?? 'event');`, include `redSideOverride: redSide` in `save()`'s `saveSettings` call, and add this control after "Default slot":
+
+```svelte
+    <label>Red alliance, seen from the stands
+      <select aria-label="Red alliance side" value={redSide} onchange={e => { redSide = e.currentTarget.value as 'event' | 'left' | 'right'; saved = false; }}>
+        <option value="event">Use the event's setting ({store.event?.redSide === 'right' ? 'right' : 'left'})</option>
+        <option value="left">On our left</option>
+        <option value="right">On our right</option>
+      </select>
+    </label>
+```
+
+- [ ] **Step 6: Run everything**
+
+Run: `npm test && npm run typecheck && npm run e2e`
+Expected: all PASS (e2e still 3 passed — the fixture form now uses `redSide`).
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A shared hub/server app
+git commit -m "feat: orient field maps by venue (Red side from the stands) with tablet override"
+```
+
+---
+
+### Task 17: Dismiss the tablet's "Use USB for file transfer?" prompt
+
+**Files:**
+- Modify: `hub/server/src/adb.ts`, `hub/server/test/adb.test.ts`
+
+**Interfaces:**
+- `USB_PROMPTS: string[]` — window names that are dismissed: `'com.android.settings.usb.USBChangeConfigDialog'` (ASUS) and `'UsbModeChooserActivity'` (stock Android).
+- After a successful `adb reverse`, `AdbWatcher.poll()` runs `adb -s <serial> shell 'dumpsys window | grep mCurrentFocus'`; if the output names one of `USB_PROMPTS` it runs `adb -s <serial> shell input keyevent KEYCODE_BACK`. Any failure there is ignored (retried next poll).
+
+- [ ] **Step 1: Write the failing tests**
+
+In `hub/server/test/adb.test.ts`:
+- add `const FOCUS = '-s G5NPCV000761Z8M shell dumpsys window | grep mCurrentFocus';` and `const BACK = '-s G5NPCV000761Z8M shell input keyevent KEYCODE_BACK';`
+- in `'reverses the hub port for authorized tablets only'`, add `[FOCUS]: '  mCurrentFocus=Window{1 u0 com.example/.Main}'` to the fake responses and expect `calls` to equal `['devices', '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098', FOCUS]`;
+- add:
+
+```ts
+  it('dismisses the USB file-transfer prompt that covers the app', async () => {
+    const { exec, calls } = fakeAdb({
+      devices: LISTING,
+      '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098': '',
+      [FOCUS]: '  mCurrentFocus=Window{940dbf0 u0 com.android.settings/com.android.settings.usb.USBChangeConfigDialog}',
+      [BACK]: '',
+    });
+    await new AdbWatcher(exec, 5098).poll();
+    expect(calls).toContain(BACK);
+  });
+
+  it('keeps polling when the focus check fails', async () => {
+    const { exec } = fakeAdb({ devices: LISTING, '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098': '', [FOCUS]: new Error('exit 1') });
+    const status = await new AdbWatcher(exec, 5098).poll();
+    expect(status.devices[0]).toMatchObject({ reversed: true });
+  });
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `npx vitest run --project node hub/server/test/adb.test.ts`
+Expected: FAIL — no focus check is made, so `calls` lacks `FOCUS` / `BACK`.
+
+- [ ] **Step 3: Implement in `hub/server/src/adb.ts`**
+
+Add after the type declarations:
+
+```ts
+/** System prompts some tablets show on every plug-in, covering the app. The watcher dismisses only these. */
+export const USB_PROMPTS = ['com.android.settings.usb.USBChangeConfigDialog', 'UsbModeChooserActivity'];
+```
+
+In `poll()`, after `devices.push({ ...d, reversed: true });` add `await this.dismissUsbPrompt(d.serial);`, and add the method:
+
+```ts
+  private async dismissUsbPrompt(serial: string): Promise<void> {
+    try {
+      const focus = await this.exec(['-s', serial, 'shell', 'dumpsys window | grep mCurrentFocus']);
+      if (USB_PROMPTS.some(p => focus.includes(p))) await this.exec(['-s', serial, 'shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+    } catch {
+      // The tablet may be mid-unplug, or grep found nothing; try again on the next poll.
+    }
+  }
+```
+
+- [ ] **Step 4: Run tests and typecheck**
+
+Run: `npm test && npm run typecheck`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add hub/server/src/adb.ts hub/server/test/adb.test.ts
+git commit -m "feat(hub): dismiss the tablet's USB file-transfer prompt automatically"
+```

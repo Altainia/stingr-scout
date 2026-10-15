@@ -104,7 +104,7 @@ type Question = QuestionBase & (
   | { type: 'text';     multiline: boolean }
   | { type: 'rating';   max: number }                 // 1..max, default max 5
   | { type: 'timer' }                                 // value: seconds, 0.1 s precision
-  | { type: 'fieldmap'; assetId: string; maxPoints: number; mirrorForRed: boolean }
+  | { type: 'fieldmap'; assetId: string; maxPoints: number; redSide: 'left' | 'right' } // where Red is in the image
 );
 ```
 
@@ -114,7 +114,7 @@ Question keys must be unique within a form kind across all versions, with the sa
 - **Counters and toggles** start at their `default`, which counts as an answer.
 - **All other types** start empty (`null`).
 
-**Field map:** points are stored as `{x, y}` normalized 0..1 in the image's own coordinate frame. When `mirrorForRed` is set, a red-alliance scout sees the image rotated 180° and taps are converted back to the canonical frame before saving.
+**Field map:** points are stored as `{x, y}` normalized 0..1 in the image's own coordinate frame. Each field map question records which side of its image Red is on (`redSide`). Each venue has a "Red is on our left/right, seen from the stands" setting (§6.3), which a tablet can override (§5.1). When the venue side differs from the image's side, every scout (Red or Blue) sees the image rotated 180°, so the field looks as it does from their seat. Taps are converted back to the image's frame before saving, so stored points mean the same thing at every venue.
 
 **Timer:** start and stop accumulate time. The scout can tap the value to correct it by hand.
 
@@ -181,7 +181,7 @@ The "current" view of a record is its highest revision.
 1. **Turn on USB debugging** on the tablet (Settings → About → tap Build number 7×; Developer options → USB debugging).
 2. **Plug into the hub** and accept the "Allow USB debugging" prompt with "Always allow" ticked. The hub runs `adb reverse` automatically.
 3. **Open the app** at `http://localhost:5098/` in Chrome, then use Chrome's menu → *Add to Home screen*.
-4. **Name the tablet and pick its slot.** In the app, set the tablet name (e.g. "Tablet 3") and its default slot (e.g. Red 1).
+4. **Name the tablet and pick its slot.** In the app, set the tablet name (e.g. "Tablet 3") and its default slot (e.g. Red 1). Settings also has "Red alliance, seen from the stands": use the event's setting (default) or override it with left/right, for scouts seated on the other side.
 
 The app generates a `deviceId` on first launch and calls `navigator.storage.persist()`. If persistence is refused, it shows a persistent warning banner.
 
@@ -261,12 +261,13 @@ Drafts survive closing Chrome, rebooting and power loss. When the app opens with
 ### 6.2 USB watcher
 
 - **Polling:** runs `adb devices` every 2 s. For each device newly in state `device`, it runs `adb -s <serial> reverse tcp:5098 tcp:5098`.
+- **USB prompt:** some tablets (the ASUS ZenPad included) pop up "Use USB for file transfer?" on every plug-in, covering the app, and offer no setting to stop it. While polling, the watcher checks each tablet's frontmost window; if it is that prompt (ASUS `USBChangeConfigDialog`, or Android's `UsbModeChooserActivity`), it presses Back to dismiss it. No other window is touched.
 - **Problems:** devices in the `unauthorized` state appear in the UI with the hint "Accept the USB debugging prompt on the tablet". If adb is missing, a clear banner says so.
 - **Dashboard:** lists connected tablets and their sync status (from sync requests, linked by deviceId) live.
 
 ### 6.3 Event setup
 
-- **Events:** create or select the current event (event key and name).
+- **Events:** create or select the current event (event key and name), and set which side Red is on as seen from the scouting stands (`redSide`, default left). Tablets receive it with the event.
 - **Schedule**
   - **Fetch from The Blue Alliance:** uses TBA API v3 `/event/{key}/matches/simple` and `/event/{key}/teams/simple`. It needs internet and a TBA read key entered once in Settings.
   - **Import CSV:** columns `match,red1,red2,red3,blue1,blue2,blue3`, where `match` is a TBA-style key (e.g. `qm1`) or a plain number (treated as `qm<n>`).
