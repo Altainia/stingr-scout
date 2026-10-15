@@ -1,0 +1,204 @@
+<script lang="ts">
+  import { allQuestions, type FormDef, type FormKind } from '@stingr/shared';
+  import { onDestroy, onMount } from 'svelte';
+  import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
+  import ErrorNote from '../components/ErrorNote.svelte';
+  import Outline from '../components/Outline.svelte';
+  import Preview from '../components/Preview.svelte';
+  import QuestionProps from '../components/QuestionProps.svelte';
+  import type { Api, FormValidation } from '../lib/api';
+  import { emptyForm, pruneAssets, type Selection } from '../lib/formEdit';
+
+  let { api, kind }: { api: Api; kind: FormKind } = $props();
+
+  let form = $state<FormDef | null>(null);
+  let published = $state<FormDef[]>([]);
+  let isDraft = $state(false);
+  let validation = $state<FormValidation>({ errors: [], warnings: [] });
+  let status = $state<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+  let selected = $state<Selection>({ si: 0, qi: null });
+  let error = $state<unknown>(null);
+  let message = $state<string | null>(null);
+  let confirmDiscard = $state(false);
+  let showPreview = $state(true);
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  let mine = $derived(published.filter(f => f.kind === kind));
+  let latest = $derived(mine.at(-1) ?? null);
+  let lockedKeys = $derived(new Set(mine.flatMap(f => allQuestions(f).map(q => q.key))));
+  let lockedOptions = $derived.by(() => {
+    const m = new Map<string, Set<string>>();
+    for (const f of mine) {
+      for (const q of allQuestions(f)) {
+        if (q.type !== 'choice' && q.type !== 'multi') continue;
+        const set = m.get(q.key) ?? new Set<string>();
+        for (const o of q.options) set.add(o.value);
+        m.set(q.key, set);
+      }
+    }
+    return m;
+  });
+  let statusText = $derived(
+    status === 'saving' ? 'Saving…'
+      : status === 'unsaved' ? 'Unsaved changes…'
+        : status === 'error' ? "Couldn't save the draft (see the message above)."
+          : isDraft ? `Draft saved · not published yet${latest ? ` (published: version ${latest.version})` : ''}`
+            : latest ? `Published version ${latest.version} · no unpublished changes` : 'Nothing published yet',
+  );
+
+  onMount(async () => {
+    try {
+      const [d, forms] = await Promise.all([api.draft(kind), api.forms()]);
+      published = forms;
+      isDraft = d.isDraft;
+      form = d.draft ?? emptyForm(kind);
+    } catch (e) {
+      error = e;
+    }
+  });
+
+  // Leaving the page must not lose an edit that is still waiting for the autosave delay.
+  onDestroy(() => {
+    if (timer) {
+      clearTimeout(timer);
+      void save();
+    }
+  });
+
+  function edit(next: FormDef) {
+    form = next;
+    status = 'unsaved';
+    message = null;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => void save(), 600);
+  }
+
+  async function save() {
+    timer = null;
+    if (!form) return;
+    status = 'saving';
+    try {
+      validation = await api.saveDraft(kind, pruneAssets($state.snapshot(form) as FormDef));
+      isDraft = true;
+      status = 'saved';
+    } catch (e) {
+      status = 'error';
+      error = e;
+    }
+  }
+
+  async function publish() {
+    if (timer) {
+      clearTimeout(timer);
+      await save();
+    }
+    error = null;
+    try {
+      const res = await api.publish(kind);
+      if (res.ok) {
+        published = [...published, res.form];
+        form = res.form;
+        isDraft = false;
+        validation = { errors: [], warnings: res.warnings };
+        message = `Published version ${res.form.version}. Tablets get it on their next sync.`;
+      } else {
+        validation = { errors: res.errors, warnings: res.warnings };
+      }
+    } catch (e) {
+      error = e;
+    }
+  }
+
+  async function discard() {
+    confirmDiscard = false;
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    try {
+      const d = await api.discardDraft(kind);
+      form = d.draft ?? emptyForm(kind);
+      isDraft = false;
+      status = 'saved';
+      validation = { errors: [], warnings: [] };
+      selected = { si: 0, qi: null };
+      message = 'Changes discarded.';
+    } catch (e) {
+      error = e;
+    }
+  }
+
+  function exportJson() {
+    if (!form) return;
+    const blob = new Blob([JSON.stringify(pruneAssets($state.snapshot(form) as FormDef), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${kind}-form.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function importJson(e: Event & { currentTarget: HTMLInputElement }) {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text()) as FormDef;
+      if (!Array.isArray(parsed.sections)) throw new Error('That file is not a Stingr Scout form.');
+      edit({ ...parsed, kind, version: 0, assets: parsed.assets ?? {} });
+      selected = { si: 0, qi: null };
+    } catch (err) {
+      error = err instanceof SyntaxError ? new Error('That file is not valid JSON.') : err;
+    }
+  }
+</script>
+
+<h1>{kind === 'match' ? 'Match form' : 'Pit form'}</h1>
+<ErrorNote {error} />
+
+{#if form}
+  <div class="row">
+    <span class="grow" role="status">{statusText}</span>
+    <button type="button" onclick={() => (showPreview = !showPreview)}>{showPreview ? 'Hide preview' : 'Show preview'}</button>
+    <button type="button" onclick={exportJson}>Export JSON</button>
+    <label class="filebtn">Import JSON<input type="file" accept="application/json,.json" hidden aria-label="Import JSON file" onchange={importJson} /></label>
+    <button type="button" disabled={!isDraft && status === 'saved'} onclick={() => (confirmDiscard = true)}>Discard changes</button>
+    <button type="button" class="primary" onclick={publish}>Publish</button>
+  </div>
+
+  {#if message}<p class="banner ok">{message}</p>{/if}
+  {#if validation.errors.length}
+    <div class="banner warn">
+      <strong>Fix these before publishing:</strong>
+      <ul class="errors">{#each validation.errors as e, i (i)}<li>{e}</li>{/each}</ul>
+    </div>
+  {/if}
+  {#if validation.warnings.length}
+    <div class="banner warn"><ul>{#each validation.warnings as w, i (i)}<li>{w}</li>{/each}</ul></div>
+  {/if}
+
+  <div class="editor">
+    <Outline {form} {selected} onselect={s => (selected = s)} onchange={edit} />
+    <div>
+      {#if selected.qi !== null && form.sections[selected.si]?.questions[selected.qi]}
+        <QuestionProps {form} si={selected.si} qi={selected.qi} {lockedKeys} {lockedOptions} onchange={edit} />
+      {:else}
+        <p class="card muted">Select a question to change it, or add one.</p>
+      {/if}
+      {#if showPreview}<Preview {form} />{/if}
+    </div>
+  </div>
+{/if}
+
+{#if confirmDiscard}
+  <ConfirmDialog
+    title="Discard unpublished changes?"
+    confirmLabel="Discard"
+    cancelLabel="Keep editing"
+    onconfirm={discard}
+    oncancel={() => (confirmDiscard = false)}
+  >
+    <p>The form goes back to {latest ? `published version ${latest.version}` : 'empty'}.</p>
+  </ConfirmDialog>
+{/if}
