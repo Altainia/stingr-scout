@@ -7,6 +7,7 @@ import type { Db } from './db';
 import { HttpError } from './http';
 import { dataRoutes } from './routes/data';
 import { eventRoutes } from './routes/event';
+import { exportRoutes } from './routes/export';
 import { formRoutes } from './routes/forms';
 import { recordRoutes } from './routes/records';
 import { scheduleImportRoutes } from './routes/scheduleImport';
@@ -63,6 +64,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   eventRoutes(app, ctx);
   scheduleImportRoutes(app, ctx);
   dataRoutes(app, ctx);
+  exportRoutes(app, ctx);
 
   await registerStatic(app, opts.staticRoots ?? {});
   return app;
