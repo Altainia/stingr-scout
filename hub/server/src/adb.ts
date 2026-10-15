@@ -4,6 +4,9 @@ export type AdbExec = (args: string[]) => Promise<string>;
 export type AdbDevice = { serial: string; state: string; reversed: boolean; error?: string };
 export type AdbStatus = { available: boolean; devices: AdbDevice[]; error?: string };
 
+/** System prompts some tablets show on every plug-in, covering the app. The watcher dismisses only these. */
+export const USB_PROMPTS = ['com.android.settings.usb.USBChangeConfigDialog', 'UsbModeChooserActivity'];
+
 export function parseAdbDevices(output: string): { serial: string; state: string }[] {
   return output
     .split('\n')
@@ -54,6 +57,7 @@ export class AdbWatcher {
         try {
           await this.exec(['-s', d.serial, 'reverse', `tcp:${this.port}`, `tcp:${this.port}`]);
           devices.push({ ...d, reversed: true });
+          await this.dismissUsbPrompt(d.serial);
         } catch (e) {
           devices.push({ ...d, reversed: false, error: adbErrorMessage(e) });
         }
@@ -62,6 +66,15 @@ export class AdbWatcher {
       return this.status;
     } finally {
       this.polling = false;
+    }
+  }
+
+  private async dismissUsbPrompt(serial: string): Promise<void> {
+    try {
+      const focus = await this.exec(['-s', serial, 'shell', 'dumpsys window | grep mCurrentFocus']);
+      if (USB_PROMPTS.some(p => focus.includes(p))) await this.exec(['-s', serial, 'shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+    } catch {
+      // The tablet may be mid-unplug, or grep found nothing; try again on the next poll.
     }
   }
 

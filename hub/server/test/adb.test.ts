@@ -14,6 +14,9 @@ function fakeAdb(responses: Record<string, string | Error>) {
   return { exec, calls };
 }
 
+const FOCUS = '-s G5NPCV000761Z8M shell dumpsys window | grep mCurrentFocus';
+const BACK = '-s G5NPCV000761Z8M shell input keyevent KEYCODE_BACK';
+
 const LISTING = [
   'List of devices attached',
   'G5NPCV000761Z8M        device usb:1-1 product:WW_P00C model:P00C device:P00C_2 transport_id:1',
@@ -35,9 +38,13 @@ describe('parseAdbDevices', () => {
 
 describe('AdbWatcher', () => {
   it('reverses the hub port for authorized tablets only', async () => {
-    const { exec, calls } = fakeAdb({ devices: LISTING, '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098': '' });
+    const { exec, calls } = fakeAdb({
+      devices: LISTING,
+      '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098': '',
+      [FOCUS]: '  mCurrentFocus=Window{1 u0 com.example/.Main}',
+    });
     const status = await new AdbWatcher(exec, 5098).poll();
-    expect(calls).toEqual(['devices', '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098']);
+    expect(calls).toEqual(['devices', '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098', FOCUS]);
     expect(status).toEqual({
       available: true,
       devices: [
@@ -45,6 +52,23 @@ describe('AdbWatcher', () => {
         { serial: 'ABC123', state: 'unauthorized', reversed: false },
       ],
     });
+  });
+
+  it('dismisses the USB file-transfer prompt that covers the app', async () => {
+    const { exec, calls } = fakeAdb({
+      devices: LISTING,
+      '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098': '',
+      [FOCUS]: '  mCurrentFocus=Window{940dbf0 u0 com.android.settings/com.android.settings.usb.USBChangeConfigDialog}',
+      [BACK]: '',
+    });
+    await new AdbWatcher(exec, 5098).poll();
+    expect(calls).toContain(BACK);
+  });
+
+  it('keeps polling when the focus check fails', async () => {
+    const { exec } = fakeAdb({ devices: LISTING, '-s G5NPCV000761Z8M reverse tcp:5098 tcp:5098': '', [FOCUS]: new Error('exit 1') });
+    const status = await new AdbWatcher(exec, 5098).poll();
+    expect(status.devices[0]).toMatchObject({ reversed: true });
   });
 
   it('explains how to install adb when it is missing', async () => {
