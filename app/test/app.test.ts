@@ -39,6 +39,21 @@ describe('App', () => {
     expect(screen.getByText('1 unsynced')).toBeTruthy();
   });
 
+  it('offers "Sync now" while connected with records waiting', async () => {
+    const { store } = await makeStore();
+    await store.matchNoShow({ matchKey: 'qm1', slot: 'red1', team: 5098 });
+    const sync = fakeSync();
+    render(App, { store, sync });
+    expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull(); // not connected
+    sync.emit({ phase: 'error', overlay: false, error: 'Disk full', hubBuild: 'b1' });
+    await tick();
+    await fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
+    expect(sync.retry).toHaveBeenCalled();
+    sync.emit({ phase: 'syncing', overlay: true });
+    await tick();
+    expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull();
+  });
+
   it('asks for setup on a new tablet', async () => {
     const { store } = await makeStore({ settings: { deviceName: '' } });
     render(App, { store, sync: fakeSync() });

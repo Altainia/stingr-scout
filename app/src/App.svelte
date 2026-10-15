@@ -28,6 +28,9 @@
 <header class="topbar">
   <span class="brand">Stingr Scout</span>
   <span class="event">{store.event?.name ?? 'No event loaded'}</span>
+  {#if store.pendingCount > 0 && (view.phase === 'done' || view.phase === 'error')}
+    <button type="button" class="primary" onclick={() => void sync.retry()}>Sync now</button>
+  {/if}
   <span class="badge" class:ok={store.pendingCount === 0}>
     {store.pendingCount === 0 ? 'All synced ✓' : `${store.pendingCount} unsynced`}
   </span>
