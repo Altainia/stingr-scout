@@ -8,6 +8,7 @@ test.describe.configure({ mode: 'serial' });
 test.beforeAll(async () => {
   api = await request.newContext({ baseURL: 'http://localhost:5199' });
   expect((await api.post('/api/events', { data: { key: '2027e2e', name: 'E2E Regional' } })).ok()).toBe(true);
+  expect((await api.put('/api/events/current', { data: { key: '2027e2e' } })).ok()).toBe(true);
   for (const form of [matchForm(), pitForm()]) {
     expect((await api.put(`/api/forms/${form.kind}/draft`, { data: form })).ok()).toBe(true);
     expect((await api.post(`/api/forms/${form.kind}/publish`)).ok()).toBe(true);

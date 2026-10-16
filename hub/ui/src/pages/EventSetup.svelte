@@ -9,6 +9,7 @@
   let { api }: { api: Api } = $props();
   let view = $state<EventsView | null>(null);
   let error = $state<unknown>(null);
+  let teamsVersion = $state(0); // bumped when a schedule change may have added teams
 
   onMount(async () => {
     try {
@@ -25,8 +26,8 @@
   <EventsPanel {api} {view} onchange={v => (view = v)} />
   {#if view.current}
     {#key view.current.key}
-      <SchedulePanel {api} />
-      <TeamsPanel {api} />
+      <SchedulePanel {api} onchanged={() => teamsVersion++} />
+      {#key teamsVersion}<TeamsPanel {api} />{/key}
     {/key}
   {/if}
 {/if}

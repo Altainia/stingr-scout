@@ -4,7 +4,8 @@
   import type { Api } from '../lib/api';
   import ErrorNote from './ErrorNote.svelte';
 
-  let { api }: { api: Api } = $props();
+  /** onchanged: the schedule changed, so the event's team list may have too. */
+  let { api, onchanged = () => {} }: { api: Api; onchanged?: () => void } = $props();
 
   type Row = { matchKey: string; teams: string[] };
   const COLS = ['Red 1', 'Red 2', 'Red 3', 'Blue 1', 'Blue 2', 'Blue 3'];
@@ -35,6 +36,7 @@
     try {
       message = await fn();
       await load();
+      onchanged();
     } catch (e) {
       error = e;
     } finally {

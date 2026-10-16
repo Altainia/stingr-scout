@@ -15,6 +15,7 @@ npm run typecheck
 npm run build       # build the tablet app into app/dist (the hub serves it)
 npm run hub         # start the hub at http://localhost:5098/hub/ (add `-- --no-open` to skip the browser)
 npm run dev:app     # tablet app with live reload at http://localhost:5173 (talks to a hub on 5098)
+npm run dev:hub-ui  # hub screens with live reload at http://localhost:5174/hub/ (talks to a hub on 5098)
 npm run e2e         # end-to-end tests: real hub + Chromium
 ```
 

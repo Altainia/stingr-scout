@@ -39,6 +39,18 @@ describe('EventSetup', () => {
     await waitFor(() => expect(within(group).getByRole('button', { name: 'Red on our right' }).getAttribute('aria-pressed')).toBe('true'));
   });
 
+  it('refreshes the team list after a schedule import', async () => {
+    const teamLists = [[] as number[], [1, 2]];
+    const teams = vi.fn(async () => teamLists.shift() ?? [1, 2]);
+    render(EventSetup, {
+      api: fakeApi({ ...panels, teams, events: async () => view(HEART), importScheduleCsv: async () => ({ matches: 1 }) }),
+    });
+    expect(await screen.findByText('Teams (0)')).toBeTruthy();
+    await fireEvent.input(screen.getByLabelText('Schedule CSV'), { target: { value: '1,1,2,0,0,0,0' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Import CSV' }));
+    expect(await screen.findByText('Teams (2)')).toBeTruthy();
+  });
+
   it('adds and removes teams', async () => {
     const addTeam = vi.fn(async () => [254, 5098]);
     const removeTeam = vi.fn(async () => [5098]);
