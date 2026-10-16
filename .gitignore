@@ -7,3 +7,5 @@ playwright-report/
 *.db
 *.db-*
 spikes/
+/.cache/
+/release/
