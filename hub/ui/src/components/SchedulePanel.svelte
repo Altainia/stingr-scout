@@ -62,6 +62,12 @@
   });
 
   const saveRows = () => act(async () => {
+    // A blank cell is an empty slot; anything else must be a team number, so typos aren't silently dropped.
+    const bad = rows.flatMap((r, i) => r.teams.flatMap((x, j) => {
+      const t = x.trim().replace(/^frc/i, '');
+      return t === '' || /^\d{1,5}$/.test(t) ? [] : [`Match ${i + 1}, ${COLS[j]}: "${x.trim()}" is not a team number`];
+    }));
+    if (bad.length) throw new Error(`The schedule was not saved. ${bad.join('. ')}.`);
     const matches: ScheduleMatch[] = rows.map(r => {
       const t = r.teams.map(x => Number(x.trim().replace(/^frc/i, '')) || 0);
       return { matchKey: normalizeMatchKey(r.matchKey) ?? r.matchKey.trim(), red: [t[0], t[1], t[2]], blue: [t[3], t[4], t[5]] };

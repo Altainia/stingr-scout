@@ -38,6 +38,15 @@ describe('SchedulePanel', () => {
     expect(await screen.findByText('Imported 2 matches.')).toBeTruthy();
   });
 
+  it('refuses a hand-typed team number with a typo', async () => {
+    const saveSchedule = vi.fn(async (m: unknown[]) => m as never);
+    render(SchedulePanel, { api: fakeApi({ schedule: async () => [QM1], settings: async () => ({ tbaKeySet: false }), saveSchedule }) });
+    await fireEvent.input(await screen.findByLabelText('Match 1 Blue 2'), { target: { value: '254x' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Save schedule' }));
+    expect(await screen.findByText(/Match 1, Blue 2: "254x" is not a team number/)).toBeTruthy();
+    expect(saveSchedule).not.toHaveBeenCalled();
+  });
+
   it('edits the schedule by hand', async () => {
     const saveSchedule = vi.fn(async (m: unknown[]) => m as never);
     render(SchedulePanel, { api: fakeApi({ schedule: async () => [QM1], settings: async () => ({ tbaKeySet: false }), saveSchedule }) });
