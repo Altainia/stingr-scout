@@ -30,6 +30,23 @@ export function launcherScript(): string {
 set -euo pipefail
 HERE="$(dirname "$(readlink -f "$0")")"
 export STINGR_WEB_ROOT="$HERE"
+# The data folder chosen at install time, so the menu and a terminal always use the same one.
+if [ -z "\${STINGR_DATA_DIR:-}" ] && [ -f "$HERE/data-dir" ]; then
+  STINGR_DATA_DIR="$(cat "$HERE/data-dir")"
+  export STINGR_DATA_DIR
+fi
+if [ "\${1:-}" = "--from-menu" ]; then
+  # Started from the applications menu: keep the window open if the hub stops with an error, so it can be read.
+  shift
+  status=0
+  "$HERE/node" --disable-warning=ExperimentalWarning "$HERE/hub.mjs" "$@" || status=$?
+  if [ "$status" -ne 0 ]; then
+    echo
+    echo "The hub stopped with an error (see above). Press Enter to close this window."
+    read -r _ || true
+  fi
+  exit "$status"
+fi
 exec "$HERE/node" --disable-warning=ExperimentalWarning "$HERE/hub.mjs" "$@"
 `;
 }

@@ -1,8 +1,9 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { launcherScript } from '../lib';
 
 const INSTALLER = resolve(import.meta.dirname, '../install.sh');
 const dirs: string[] = [];
@@ -44,6 +45,30 @@ describe('install.sh', () => {
     expect(desktop).toContain(`Exec=${cmd}`);
     expect(desktop).toContain(`Icon=${join(base, 'app/icon.png')}`);
     expect(desktop).toContain('Terminal=true');
+    expect(desktop).toContain(`Exec=${cmd} --from-menu`);
+  });
+
+  it('records the data folder so every way of starting the hub uses the same one', () => {
+    const { release, home, base } = setup();
+    run(join(release, 'install.sh'), home);
+    expect(readFileSync(join(base, 'app/data-dir'), 'utf8')).toBe(`${join(base, 'data')}\n`);
+  });
+
+  it('refuses to upgrade while the hub is running', async () => {
+    const { release, home, base } = setup();
+    run(join(release, 'install.sh'), home);
+    // Something whose command line names the installed hub.mjs, like the running hub's does.
+    const fake = spawn('/bin/bash', ['-c', 'sleep 30; :', join(base, 'app/hub.mjs')], { stdio: 'ignore' });
+    try {
+      await new Promise(r => setTimeout(r, 200));
+      writeFileSync(join(release, 'VERSION'), 'v9.9.10\n');
+      const r = run(join(release, 'install.sh'), home);
+      expect(r.status).not.toBe(0);
+      expect(r.stdout).toContain('Close the Stingr Scout Hub window');
+      expect(readFileSync(join(base, 'app/VERSION'), 'utf8')).toBe('v9.9.9\n');
+    } finally {
+      fake.kill();
+    }
   });
 
   it('upgrades without touching the data folder', () => {
@@ -91,7 +116,7 @@ describe('install.sh', () => {
     }
     if (withApt) {
       writeFileSync(join(bin, 'sudo'), '#!/bin/bash\n"$@"\n');
-      writeFileSync(join(bin, 'apt-get'), `#!/bin/bash\necho "$@" > "${join(root, 'apt-args')}"\n`);
+      writeFileSync(join(bin, 'apt-get'), `#!/bin/bash\necho "$@" >> "${join(root, 'apt-args')}"\nexit \${FAKE_APT_EXIT:-0}\n`);
       chmodSync(join(bin, 'sudo'), 0o755);
       chmodSync(join(bin, 'apt-get'), 0o755);
     }
@@ -103,7 +128,17 @@ describe('install.sh', () => {
     const bin = minimalPath(root, true);
     const r = run(join(release, 'install.sh'), home, [], { PATH: bin, STINGR_SKIP_ADB: '' });
     expect(r.status).toBe(0);
-    expect(readFileSync(join(root, 'apt-args'), 'utf8').trim()).toBe('install -y adb');
+    expect(readFileSync(join(root, 'apt-args'), 'utf8').trim()).toBe('update\ninstall -y adb');
+  });
+
+  it('explains what to do when apt cannot install adb', () => {
+    const { root, release, home, base } = setup();
+    const bin = minimalPath(root, true);
+    const r = run(join(release, 'install.sh'), home, [], { PATH: bin, STINGR_SKIP_ADB: '', FAKE_APT_EXIT: '100' });
+    expect(r.status).not.toBe(0);
+    expect(r.stdout).toContain('Could not install adb automatically');
+    expect(r.stdout).toContain('sudo apt-get install adb');
+    expect(existsSync(join(base, 'app'))).toBe(false);
   });
 
   it('explains what to do without apt', () => {
@@ -113,5 +148,45 @@ describe('install.sh', () => {
     expect(r.status).not.toBe(0);
     expect(r.stdout).toContain('Please install adb');
     expect(existsSync(join(base, 'app'))).toBe(false); // nothing half-installed
+  });
+});
+
+describe('stingr-hub launcher', () => {
+  /** The launcher beside a fake node that reports what it was given and exits with FAKE_EXIT. */
+  function launcherDir(dataDirFile?: string) {
+    const dir = mkdtempSync(join(tmpdir(), 'stingr-launch-'));
+    dirs.push(dir);
+    writeFileSync(join(dir, 'stingr-hub'), launcherScript());
+    writeFileSync(join(dir, 'node'), '#!/bin/bash\necho "data=${STINGR_DATA_DIR:-} web=$STINGR_WEB_ROOT"\nexit ${FAKE_EXIT:-0}\n');
+    chmodSync(join(dir, 'stingr-hub'), 0o755);
+    chmodSync(join(dir, 'node'), 0o755);
+    if (dataDirFile !== undefined) writeFileSync(join(dir, 'data-dir'), `${dataDirFile}\n`);
+    return dir;
+  }
+  const launch = (dir: string, args: string[], env: Record<string, string> = {}) =>
+    spawnSync(join(dir, 'stingr-hub'), args, { env: { PATH: process.env.PATH ?? '', ...env }, input: '\n', encoding: 'utf8' });
+
+  it('uses the data folder the installer recorded', () => {
+    const dir = launcherDir('/srv/scout data');
+    expect(launch(dir, []).stdout).toContain(`data=/srv/scout data web=${dir}`);
+  });
+
+  it('lets STINGR_DATA_DIR override the recorded folder', () => {
+    const dir = launcherDir('/srv/scout');
+    expect(launch(dir, [], { STINGR_DATA_DIR: '/elsewhere' }).stdout).toContain('data=/elsewhere');
+  });
+
+  it('keeps the menu window open when the hub stops with an error', () => {
+    const dir = launcherDir();
+    const r = launch(dir, ['--from-menu'], { FAKE_EXIT: '3' });
+    expect(r.status).toBe(3);
+    expect(r.stdout).toContain('The hub stopped with an error');
+  });
+
+  it('closes quietly when started from the menu and stopped normally', () => {
+    const dir = launcherDir();
+    const r = launch(dir, ['--from-menu']);
+    expect(r.status).toBe(0);
+    expect(r.stdout).not.toContain('stopped with an error');
   });
 });
