@@ -13,7 +13,7 @@
 
 <section class="preview" aria-label="Tablet preview">
   <div class="row">
-    <span class="muted grow">Preview: taps here aren't saved.</span>
+    <span class="muted grow">Preview only. Nothing here is saved.</span>
     <label>Preview Red side
       <select aria-label="Preview Red side" value={side} onchange={e => (side = e.currentTarget.value as Side)}>
         <option value="left">Left</option><option value="right">Right</option>

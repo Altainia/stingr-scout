@@ -64,11 +64,9 @@
         {#each QUESTION_TYPES as t (t.type)}<option value={t.type}>{t.label}</option>{/each}
       </select>
     </label>
-  </div>
-  <div class="row">
     <label>Key <input aria-label="Key" value={q.key} disabled={locked} oninput={e => set({ key: e.currentTarget.value })} /></label>
-    <p class="hint">{locked ? "This key is in published data, so it can't change." : 'Column name in exports: lowercase letters, digits and _.'}</p>
   </div>
+  <p class="hint">{locked ? "The key is in published data, so it can't change." : 'The key is the column name in exports: lowercase letters, digits and _.'}</p>
   <label>Help text <input aria-label="Help text" value={q.help ?? ''} oninput={e => set({ help: e.currentTarget.value || undefined })} /></label>
   <div class="row">
     <label class="inline"><input type="checkbox" aria-label="Required" checked={q.required} onchange={e => set({ required: e.currentTarget.checked })} /> Required</label>
@@ -81,16 +79,16 @@
 
   {#if q.type === 'counter'}
     <div class="row">
-      <label>Minimum <input aria-label="Minimum" type="number" value={q.min} oninput={e => set({ min: reqNum(e.currentTarget.value, 0) })} /></label>
-      <label>Maximum <input aria-label="Maximum" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
+      <label>Min <input aria-label="Min" type="number" value={q.min} oninput={e => set({ min: reqNum(e.currentTarget.value, 0) })} /></label>
+      <label>Max <input aria-label="Max" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
       <label>Step <input aria-label="Step" type="number" min="1" value={q.step} oninput={e => set({ step: reqNum(e.currentTarget.value, 1) })} /></label>
-      <label>Starts at <input aria-label="Starts at" type="number" value={q.default} oninput={e => set({ default: reqNum(e.currentTarget.value, 0) })} /></label>
+      <label>Default <input aria-label="Default" type="number" value={q.default} oninput={e => set({ default: reqNum(e.currentTarget.value, 0) })} /></label>
       <label>Points each <input aria-label="Points each" type="number" placeholder="none" value={q.points ?? ''} oninput={e => set({ points: optNum(e.currentTarget.value) })} /></label>
     </div>
   {:else if q.type === 'toggle'}
     <div class="row">
-      <label>Starts as
-        <select aria-label="Starts as" value={q.default ? 'yes' : 'no'} onchange={e => set({ default: e.currentTarget.value === 'yes' })}>
+      <label>Default
+        <select aria-label="Default" value={q.default ? 'yes' : 'no'} onchange={e => set({ default: e.currentTarget.value === 'yes' })}>
           <option value="no">No</option><option value="yes">Yes</option>
         </select>
       </label>
@@ -99,11 +97,13 @@
   {:else if q.type === 'choice' || q.type === 'multi'}
     {@const opts = q}
     {#if opts.type === 'choice'}
-      <label>Show as
-        <select aria-label="Show as" value={opts.display} onchange={e => set({ display: e.currentTarget.value })}>
-          <option value="buttons">Buttons</option><option value="dropdown">Dropdown</option>
-        </select>
-      </label>
+      <div class="row">
+        <label>Show as
+          <select aria-label="Show as" value={opts.display} onchange={e => set({ display: e.currentTarget.value })}>
+            <option value="buttons">Buttons</option><option value="dropdown">Dropdown</option>
+          </select>
+        </label>
+      </div>
     {/if}
     <table class="grid">
       <thead><tr><th>Option</th><th>Value</th>{#if opts.type === 'choice'}<th>Points</th>{/if}<th></th></tr></thead>
@@ -130,13 +130,15 @@
   {:else if q.type === 'number'}
     <div class="row">
       <label class="inline"><input type="checkbox" aria-label="Whole numbers only" checked={q.integer} onchange={e => set({ integer: e.currentTarget.checked })} /> Whole numbers only</label>
-      <label>Minimum <input aria-label="Minimum" type="number" placeholder="none" value={q.min ?? ''} oninput={e => set({ min: optNum(e.currentTarget.value) })} /></label>
-      <label>Maximum <input aria-label="Maximum" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
+      <label>Min <input aria-label="Min" type="number" placeholder="none" value={q.min ?? ''} oninput={e => set({ min: optNum(e.currentTarget.value) })} /></label>
+      <label>Max <input aria-label="Max" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
     </div>
   {:else if q.type === 'text'}
     <label class="inline"><input type="checkbox" aria-label="Several lines" checked={q.multiline} onchange={e => set({ multiline: e.currentTarget.checked })} /> Several lines</label>
   {:else if q.type === 'rating'}
-    <label>Highest rating <input aria-label="Highest rating" type="number" min="2" max="10" value={q.max} oninput={e => set({ max: reqNum(e.currentTarget.value, 5) })} /></label>
+    <div class="row">
+      <label>Highest rating <input aria-label="Highest rating" type="number" min="2" max="10" value={q.max} oninput={e => set({ max: reqNum(e.currentTarget.value, 5) })} /></label>
+    </div>
   {:else if q.type === 'timer'}
     <p class="hint">Scouts start and stop a stopwatch; the total time is saved in seconds.</p>
   {:else if q.type === 'fieldmap'}
@@ -147,7 +149,9 @@
     {/if}
     <label class="filebtn">Choose field image<input type="file" accept="image/*" hidden aria-label="Field image file" onchange={pickImage} /></label>
     {#if imageError}<p class="error">{imageError}</p>{/if}
-    <label>Points to mark <input aria-label="Points to mark" type="number" min="1" value={q.maxPoints} oninput={e => set({ maxPoints: reqNum(e.currentTarget.value, 1) })} /></label>
+    <div class="row">
+      <label>Points to mark <input aria-label="Points to mark" type="number" min="1" value={q.maxPoints} oninput={e => set({ maxPoints: reqNum(e.currentTarget.value, 1) })} /></label>
+    </div>
     <div class="choices" role="group" aria-label="Red side of this image">
       <button type="button" aria-pressed={q.redSide === 'left'} onclick={() => set({ redSide: 'left' })}>Red on the left</button>
       <button type="button" aria-pressed={q.redSide === 'right'} onclick={() => set({ redSide: 'right' })}>Red on the right</button>

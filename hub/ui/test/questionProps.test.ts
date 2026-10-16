@@ -18,10 +18,24 @@ describe('QuestionProps', () => {
     const { q } = setup(matchForm(), 0, 1); // auto_coral
     await fireEvent.input(screen.getByLabelText('Points each'), { target: { value: '5' } });
     expect(q()).toMatchObject({ key: 'auto_coral', points: 5 });
-    await fireEvent.input(screen.getByLabelText('Maximum'), { target: { value: '12' } });
+    await fireEvent.input(screen.getByLabelText('Max'), { target: { value: '12' } });
     expect(q()).toMatchObject({ max: 12 });
-    await fireEvent.input(screen.getByLabelText('Maximum'), { target: { value: '' } });
+    await fireEvent.input(screen.getByLabelText('Max'), { target: { value: '' } });
     expect(q()).not.toHaveProperty('max', 12);
+  });
+
+  it('uses the same field names as the problem messages, with Key beside Label and Type', () => {
+    setup(matchForm(), 0, 1);
+    expect(screen.getByLabelText('Min')).toBeTruthy();
+    expect(screen.getByLabelText('Default')).toBeTruthy();
+    const row = screen.getByLabelText('Label').closest('.row');
+    expect(screen.getByLabelText('Type').closest('.row')).toBe(row);
+    expect(screen.getByLabelText('Key').closest('.row')).toBe(row);
+  });
+
+  it('keeps small settings compact instead of stretching across the panel', () => {
+    setup(matchForm(), 1, 0); // climb: Show as
+    expect(screen.getByLabelText('Show as').closest('.row')).not.toBeNull();
   });
 
   it('locks a key that is in published data', async () => {

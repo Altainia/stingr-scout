@@ -15,15 +15,19 @@ function editorApi(over: Parameters<typeof fakeApi>[0] = {}) {
 }
 
 async function addToggleToAuto() {
-  await fireEvent.change(screen.getByLabelText('Type for new question in Auto'), { target: { value: 'toggle' } });
   await fireEvent.click(screen.getByRole('button', { name: 'Add question to Auto' }));
+  await fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'toggle' } });
 }
+const publishButton = () => screen.getByRole('button', { name: 'Publish' }) as HTMLButtonElement;
 
 describe('FormsEditor', () => {
   it('opens the latest published form', async () => {
     render(FormsEditor, { api: editorApi(), kind: 'match' });
     expect(await screen.findByText('Published version 1 · no unpublished changes')).toBeTruthy();
     expect(screen.getByRole('button', { name: /^Coral scored/ })).toBeTruthy();
+    expect(publishButton().disabled).toBe(true); // nothing to publish
+    expect(screen.queryByLabelText(/Type for new question/)).toBeNull(); // the type is chosen on the right
+    expect(screen.getByText('Preview only. Nothing here is saved.')).toBeTruthy();
   });
 
   it('starts empty when nothing exists yet', async () => {
@@ -55,19 +59,37 @@ describe('FormsEditor', () => {
     await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1));
   });
 
-  it('shows what to fix when publishing fails', async () => {
-    const publish = vi.fn(async () => ({ ok: false as const, errors: ['Question "x": label is empty'], warnings: [] }));
+  it('shows what the hub refused when publishing fails', async () => {
+    const publish = vi.fn(async () => ({ ok: false as const, errors: ['Climb: Add at least one option'], warnings: [] }));
     render(FormsEditor, { api: editorApi({ publish }), kind: 'match' });
-    await fireEvent.click(await screen.findByRole('button', { name: 'Publish' }));
-    expect(await screen.findByText('Question "x": label is empty')).toBeTruthy();
-    expect(screen.getByText('Fix these before publishing:')).toBeTruthy();
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    await fireEvent.click(publishButton());
+    expect(await screen.findByText('Climb: Add at least one option')).toBeTruthy();
   });
 
   it('publishes', async () => {
     const publish = vi.fn(async () => ({ ok: true as const, form: matchForm(2), warnings: [] }));
     render(FormsEditor, { api: editorApi({ publish }), kind: 'match' });
-    await fireEvent.click(await screen.findByRole('button', { name: 'Publish' }));
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    await fireEvent.click(publishButton());
     expect(await screen.findByText('Published version 2. Tablets get it on their next sync.')).toBeTruthy();
+  });
+
+  it('disables Publish while there are problems, and lists them only when asked', async () => {
+    render(FormsEditor, { api: editorApi(), kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    await fireEvent.input(screen.getByLabelText('Label'), { target: { value: '' } });
+    expect(publishButton().disabled).toBe(true);
+    expect(screen.getByText('1 problem')).toBeTruthy();
+    expect(screen.queryByText(/Label is empty/)).toBeNull(); // nothing pops up while editing
+    await fireEvent.click(screen.getByRole('button', { name: 'Show problems' }));
+    expect(screen.getByText(/Label is empty/)).toBeTruthy();
+    await fireEvent.input(screen.getByLabelText('Label'), { target: { value: 'Algae' } });
+    expect(screen.queryByText(/Label is empty/)).toBeNull();
+    expect(publishButton().disabled).toBe(false);
   });
 
   it('locks keys that are in published data', async () => {

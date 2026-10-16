@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { allQuestions, type FormDef, type FormKind } from '@stingr/shared';
+  import { allQuestions, type FormDef, type FormKind, validateFormDef } from '@stingr/shared';
   import { onDestroy, onMount } from 'svelte';
   import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
   import ErrorNote from '../components/ErrorNote.svelte';
   import Outline from '../components/Outline.svelte';
   import Preview from '../components/Preview.svelte';
   import QuestionProps from '../components/QuestionProps.svelte';
-  import type { Api, FormValidation } from '../lib/api';
+  import type { Api } from '../lib/api';
   import { emptyForm, pruneAssets, type Selection } from '../lib/formEdit';
 
   let { api, kind }: { api: Api; kind: FormKind } = $props();
@@ -14,7 +14,9 @@
   let form = $state<FormDef | null>(null);
   let published = $state<FormDef[]>([]);
   let isDraft = $state(false);
-  let validation = $state<FormValidation>({ errors: [], warnings: [] });
+  let refused = $state<string[]>([]); // what the hub refused on the last publish
+  let warnings = $state<string[]>([]); // notes from the last successful publish
+  let showProblems = $state(false);
   let status = $state<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
   let selected = $state<Selection>({ si: 0, qi: null });
   let error = $state<unknown>(null);
@@ -38,6 +40,20 @@
     }
     return m;
   });
+  // Checked here as the mentor edits; shown only when asked for ("Show problems").
+  let problems = $derived.by(() => {
+    if (!form) return [] as string[];
+    try {
+      return validateFormDef(pruneAssets($state.snapshot(form) as FormDef), mine).errors;
+    } catch {
+      return ['The form is malformed. Undo the last change or import a fresh copy.'];
+    }
+  });
+  let nothingToPublish = $derived(!isDraft && status === 'saved');
+  $effect(() => {
+    if (problems.length === 0) showProblems = false;
+  });
+
   let statusText = $derived(
     status === 'saving' ? 'Saving…'
       : status === 'unsaved' ? 'Unsaved changes…'
@@ -69,6 +85,8 @@
     form = next;
     status = 'unsaved';
     message = null;
+    refused = [];
+    warnings = [];
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => void save(), 600);
   }
@@ -78,7 +96,7 @@
     if (!form) return;
     status = 'saving';
     try {
-      validation = await api.saveDraft(kind, pruneAssets($state.snapshot(form) as FormDef));
+      await api.saveDraft(kind, pruneAssets($state.snapshot(form) as FormDef));
       isDraft = true;
       status = 'saved';
     } catch (e) {
@@ -99,10 +117,12 @@
         published = [...published, res.form];
         form = res.form;
         isDraft = false;
-        validation = { errors: [], warnings: res.warnings };
+        refused = [];
+        warnings = res.warnings;
         message = `Published version ${res.form.version}. Tablets get it on their next sync.`;
       } else {
-        validation = { errors: res.errors, warnings: res.warnings };
+        refused = res.errors;
+        warnings = res.warnings;
       }
     } catch (e) {
       error = e;
@@ -120,7 +140,8 @@
       form = d.draft ?? emptyForm(kind);
       isDraft = false;
       status = 'saved';
-      validation = { errors: [], warnings: [] };
+      refused = [];
+      warnings = [];
       selected = { si: 0, qi: null };
       message = 'Changes discarded.';
     } catch (e) {
@@ -164,18 +185,28 @@
     <button type="button" onclick={exportJson}>Export JSON</button>
     <label class="filebtn">Import JSON<input type="file" accept="application/json,.json" hidden aria-label="Import JSON file" onchange={importJson} /></label>
     <button type="button" disabled={!isDraft && status === 'saved'} onclick={() => (confirmDiscard = true)}>Discard changes</button>
-    <button type="button" class="primary" onclick={publish}>Publish</button>
+    {#if problems.length}
+      <span class="error">{problems.length} problem{problems.length === 1 ? '' : 's'}</span>
+      <button type="button" class="link" onclick={() => (showProblems = !showProblems)}>{showProblems ? 'Hide problems' : 'Show problems'}</button>
+    {/if}
+    <button type="button" class="primary" disabled={nothingToPublish || problems.length > 0} onclick={publish}>Publish</button>
   </div>
 
   {#if message}<p class="banner ok">{message}</p>{/if}
-  {#if validation.errors.length}
+  {#if showProblems && problems.length}
     <div class="banner warn">
       <strong>Fix these before publishing:</strong>
-      <ul class="errors">{#each validation.errors as e, i (i)}<li>{e}</li>{/each}</ul>
+      <ul class="errors">{#each problems as e, i (i)}<li>{e}</li>{/each}</ul>
     </div>
   {/if}
-  {#if validation.warnings.length}
-    <div class="banner warn"><ul>{#each validation.warnings as w, i (i)}<li>{w}</li>{/each}</ul></div>
+  {#if refused.length}
+    <div class="banner warn">
+      <strong>The hub didn't publish the form:</strong>
+      <ul class="errors">{#each refused as e, i (i)}<li>{e}</li>{/each}</ul>
+    </div>
+  {/if}
+  {#if warnings.length}
+    <div class="banner warn"><ul>{#each warnings as w, i (i)}<li>{w}</li>{/each}</ul></div>
   {/if}
 
   <div class="editor">

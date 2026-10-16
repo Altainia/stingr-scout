@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { FormDef, QuestionType } from '@stingr/shared';
+  import type { FormDef } from '@stingr/shared';
   import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
   import {
-    addQuestion, addSection, moveQuestion, moveQuestionTo, moveSection, moveSectionTo, QUESTION_TYPES, removeQuestion,
+    addQuestion, addSection, moveQuestion, moveQuestionTo, moveSection, moveSectionTo, removeQuestion,
     removeSection, renameSection, type Selection, typeLabel,
   } from '../lib/formEdit';
 
@@ -10,7 +10,6 @@
     form: FormDef; selected: Selection; onselect: (s: Selection) => void; onchange: (f: FormDef) => void;
   } = $props();
 
-  let newType = $state<Record<number, QuestionType>>({});
   let confirmSection = $state<number | null>(null);
 
   // Native HTML drag and drop. Where a dragged item would land is shown with a line and applied on drop.
@@ -59,7 +58,7 @@
   }
 
   function add(si: number) {
-    const next = addQuestion(form, si, newType[si] ?? 'counter');
+    const next = addQuestion(form, si, 'counter'); // its type is changed in the settings panel
     onchange(next);
     onselect({ si, qi: next.sections[si].questions.length - 1 });
   }
@@ -121,9 +120,6 @@
       </ul>
       {#if dropQ?.si === si && dropQ.qi === s.questions.length}<div class="drop-end"></div>{/if}
       <div class="row">
-        <select aria-label="Type for new question in {s.title}" value={newType[si] ?? 'counter'} onchange={e => (newType[si] = e.currentTarget.value as QuestionType)}>
-          {#each QUESTION_TYPES as t (t.type)}<option value={t.type}>{t.label}</option>{/each}
-        </select>
         <button type="button" onclick={() => add(si)}>Add question to {s.title}</button>
       </div>
     </section>

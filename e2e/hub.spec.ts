@@ -41,7 +41,6 @@ test('edits and publishes the match form', async ({ page }) => {
   }
   await page.goto('/hub/#/forms/match');
   await expect(page.getByText(/Published version \d+ · no unpublished changes/)).toBeVisible();
-  await page.getByLabel('Type for new question in Endgame').selectOption('counter');
   await page.getByRole('button', { name: 'Add question to Endgame' }).click();
   await page.getByLabel('Label').fill('Algae in net');
   await page.getByLabel('Points each').fill('4');

@@ -2,6 +2,7 @@
   import type { Side } from '@stingr/shared';
   import type { Api, EventsView } from '../lib/api';
   import ErrorNote from './ErrorNote.svelte';
+  import FieldSide from './FieldSide.svelte';
 
   let { api, view, onchange }: { api: Api; view: EventsView; onchange: (v: EventsView) => void } = $props();
   let key = $state('');
@@ -62,6 +63,7 @@
         <button type="button" aria-pressed={(current.redSide ?? 'left') === side} onclick={() => run(api.createEvent({ key: current.key, redSide: side }))}>{label}</button>
       {/each}
     </div>
+    <FieldSide redSide={current.redSide ?? 'left'} />
   {/if}
   <ErrorNote {error} />
 </section>

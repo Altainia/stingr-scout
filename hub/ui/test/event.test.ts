@@ -51,6 +51,32 @@ describe('EventSetup', () => {
     expect(await screen.findByText('Teams (2)')).toBeTruthy();
   });
 
+  it('draws the field the way the scouts see it', async () => {
+    render(EventSetup, { api: fakeApi({ ...panels, events: async () => view(HEART), createEvent: async () => view({ ...HEART, redSide: 'right' }) }) });
+    expect(await screen.findByRole('img', { name: 'Red on the left, Blue on the right, as seen from the stands' })).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Red on our right' }));
+    expect(await screen.findByRole('img', { name: 'Blue on the left, Red on the right, as seen from the stands' })).toBeTruthy();
+  });
+
+  it('asks before removing a team that is in the schedule', async () => {
+    const removeTeam = vi.fn(async () => [9999]);
+    const schedule = async () => [{ matchKey: 'qm1', red: [254, 2, 3] as [number, number, number], blue: [4, 5, 6] as [number, number, number] }, { matchKey: 'qm2', red: [7, 8, 9] as [number, number, number], blue: [10, 11, 254] as [number, number, number] }];
+    render(EventSetup, { api: fakeApi({ ...panels, schedule, teams: async () => [254, 9999], events: async () => view(HEART), removeTeam }) });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Remove team 254' }));
+    const dialog = screen.getByRole('dialog', { name: 'Remove team 254?' });
+    expect(dialog.textContent).toContain('Team 254 plays in 2 scheduled matches.');
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    expect(removeTeam).toHaveBeenCalledWith(254);
+  });
+
+  it('removes a team that is not in the schedule without asking', async () => {
+    const removeTeam = vi.fn(async () => [254]);
+    render(EventSetup, { api: fakeApi({ ...panels, teams: async () => [254, 9999], events: async () => view(HEART), removeTeam }) });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Remove team 9999' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(removeTeam).toHaveBeenCalledWith(9999);
+  });
+
   it('adds and removes teams', async () => {
     const addTeam = vi.fn(async () => [254, 5098]);
     const removeTeam = vi.fn(async () => [5098]);
