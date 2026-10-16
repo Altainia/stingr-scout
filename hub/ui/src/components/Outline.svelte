@@ -11,6 +11,7 @@
   } = $props();
 
   let confirmSection = $state<number | null>(null);
+  let confirmQuestion = $state<{ si: number; qi: number } | null>(null);
 
   // Native HTML drag and drop. Where a dragged item would land is shown with a line and applied on drop.
   type Drag = { kind: 'question'; si: number; qi: number } | { kind: 'section'; si: number };
@@ -114,7 +115,7 @@
             </button>
             <button type="button" class="small" aria-label="Move {q.label} up" onclick={() => move(si, qi, -1)}>↑</button>
             <button type="button" class="small" aria-label="Move {q.label} down" onclick={() => move(si, qi, 1)}>↓</button>
-            <button type="button" class="small" aria-label="Delete {q.label}" onclick={() => remove(si, qi)}>✕</button>
+            <button type="button" class="small" aria-label="Delete {q.label}" onclick={() => (confirmQuestion = { si, qi })}>✕</button>
           </li>
         {/each}
       </ul>
@@ -127,6 +128,19 @@
   {#if dropS === form.sections.length}<div class="drop-end"></div>{/if}
   <button type="button" onclick={() => onchange(addSection(form))}>Add section</button>
 </div>
+
+{#if confirmQuestion}
+  {@const target = confirmQuestion}
+  <ConfirmDialog
+    title="Delete “{form.sections[target.si]?.questions[target.qi]?.label}”?"
+    confirmLabel="Delete"
+    cancelLabel="Keep it"
+    onconfirm={() => { const { si, qi } = target; confirmQuestion = null; remove(si, qi); }}
+    oncancel={() => (confirmQuestion = null)}
+  >
+    <p>It is removed from the draft. Answers already collected with published versions are kept.</p>
+  </ConfirmDialog>
+{/if}
 
 {#if confirmSection !== null}
   {@const doomed = form.sections[confirmSection]}

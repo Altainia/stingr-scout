@@ -180,6 +180,37 @@ describe('FormsEditor', () => {
     expect(titles).toEqual(['Notes', 'Auto', 'Endgame']);
   });
 
+  it('asks before deleting a question', async () => {
+    render(FormsEditor, { api: editorApi(), kind: 'match' });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Delete Coral scored' }));
+    const dialog = screen.getByRole('dialog', { name: 'Delete “Coral scored”?' });
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Keep it' }));
+    expect(screen.getByRole('button', { name: /^Coral scored/ })).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete Coral scored' }));
+    await fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
+    expect(screen.queryByRole('button', { name: /^Coral scored/ })).toBeNull();
+  });
+
+  it('confirms before an imported JSON file replaces the draft', async () => {
+    render(FormsEditor, { api: editorApi(), kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    const imported = { ...matchForm(), sections: [{ id: 'only', title: 'Only section', questions: [] }] };
+    const file = new File([JSON.stringify(imported)], 'scouting.json', { type: 'application/json' });
+    await fireEvent.change(screen.getByLabelText('Import JSON file'), { target: { files: [file] } });
+    const dialog = await screen.findByRole('dialog', { name: 'Replace the draft with “scouting.json”?' });
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Replace' }));
+    expect(await screen.findByRole('region', { name: 'Section Only section' })).toBeTruthy();
+  });
+
+  it('refuses a JSON file that is not a form', async () => {
+    render(FormsEditor, { api: editorApi(), kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    const file = new File([JSON.stringify({ sections: [{ questions: [{ nope: 1 }] }] })], 'bad.json', { type: 'application/json' });
+    await fireEvent.change(screen.getByLabelText('Import JSON file'), { target: { files: [file] } });
+    expect(await screen.findByText('That file is not a Stingr Scout form.')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('asks before deleting a section that has questions', async () => {
     render(FormsEditor, { api: editorApi(), kind: 'match' });
     await fireEvent.click(await screen.findByRole('button', { name: 'Delete section Auto' }));

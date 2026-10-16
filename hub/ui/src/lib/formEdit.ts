@@ -33,6 +33,14 @@ export function uniqueKey(base: string, taken: Iterable<string>): string {
 
 export const questionKeys = (f: FormDef): string[] => allQuestions(f).map(q => q.key);
 
+/** A rough shape check for an imported file, so a wrong file can't break the editor. */
+export function looksLikeForm(x: unknown): x is FormDef {
+  if (typeof x !== 'object' || x === null || !Array.isArray((x as FormDef).sections)) return false;
+  return (x as FormDef).sections.every(s =>
+    typeof s === 'object' && s !== null && typeof s.title === 'string' && Array.isArray(s.questions)
+    && s.questions.every(q => typeof q === 'object' && q !== null && typeof q.key === 'string' && typeof q.label === 'string' && typeof q.type === 'string'));
+}
+
 export function emptyForm(kind: FormKind): FormDef {
   const titles = kind === 'match' ? ['Auto', 'Teleop', 'Endgame'] : ['Robot'];
   return { kind, version: 0, assets: {}, sections: titles.map(t => ({ id: slugify(t), title: t, questions: [] })) };

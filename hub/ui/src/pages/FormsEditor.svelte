@@ -7,7 +7,7 @@
   import Preview from '../components/Preview.svelte';
   import QuestionProps from '../components/QuestionProps.svelte';
   import type { Api } from '../lib/api';
-  import { emptyForm, pruneAssets, type Selection } from '../lib/formEdit';
+  import { emptyForm, looksLikeForm, pruneAssets, type Selection } from '../lib/formEdit';
 
   let { api, kind }: { api: Api; kind: FormKind } = $props();
 
@@ -18,6 +18,7 @@
   let warnings = $state<string[]>([]); // notes from the last successful publish
   let showProblems = $state(false);
   let publishing = $state(false);
+  let pendingImport = $state<{ name: string; form: FormDef } | null>(null);
   let status = $state<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
   let selected = $state<Selection>({ si: 0, qi: null });
   let error = $state<unknown>(null);
@@ -197,10 +198,9 @@
     input.value = '';
     if (!file) return;
     try {
-      const parsed = JSON.parse(await file.text()) as FormDef;
-      if (!Array.isArray(parsed.sections)) throw new Error('That file is not a Stingr Scout form.');
-      edit({ ...parsed, kind, version: 0, assets: parsed.assets ?? {} });
-      selected = { si: 0, qi: null };
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!looksLikeForm(parsed)) throw new Error('That file is not a Stingr Scout form.');
+      pendingImport = { name: file.name, form: { ...parsed, kind, version: 0, assets: parsed.assets ?? {} } };
     } catch (err) {
       error = err instanceof SyntaxError ? new Error('That file is not valid JSON.') : err;
     }
@@ -252,6 +252,19 @@
       {#if showPreview}<Preview {form} />{/if}
     </div>
   </div>
+{/if}
+
+{#if pendingImport}
+  {@const incoming = pendingImport}
+  <ConfirmDialog
+    title="Replace the draft with “{incoming.name}”?"
+    confirmLabel="Replace"
+    cancelLabel="Cancel"
+    onconfirm={() => { const next = incoming.form; pendingImport = null; edit(next); selected = { si: 0, qi: null }; }}
+    oncancel={() => (pendingImport = null)}
+  >
+    <p>The form you are editing is replaced by the one in the file. Published versions are not changed until you publish.</p>
+  </ConfirmDialog>
 {/if}
 
 {#if confirmDiscard}
