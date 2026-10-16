@@ -11,7 +11,7 @@
 </script>
 
 <div class="choices">
-  {#each question.options as o (o.value)}
+  {#each question.options as o, i (i)}
     <button type="button" aria-pressed={selected.includes(o.value)} onclick={() => toggle(o.value)}>{o.label}</button>
   {/each}
 </div>

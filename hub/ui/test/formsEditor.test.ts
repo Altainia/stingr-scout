@@ -30,6 +30,19 @@ describe('FormsEditor', () => {
     expect(screen.getByText('Preview only. Nothing here is saved.')).toBeTruthy();
   });
 
+  it('still opens a draft whose options share a value', async () => {
+    const draft = structuredClone(matchForm(0));
+    const climb = draft.sections[1].questions[0];
+    if (climb.type !== 'choice') throw new Error('fixture changed');
+    climb.options[1].value = 'none'; // same as option 1
+    render(FormsEditor, { api: editorApi({ draft: async () => ({ draft, isDraft: true }) }), kind: 'match' });
+    expect(await screen.findByRole('button', { name: 'Discard changes' })).toBeTruthy();
+    expect(screen.getByText('1 problem')).toBeTruthy();
+    const preview = screen.getByRole('region', { name: 'Tablet preview' });
+    await fireEvent.click(within(preview).getByRole('button', { name: 'Endgame' }));
+    expect(within(preview).getByRole('region', { name: 'Climb' })).toBeTruthy();
+  });
+
   it('starts empty when nothing exists yet', async () => {
     render(FormsEditor, { api: editorApi({ draft: async () => ({ draft: null, isDraft: false }), forms: async () => [] }), kind: 'pit' });
     expect(await screen.findByText('Nothing published yet')).toBeTruthy();

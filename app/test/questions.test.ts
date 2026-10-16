@@ -82,6 +82,15 @@ describe('Choice', () => {
   });
 });
 
+describe('options with the same value (possible in a draft being edited)', () => {
+  it('still render instead of crashing', () => {
+    const dup = { ...choice, options: [{ value: 'a', label: 'A' }, { value: 'a', label: 'Also A' }] };
+    render(Choice, { question: dup, value: null, onchange: vi.fn() });
+    render(Multi, { question: { ...multi, options: dup.options }, value: [], onchange: vi.fn() });
+    expect(screen.getAllByRole('button', { name: 'Also A' })).toHaveLength(2);
+  });
+});
+
 describe('Multi', () => {
   it('toggles options in and out of the list', async () => {
     const onchange = vi.fn();
