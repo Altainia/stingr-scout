@@ -75,12 +75,27 @@
     }
   });
 
-  // Leaving the page must not lose an edit that is still waiting for the autosave delay.
+  // Leaving the page must not lose an edit: save what is waiting, and retry a save that failed.
   onDestroy(() => {
     if (timer) {
       clearTimeout(timer);
       void save();
+    } else if (status === 'error') {
+      void save();
     }
+  });
+
+  // Closing or reloading the tab: start saving at once and ask the browser to hold the page until it lands.
+  onMount(() => {
+    const onLeave = (e: Event) => {
+      if (timer) {
+        clearTimeout(timer);
+        void save();
+      }
+      if (status !== 'saved') e.preventDefault();
+    };
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
   });
 
   function edit(next: FormDef) {

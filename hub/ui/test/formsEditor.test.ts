@@ -73,6 +73,31 @@ describe('FormsEditor', () => {
     await waitFor(() => expect(api.saveDraft).toHaveBeenCalledTimes(1));
   });
 
+  it('saves at once and asks the browser to wait when the tab is closed with unsaved changes', async () => {
+    const api = editorApi();
+    render(FormsEditor, { api, kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+    expect(api.saveDraft).toHaveBeenCalledTimes(1); // without waiting for the autosave delay
+  });
+
+  it('tries a failed save again when leaving the page', async () => {
+    let calls = 0;
+    const saveDraft = vi.fn(async () => {
+      if (++calls === 1) throw new ApiError(0, "Can't reach the hub server. Is it still running?");
+      return { errors: [], warnings: [] };
+    });
+    const { unmount } = render(FormsEditor, { api: editorApi({ saveDraft }), kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    await screen.findByText(/Couldn't save the draft/);
+    unmount();
+    await waitFor(() => expect(saveDraft).toHaveBeenCalledTimes(2));
+  });
+
   it('shows what the hub refused when publishing fails', async () => {
     const publish = vi.fn(async () => ({ ok: false as const, errors: ['Climb: Add at least one option'], warnings: [] }));
     render(FormsEditor, { api: editorApi({ publish }), kind: 'match' });
