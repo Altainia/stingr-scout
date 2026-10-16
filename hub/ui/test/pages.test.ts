@@ -33,6 +33,14 @@ describe('Settings', () => {
   });
 });
 
+describe('Settings theme', () => {
+  it('switches the theme straight away', async () => {
+    render(Settings, { api: fakeApi({ settings: async () => ({ tbaKeySet: false }) }) });
+    await fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'light' } });
+    expect(document.documentElement.dataset.theme).toBe('light');
+  });
+});
+
 describe('Dashboard', () => {
   it('shows the event, plugged-in tablets and sync times', async () => {
     const api = fakeApi({

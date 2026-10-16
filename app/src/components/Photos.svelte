@@ -55,7 +55,7 @@
 <style>
   .camera {
     display: inline-flex; flex-direction: row; align-items: center; justify-content: center;
-    min-height: 64px; padding: 0 24px; border: 2px solid var(--black); border-radius: 8px;
-    background: var(--yellow); font-size: 1.3rem; cursor: pointer;
+    min-height: 64px; padding: 0 24px; border: 2px solid var(--line); border-radius: 8px;
+    background: var(--accent); color: var(--accent-text); font-size: 1.3rem; cursor: pointer;
   }
 </style>

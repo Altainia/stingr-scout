@@ -1,4 +1,5 @@
 import './app.css';
+import { applyTheme, loadTheme } from '@stingr/shared';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import { openStingrDb } from './lib/db';
@@ -6,6 +7,8 @@ import { AppStore } from './lib/store.svelte';
 import { watchForUpdates } from './lib/swUpdate';
 import { pingHub, runSync } from './lib/sync';
 import { SyncController } from './lib/syncController';
+
+applyTheme(loadTheme()); // before the first paint, so the page never flashes the wrong colours
 
 // Calling the global fetch through a wrapper keeps it bound (Chrome throws "Illegal invocation" otherwise).
 const http: typeof fetch = (input, init) => fetch(input, init);

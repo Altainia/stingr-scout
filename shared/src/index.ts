@@ -6,3 +6,4 @@ export * from './record';
 export * from './scoring';
 export * from './qr';
 export * from './describe';
+export * from './theme';

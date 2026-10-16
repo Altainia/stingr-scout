@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SLOTS, type Slot } from '@stingr/shared';
+  import { applyTheme, loadTheme, SLOTS, type Slot, THEMES, type ThemeId } from '@stingr/shared';
   import { onMount } from 'svelte';
   import { slotLabel } from '../lib/session';
   import type { AppStore } from '../lib/store.svelte';
@@ -8,6 +8,7 @@
   let name = $state(store.settings.deviceName);
   let slot = $state<Slot>(store.settings.defaultSlot);
   let redSide = $state<'event' | 'left' | 'right'>(store.settings.redSideOverride ?? 'event');
+  let theme = $state<ThemeId>(loadTheme());
   let saved = $state(false);
   let lastSync = $state<string | null>(null);
 
@@ -41,6 +42,11 @@
       </select>
     </label>
     <button type="button" class="primary" onclick={save}>Save</button>
+    <label>Theme
+      <select aria-label="Theme" value={theme} onchange={e => { theme = e.currentTarget.value as ThemeId; applyTheme(theme); }}>
+        {#each THEMES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
+      </select>
+    </label>
     {#if saved}<span>Saved ✓</span>{/if}
   </div>
   <dl>

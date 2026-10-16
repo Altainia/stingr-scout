@@ -30,6 +30,8 @@ describe('Settings', () => {
     await waitFor(() => expect(store.settings.deviceName).toBe('Tablet 9'));
     expect(store.settings.redSideOverride).toBe('right');
     expect(await screen.findByText('Saved ✓')).toBeTruthy();
+    await fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'dark' } });
+    expect(document.documentElement.dataset.theme).toBe('dark'); // applies straight away
     await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(store.screen).toEqual({ name: 'home' });
   });

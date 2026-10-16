@@ -1,32 +1,70 @@
+/* Colour roles. Every rule below uses these, so a theme only has to set them.
+   Stingr (purple and gold) is the default; Light is the original yellow and black; Dark is for dim venues. */
+:root,
+:root[data-theme='stingr'] {
+  --bg: #f6f3fa; --surface: #ffffff; --text: #1d1530; --muted: #6b6280; --link: #4b2e83;
+  --border: #ddd6e8; --line: #2d1f4d; --input-border: #a99cc0;
+  --accent: #f2b705; --accent-text: #1d1530;
+  --pressed: #4b2e83; --pressed-text: #ffffff;
+  --bar: #4b2e83; --bar-text: #ffffff; --brand: #f2b705;
+  --chip: #ece6f5; --highlight: #fff6d6;
+  --red: #c62828; --blue: #1565c0; --green: #2e7d32;
+  --warn-bg: #fff3cd; --ok-bg: #d7ecd8; --bad-bg: #ffd6d6;
+  color-scheme: light;
+}
+:root[data-theme='light'] {
+  --bg: #fafafa; --surface: #ffffff; --text: #1a1a1a; --muted: #666666; --link: #1565c0;
+  --border: #dddddd; --line: #1a1a1a; --input-border: #999999;
+  --accent: #f5b400; --accent-text: #1a1a1a;
+  --pressed: #1a1a1a; --pressed-text: #ffffff;
+  --bar: #1a1a1a; --bar-text: #ffffff; --brand: #f5b400;
+  --chip: #eeeeee; --highlight: #fff8e1;
+  --red: #c62828; --blue: #1565c0; --green: #2e7d32;
+  --warn-bg: #fff3cd; --ok-bg: #c8e6c9; --bad-bg: #ffcdd2;
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  --bg: #121216; --surface: #1d1d24; --text: #ececf1; --muted: #a3a3b2; --link: #9ecbff;
+  --border: #33333d; --line: #8c8c9c; --input-border: #5a5a68;
+  --accent: #f2b705; --accent-text: #15120a;
+  --pressed: #ececf1; --pressed-text: #121216;
+  --bar: #000000; --bar-text: #ececf1; --brand: #f2b705;
+  --chip: #2b2b35; --highlight: #2e2a17;
+  --red: #ef5350; --blue: #64b5f6; --green: #66bb6a;
+  --warn-bg: #4a3b10; --ok-bg: #1f3d22; --bad-bg: #4a1f22;
+  color-scheme: dark;
+}
 :root {
-  --yellow: #f5b400; --black: #1a1a1a; --red: #c62828; --blue: #1565c0; --green: #2e7d32; --grey: #666; --bg: #fafafa;
-  font-family: system-ui, Roboto, sans-serif; font-size: 18px; color: var(--black); background: var(--bg);
+  /* The sync screens keep strong colours in every theme so they read at a glance. */
+  --sync-busy: #1565c0; --sync-ok: #2e7d32; --sync-bad: #c62828;
+  font-family: system-ui, Roboto, sans-serif; font-size: 18px; color: var(--text); background: var(--bg);
 }
 * { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+a { color: var(--link); }
 button, select, input, textarea { font: inherit; }
-button { min-height: 48px; min-width: 48px; padding: 0 16px; border: 2px solid var(--black); border-radius: 8px; background: #fff; color: var(--black); }
+button { min-height: 48px; min-width: 48px; padding: 0 16px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
 button:disabled { opacity: 0.4; }
-button.primary { background: var(--yellow); }
+button.primary { background: var(--accent); color: var(--accent-text); }
 button.big { min-height: 64px; font-size: 1.3rem; }
-button[aria-pressed='true'] { background: var(--black); color: #fff; }
-button.link { border: none; background: none; text-decoration: underline; color: var(--grey); }
-input, select, textarea { min-height: 48px; padding: 8px; border: 2px solid #999; border-radius: 8px; background: #fff; }
+button[aria-pressed='true'] { background: var(--pressed); color: var(--pressed-text); }
+button.link { border: none; background: none; text-decoration: underline; color: var(--muted); }
+input, select, textarea { min-height: 48px; padding: 8px; border: 2px solid var(--input-border); border-radius: 8px; background: var(--surface); color: var(--text); }
 textarea { width: 100%; }
 label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
-.topbar { display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: var(--black); color: #fff; }
-.topbar .brand { color: var(--yellow); font-weight: 700; }
+.topbar { display: flex; align-items: center; gap: 16px; padding: 8px 16px; background: var(--bar); color: var(--bar-text); }
+.topbar .brand { color: var(--brand); font-weight: 700; }
 .topbar .event { flex: 1; }
-.badge { padding: 4px 12px; border-radius: 999px; background: var(--red); }
-.badge.ok { background: var(--green); }
+.badge { padding: 4px 12px; border-radius: 999px; background: var(--sync-bad); color: #fff; }
+.badge.ok { background: var(--sync-ok); }
 main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .banner { margin: 0 0 12px; padding: 8px 16px; border-radius: 8px; }
-.warn { background: #fff3cd; }
+.warn { background: var(--warn-bg); }
 .error { color: var(--red); }
-.hint { color: var(--grey); }
+.hint { color: var(--muted); }
 .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin: 12px 0; }
 .choices { display: flex; flex-wrap: wrap; gap: 8px; }
-.question { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
+.question { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
 .question header { display: flex; justify-content: space-between; align-items: center; }
 .question h3 { margin: 0; font-size: 1.1rem; }
 .question.missed { opacity: 0.7; border-style: dashed; }
@@ -38,23 +76,24 @@ main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
 .bar { display: flex; align-items: center; gap: 12px; }
 .bar h1 { flex: 1; font-size: 1.3rem; }
-.tag { background: var(--yellow); padding: 2px 8px; border-radius: 6px; }
+.tag { background: var(--accent); color: var(--accent-text); padding: 2px 8px; border-radius: 6px; }
 .fieldmap { position: relative; max-width: 640px; }
 .fieldmap img { width: 100%; display: block; user-select: none; }
-.fieldmap .dot { position: absolute; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; margin: -14px 0 0 -14px; border-radius: 50%; background: var(--yellow); }
+.fieldmap .dot { position: absolute; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; margin: -14px 0 0 -14px; border-radius: 50%; background: var(--accent); }
 .timer { display: flex; gap: 12px; align-items: center; }
 .timer .readout { font-size: 1.8rem; border: none; }
-.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10; }
-.dialog { background: #fff; border-radius: 12px; padding: 24px; max-width: 560px; width: 90%; }
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.dialog { background: var(--surface); color: var(--text); border-radius: 12px; padding: 24px; max-width: 560px; width: 90%; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
 .sync-overlay { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #fff; text-align: center; padding: 32px; }
-.sync-overlay.syncing { background: var(--blue); }
-.sync-overlay.done { background: var(--green); }
-.sync-overlay.error { background: var(--red); }
+.sync-overlay.syncing { background: var(--sync-busy); }
+.sync-overlay.done { background: var(--sync-ok); }
+.sync-overlay.error { background: var(--sync-bad); }
 .sync-overlay h2 { font-size: 2.4rem; margin: 0; }
 .sync-overlay progress { width: 60%; height: 32px; }
+.sync-overlay button { background: #fff; color: #1a1a1a; border-color: #fff; }
 .list { list-style: none; padding: 0; }
-.list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #ddd; }
+.list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .list li .grow { flex: 1; }
 .status.done, .synced { color: var(--green); }
 .status.noshow, .rejected { color: var(--red); }
