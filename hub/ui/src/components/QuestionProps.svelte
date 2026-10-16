@@ -58,7 +58,7 @@
 <section class="card" aria-label="Question settings">
   <h2>Question</h2>
   <div class="row">
-    <label>Label <input aria-label="Label" value={q.label} oninput={e => put(renameQuestion(form, q, e.currentTarget.value, locked))} /></label>
+    <label>Label <input aria-label="Label" value={q.label} oninput={e => put(renameQuestion(form, q, e.currentTarget.value, locked, lockedKeys))} /></label>
     <label>Type
       <select aria-label="Type" value={q.type} onchange={e => put(changeType(q, e.currentTarget.value as QuestionType))}>
         {#each QUESTION_TYPES as t (t.type)}<option value={t.type}>{t.label}</option>{/each}

@@ -82,8 +82,9 @@ export const moveSection = (f: FormDef, si: number, delta: -1 | 1): FormDef => {
   return sections === f.sections ? f : { ...f, sections };
 };
 
-export function addQuestion(f: FormDef, si: number, type: QuestionType, label = 'New question'): FormDef {
-  const q = newQuestion(type, label, questionKeys(f));
+/** `reserved`: keys used by published versions, which a new question must not take over. */
+export function addQuestion(f: FormDef, si: number, type: QuestionType, label = 'New question', reserved: Iterable<string> = []): FormDef {
+  const q = newQuestion(type, label, [...questionKeys(f), ...reserved]);
   return withSection(f, si, s => ({ ...s, questions: [...s.questions, q] }));
 }
 
@@ -131,9 +132,9 @@ export function moveSectionTo(f: FormDef, from: number, to: number): FormDef {
 const followsLabel = (key: string, label: string) => new RegExp(`^${slugify(label)}(_\\d+)?$`).test(key);
 
 /** Rename a question. Its key follows the label only while unpublished and still derived from the old label. */
-export function renameQuestion(f: FormDef, q: Question, label: string, locked: boolean): Question {
+export function renameQuestion(f: FormDef, q: Question, label: string, locked: boolean, reserved: Iterable<string> = []): Question {
   if (locked || !followsLabel(q.key, q.label)) return { ...q, label };
-  const taken = questionKeys(f).filter(k => k !== q.key);
+  const taken = [...questionKeys(f), ...reserved].filter(k => k !== q.key);
   return { ...q, label, key: uniqueKey(slugify(label), taken) };
 }
 

@@ -6,8 +6,8 @@
     removeSection, renameSection, type Selection, typeLabel,
   } from '../lib/formEdit';
 
-  let { form, selected, onselect, onchange }: {
-    form: FormDef; selected: Selection; onselect: (s: Selection) => void; onchange: (f: FormDef) => void;
+  let { form, selected, onselect, onchange, reserved = new Set<string>() }: {
+    form: FormDef; selected: Selection; onselect: (s: Selection) => void; onchange: (f: FormDef) => void; reserved?: Set<string>;
   } = $props();
 
   let confirmSection = $state<number | null>(null);
@@ -58,7 +58,7 @@
   }
 
   function add(si: number) {
-    const next = addQuestion(form, si, 'counter'); // its type is changed in the settings panel
+    const next = addQuestion(form, si, 'counter', 'New question', reserved); // its type is changed in the settings panel
     onchange(next);
     onselect({ si, qi: next.sections[si].questions.length - 1 });
   }

@@ -242,7 +242,7 @@
   {/if}
 
   <div class="editor">
-    <Outline {form} {selected} onselect={s => (selected = s)} onchange={edit} />
+    <Outline {form} {selected} onselect={s => (selected = s)} onchange={edit} reserved={lockedKeys} />
     <div>
       {#if selected.qi !== null && form.sections[selected.si]?.questions[selected.qi]}
         <QuestionProps {form} si={selected.si} qi={selected.qi} {lockedKeys} {lockedOptions} onchange={edit} />

@@ -118,6 +118,14 @@ describe('FormsEditor', () => {
     expect(publish).toHaveBeenCalledTimes(1);
   });
 
+  it('warns as soon as a change affects published data', async () => {
+    const saveDraft = vi.fn(async () => ({ errors: [], warnings: ['Coral scored was a counter in version 1 and is now a toggle, so its older answers are left out of summaries'] }));
+    render(FormsEditor, { api: editorApi({ saveDraft }), kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    expect(await screen.findByText(/older answers are left out of summaries/)).toBeTruthy();
+  });
+
   it('disables Publish while there are problems, and lists them only when asked', async () => {
     render(FormsEditor, { api: editorApi(), kind: 'match' });
     await screen.findByText(/Published version 1/);

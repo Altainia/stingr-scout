@@ -18,4 +18,11 @@ describe('describeAnswer', () => {
     expect(describeAnswer(q('defense'), null)).toBe('—');
     expect(describeAnswer(q('zones'), [])).toBe('—');
   });
+
+  it('shows answers recorded under an older question type instead of failing', () => {
+    expect(describeAnswer(q('zones'), 5)).toBe('5'); // was a counter
+    expect(describeAnswer(q('climb_time'), 'fast')).toBe('fast'); // was text
+    expect(describeAnswer(q('start_pos'), 3)).toBe('3');
+    expect(describeAnswer(q('auto_leave'), 2)).toBe('2');
+  });
 });

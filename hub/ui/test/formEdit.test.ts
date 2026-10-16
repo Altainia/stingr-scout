@@ -92,6 +92,13 @@ describe('questions', () => {
     expect(changeType(q, 'toggle')).toEqual({ key: 'coral', label: 'Coral', required: true, type: 'toggle', default: false });
   });
 
+  it('never reuses a key that is in published data', () => {
+    const f = addQuestion(emptyForm('match'), 0, 'counter', 'Coral scored', ['coral_scored']);
+    expect(f.sections[0].questions[0].key).toBe('coral_scored_2');
+    const g = addQuestion(emptyForm('match'), 0, 'counter');
+    expect(renameQuestion(g, g.sections[0].questions[0], 'Coral scored', false, ['coral_scored']).key).toBe('coral_scored_2');
+  });
+
   it('renames a new question and its key together', () => {
     const f = addQuestion(emptyForm('match'), 0, 'counter');
     const q = f.sections[0].questions[0];
