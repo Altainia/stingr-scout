@@ -2,6 +2,7 @@ import { allQuestions, type FormDef } from '@stingr/shared';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 import { matchForm } from '../../../shared/test/fixtures';
+import { ApiError } from '../src/lib/api';
 import FormsEditor from '../src/pages/FormsEditor.svelte';
 import { fakeApi } from './helpers';
 
@@ -88,6 +89,33 @@ describe('FormsEditor', () => {
     await addToggleToAuto();
     await fireEvent.click(publishButton());
     expect(await screen.findByText('Published version 2. Tablets get it on their next sync.')).toBeTruthy();
+  });
+
+  it('does not publish when the latest changes could not be saved', async () => {
+    const publish = vi.fn(async () => ({ ok: true as const, form: matchForm(2), warnings: [] }));
+    const saveDraft = vi.fn(async () => { throw new ApiError(0, "Can't reach the hub server. Is it still running?"); });
+    render(FormsEditor, { api: editorApi({ publish, saveDraft }), kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    expect(await screen.findByText(/Couldn't save the draft/)).toBeTruthy();
+    await fireEvent.click(publishButton());
+    expect(publish).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /^New question/ })).toBeTruthy(); // the edit is still on screen
+  });
+
+  it('waits for a save in progress before publishing or discarding', async () => {
+    let release!: () => void;
+    const saveDraft = vi.fn(() => new Promise<{ errors: string[]; warnings: string[] }>(r => { release = () => r({ errors: [], warnings: [] }); }));
+    const publish = vi.fn(async () => ({ ok: true as const, form: matchForm(2), warnings: [] }));
+    render(FormsEditor, { api: editorApi({ saveDraft, publish }), kind: 'match' });
+    await screen.findByText(/Published version 1/);
+    await addToggleToAuto();
+    await waitFor(() => expect(saveDraft).toHaveBeenCalled());
+    expect(publishButton().disabled).toBe(true); // still saving
+    release();
+    await waitFor(() => expect(publishButton().disabled).toBe(false));
+    await fireEvent.click(publishButton());
+    expect(publish).toHaveBeenCalledTimes(1);
   });
 
   it('disables Publish while there are problems, and lists them only when asked', async () => {

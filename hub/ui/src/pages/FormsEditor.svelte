@@ -17,6 +17,7 @@
   let refused = $state<string[]>([]); // what the hub refused on the last publish
   let warnings = $state<string[]>([]); // notes from the last successful publish
   let showProblems = $state(false);
+  let publishing = $state(false);
   let status = $state<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
   let selected = $state<Selection>({ si: 0, qi: null });
   let error = $state<unknown>(null);
@@ -82,6 +83,7 @@
   });
 
   function edit(next: FormDef) {
+    edits++;
     form = next;
     status = 'unsaved';
     message = null;
@@ -91,25 +93,54 @@
     timer = setTimeout(() => void save(), 600);
   }
 
-  async function save() {
+  let saving: Promise<void> | null = null; // the save request in flight, if any
+  let edits = 0; // counts edits, so a save that finishes after a newer edit doesn't claim "saved"
+
+  function save(): Promise<void> {
     timer = null;
-    if (!form) return;
+    if (!form) return Promise.resolve();
+    const snapshot = pruneAssets($state.snapshot(form) as FormDef);
+    const editsAtStart = edits;
     status = 'saving';
-    try {
-      await api.saveDraft(kind, pruneAssets($state.snapshot(form) as FormDef));
-      isDraft = true;
-      status = 'saved';
-    } catch (e) {
-      status = 'error';
-      error = e;
-    }
+    const run = (async () => {
+      try {
+        const check = await api.saveDraft(kind, snapshot);
+        isDraft = true;
+        warnings = check.warnings; // e.g. a published question's type changed
+        if (edits === editsAtStart && !timer) status = 'saved';
+      } catch (e) {
+        status = 'error';
+        error = e;
+      }
+    })();
+    saving = run;
+    void run.finally(() => { if (saving === run) saving = null; });
+    return run;
   }
 
-  async function publish() {
+  /** Make sure the hub has every edit. Returns false if the latest save failed. */
+  async function settle(): Promise<boolean> {
     if (timer) {
       clearTimeout(timer);
       await save();
     }
+    while (saving) await saving;
+    return status !== 'error';
+  }
+
+  async function publish() {
+    if (publishing) return;
+    publishing = true;
+    try {
+      // Never publish an older draft than what is on screen.
+      if (!(await settle())) return;
+      await publishNow();
+    } finally {
+      publishing = false;
+    }
+  }
+
+  async function publishNow() {
     error = null;
     try {
       const res = await api.publish(kind);
@@ -135,6 +166,7 @@
       clearTimeout(timer);
       timer = null;
     }
+    while (saving) await saving; // otherwise a late save would bring the discarded draft back
     try {
       const d = await api.discardDraft(kind);
       form = d.draft ?? emptyForm(kind);
@@ -189,7 +221,7 @@
       <span class="error">{problems.length} problem{problems.length === 1 ? '' : 's'}</span>
       <button type="button" class="link" onclick={() => (showProblems = !showProblems)}>{showProblems ? 'Hide problems' : 'Show problems'}</button>
     {/if}
-    <button type="button" class="primary" disabled={nothingToPublish || problems.length > 0} onclick={publish}>Publish</button>
+    <button type="button" class="primary" disabled={nothingToPublish || problems.length > 0 || status === 'saving' || publishing} onclick={publish}>Publish</button>
   </div>
 
   {#if message}<p class="banner ok">{message}</p>{/if}
