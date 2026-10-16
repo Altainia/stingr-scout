@@ -1,6 +1,7 @@
 <script lang="ts">
   import { normalizeMatchKey, type ScheduleMatch } from '@stingr/shared';
   import { onMount } from 'svelte';
+  import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
   import type { Api } from '../lib/api';
   import ErrorNote from './ErrorNote.svelte';
 
@@ -16,6 +17,8 @@
   let message = $state<string | null>(null);
   let error = $state<unknown>(null);
   let busy = $state(false);
+  let dirty = $state(false); // hand edits in the table that aren't saved yet
+  let pendingReplace = $state<(() => Promise<void>) | null>(null);
 
   const toRows = (m: ScheduleMatch[]): Row[] =>
     m.map(x => ({ matchKey: x.matchKey, teams: [...x.red, ...x.blue].map(t => (t ? String(t) : '')) }));
@@ -23,10 +26,22 @@
   async function load() {
     const [sched, s] = await Promise.all([api.schedule(), api.settings()]);
     rows = toRows(sched);
+    dirty = false;
     tbaKeySet = s.tbaKeySet;
   }
 
-  onMount(() => { load().catch(e => { error = e; }); });
+  onMount(() => {
+    load().catch(e => { error = e; });
+    const onLeave = (e: Event) => { if (dirty) e.preventDefault(); };
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
+  });
+
+  /** An import or download replaces the table; ask first if it has unsaved edits. */
+  function replacing(run: () => Promise<void>) {
+    if (dirty) pendingReplace = run;
+    else void run();
+  }
 
   async function act(fn: () => Promise<string>) {
     busy = true;
@@ -86,6 +101,7 @@
     const key = last ? normalizeMatchKey(last.matchKey) : null;
     const n = key?.startsWith('qm') ? Number(key.slice(2)) + 1 : rows.length + 1;
     rows = [...rows, { matchKey: `qm${n}`, teams: ['', '', '', '', '', ''] }];
+    dirty = true;
   }
 </script>
 
@@ -94,7 +110,7 @@
 
   <h3>Download</h3>
   {#if tbaKeySet}
-    <button type="button" class="primary" disabled={busy} onclick={fromTba}>Download from The Blue Alliance</button>
+    <button type="button" class="primary" disabled={busy} onclick={() => replacing(fromTba)}>Download from The Blue Alliance</button>
     <p class="hint">Needs this laptop to be online. Before the schedule is released, only the team list is updated.</p>
   {:else}
     <p class="hint">To download schedules, add a TBA API key in <a href="#/settings">Settings</a>.</p>
@@ -106,7 +122,7 @@
     <input type="file" accept=".csv,text/csv" aria-label="CSV file" onchange={readFile} />
   </div>
   <textarea aria-label="Schedule CSV" rows="5" value={csv} placeholder="1,5098,254,1678,118,2056,148" oninput={e => (csv = e.currentTarget.value)}></textarea>
-  <button type="button" disabled={busy || !csv.trim()} onclick={importCsv}>Import CSV</button>
+  <button type="button" disabled={busy || !csv.trim()} onclick={() => replacing(importCsv)}>Import CSV</button>
   {#if csvErrors.length}
     <ul class="errors">{#each csvErrors as line, i (i)}<li>{line}</li>{/each}</ul>
   {/if}
@@ -117,11 +133,11 @@
     <tbody>
       {#each rows as r, i (i)}
         <tr>
-          <td><input aria-label="Match {i + 1}" size="6" value={r.matchKey} oninput={e => (r.matchKey = e.currentTarget.value)} /></td>
+          <td><input aria-label="Match {i + 1}" size="6" value={r.matchKey} oninput={e => { r.matchKey = e.currentTarget.value; dirty = true; }} /></td>
           {#each r.teams as t, j (j)}
-            <td><input aria-label="Match {i + 1} {COLS[j]}" size="5" inputmode="numeric" value={t} oninput={e => (r.teams[j] = e.currentTarget.value)} /></td>
+            <td><input aria-label="Match {i + 1} {COLS[j]}" size="5" inputmode="numeric" value={t} oninput={e => { r.teams[j] = e.currentTarget.value; dirty = true; }} /></td>
           {/each}
-          <td><button type="button" class="small" aria-label="Remove match {i + 1}" onclick={() => (rows = rows.filter((_, k) => k !== i))}>✕</button></td>
+          <td><button type="button" class="small" aria-label="Remove match {i + 1}" onclick={() => { rows = rows.filter((_, k) => k !== i); dirty = true; }}>✕</button></td>
         </tr>
       {/each}
     </tbody>
@@ -129,8 +145,22 @@
   <div class="row">
     <button type="button" onclick={addRow}>Add match</button>
     <button type="button" class="primary" disabled={busy} onclick={saveRows}>Save schedule</button>
+    {#if dirty}<span class="error">Unsaved changes</span>{/if}
   </div>
 
   {#if message}<p class="banner ok" role="status">{message}</p>{/if}
   <ErrorNote {error} />
 </section>
+
+{#if pendingReplace}
+  {@const run = pendingReplace}
+  <ConfirmDialog
+    title="Replace your unsaved changes?"
+    confirmLabel="Replace them"
+    cancelLabel="Keep editing"
+    onconfirm={() => { const go = run; pendingReplace = null; void go(); }}
+    oncancel={() => (pendingReplace = null)}
+  >
+    <p>You've edited the schedule table without saving. This replaces the table with the new schedule.</p>
+  </ConfirmDialog>
+{/if}

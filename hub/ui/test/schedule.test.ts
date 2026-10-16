@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import SchedulePanel from '../src/components/SchedulePanel.svelte';
 import { fakeApi } from './helpers';
@@ -36,6 +36,27 @@ describe('SchedulePanel', () => {
     await fireEvent.input(await screen.findByLabelText('Schedule CSV'), { target: { value: '1,1,2,3,4,5,6\n2,1,2,3,4,5,6' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Import CSV' }));
     expect(await screen.findByText('Imported 2 matches.')).toBeTruthy();
+  });
+
+  it('keeps unsaved table edits unless the mentor agrees to replace them', async () => {
+    const importScheduleCsv = vi.fn(async () => ({ matches: 1 }));
+    render(SchedulePanel, { api: fakeApi({ schedule: async () => [QM1], settings: async () => ({ tbaKeySet: false }), importScheduleCsv }) });
+    await fireEvent.input(await screen.findByLabelText('Match 1 Red 1'), { target: { value: '9999' } });
+    expect(screen.getByText('Unsaved changes')).toBeTruthy();
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    expect(leaving.defaultPrevented).toBe(true);
+
+    await fireEvent.input(screen.getByLabelText('Schedule CSV'), { target: { value: '1,1,2,3,4,5,6' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Import CSV' }));
+    const dialog = screen.getByRole('dialog', { name: 'Replace your unsaved changes?' });
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+    expect(importScheduleCsv).not.toHaveBeenCalled();
+    await fireEvent.click(screen.getByRole('button', { name: 'Import CSV' }));
+    await fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Replace them' }));
+    expect(importScheduleCsv).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Imported 1 match.')).toBeTruthy();
+    expect(screen.queryByText('Unsaved changes')).toBeNull();
   });
 
   it('refuses a hand-typed team number with a typo', async () => {
