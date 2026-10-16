@@ -1,16 +1,16 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AdbWatcher, nodeAdbExec } from './adb';
 import { resolveAppBuild } from './appBuild';
 import { buildApp } from './app';
 import { openDb } from './db';
+import { defaultDataDir } from './paths';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.STINGR_PORT ?? 5098);
-const dataDir = process.env.STINGR_DATA_DIR ?? join(homedir(), '.local', 'share', 'stingr-scout', 'data');
+const dataDir = defaultDataDir();
 const webRoot = process.env.STINGR_WEB_ROOT ?? resolve(here, '../../..');
 const url = `http://localhost:${port}/hub/`;
 
