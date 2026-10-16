@@ -1,0 +1,5 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: { include: ['scripts/release/test/*.e2e.ts'], testTimeout: 300_000, hookTimeout: 300_000 },
+});

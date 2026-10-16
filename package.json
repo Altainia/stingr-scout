@@ -19,7 +19,8 @@
     "hub": "tsx hub/server/src/main.ts",
     "e2e": "playwright test",
     "dev:hub-ui": "npm run dev -w @stingr/hub-ui",
-    "package": "tsx scripts/release/build.ts"
+    "package": "tsx scripts/release/build.ts",
+    "test:package": "vitest run --config vitest.package.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
