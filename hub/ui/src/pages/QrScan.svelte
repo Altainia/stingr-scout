@@ -4,7 +4,8 @@
   import { recordLabel } from '../lib/format';
   import { createRepeatFilter, startScanner } from '../lib/qrScan';
 
-  let { api }: { api: Api } = $props();
+  /** scanner: how the camera is opened (tests pass a stand-in). */
+  let { api, scanner = startScanner }: { api: Api; scanner?: typeof startScanner } = $props();
   type Entry = { id: number; text: string; kind: 'ok' | 'info' | 'bad' };
 
   let log = $state<Entry[]>([]);
@@ -15,6 +16,7 @@
   let stopCamera: (() => void) | null = null;
   const isRepeat = createRepeatFilter();
   let nextId = 0;
+  let destroyed = false;
 
   function describe(r: QrResult): Omit<Entry, 'id'> {
     switch (r.status) {
@@ -30,6 +32,7 @@
       const entry = describe(await api.qr(text));
       log = [{ ...entry, id: ++nextId }, ...log].slice(0, 50);
     } catch (e) {
+      isRepeat.forget(text); // the hub didn't get it: let the camera send it again
       log = [{ id: ++nextId, kind: 'bad' as const, text: (e as Error).message }, ...log].slice(0, 50);
     }
   }
@@ -48,7 +51,12 @@
       return;
     }
     try {
-      stopCamera = await startScanner(video, text => { if (!isRepeat(text, Date.now())) void submit(text); });
+      const stopIt = await scanner(video, text => { if (!isRepeat(text, Date.now())) void submit(text); });
+      if (destroyed) {
+        stopIt(); // the page was left while the browser was still asking for the camera
+        return;
+      }
+      stopCamera = stopIt;
       running = true;
     } catch (e) {
       cameraError = `Couldn't start the camera: ${(e as Error).message}`;
@@ -61,7 +69,10 @@
     running = false;
   }
 
-  onDestroy(stop);
+  onDestroy(() => {
+    destroyed = true;
+    stop();
+  });
 </script>
 
 <h1>QR scanner</h1>

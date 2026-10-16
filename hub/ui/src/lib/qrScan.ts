@@ -1,13 +1,17 @@
 import jsQR from 'jsqr';
 
-/** True when this text was seen less than windowMs ago. Every sighting refreshes the time. */
-export function createRepeatFilter(windowMs = 3000): (text: string, now: number) => boolean {
+export type RepeatFilter = ((text: string, now: number) => boolean) & { forget(text: string): void };
+
+/** True when this text was seen less than windowMs ago. Every sighting refreshes the time.
+ *  `forget` lets a code through again, e.g. after sending it failed. */
+export function createRepeatFilter(windowMs = 3000): RepeatFilter {
   const lastSeen = new Map<string, number>();
-  return (text, now) => {
+  const isRepeat = (text: string, now: number) => {
     const last = lastSeen.get(text);
     lastSeen.set(text, now);
     return last !== undefined && now - last < windowMs;
   };
+  return Object.assign(isRepeat, { forget: (text: string) => { lastSeen.delete(text); } });
 }
 
 /** Open the camera into `video` and report every QR code seen. Returns a function that stops it. */
