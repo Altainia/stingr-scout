@@ -86,7 +86,7 @@ describe('forms', () => {
     const noOptions = { sections: [{ id: 'a', title: 'A', questions: [{ type: 'choice', key: 'c', label: 'C', required: false }] }], assets: {} };
     const res = await app.inject({ method: 'PUT', url: '/api/forms/match/draft', payload: noOptions });
     expect(res.statusCode).toBe(200);
-    expect(res.json().errors).toEqual(['Question "c": needs at least one option']);
+    expect(res.json().errors).toEqual(['C: Add at least one option']);
   });
 });
 
