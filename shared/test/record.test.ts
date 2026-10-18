@@ -61,6 +61,15 @@ describe('finalizeSubmit', () => {
     expect(r.missed).toEqual([]);
     expect(r.answers.comments).toBeNull();
   });
+  it('flags a required Yes / No with no default until the scout picks', () => {
+    const f = matchForm();
+    const leave = f.sections[0].questions[0];
+    if (leave.type !== 'toggle') throw new Error('fixture changed');
+    delete leave.default;
+    const r = record(f);
+    expect(unansweredRequired(f, r)).toContain('auto_leave');
+    expect(unansweredRequired(f, setAnswer(r, 'auto_leave', false))).not.toContain('auto_leave');
+  });
   it('counts a counter left at its default as answered', () => {
     expect(unansweredRequired(matchForm(), record(matchForm()))).not.toContain('auto_coral');
   });

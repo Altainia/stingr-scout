@@ -8,6 +8,7 @@
 
 <div class="choices segmented" role="group" aria-label={question.label}>
   {#each levels as n (n)}
-    <button type="button" aria-pressed={value === n} onclick={() => onchange(value === n ? null : n)}>{n}</button>
+    <button type="button" aria-pressed={value === n} onclick={() => { if (value !== n) onchange(n); }}>{n}</button>
   {/each}
+  {#if !question.required}<button type="button" aria-pressed={value === null || value === undefined} onclick={() => onchange(null)}>No answer</button>{/if}
 </div>

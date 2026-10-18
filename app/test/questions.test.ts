@@ -52,31 +52,75 @@ describe('Counter', () => {
 });
 
 describe('Toggle', () => {
+  const names = () => screen.getAllByRole('button').map(b => b.textContent);
+  const pressed = () => screen.getAllByRole('button').filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.textContent);
+
   it('shows and sets yes or no', async () => {
     const onchange = vi.fn();
     render(Toggle, { question: toggle, value: false, onchange });
-    expect(screen.getByRole('button', { name: 'No' }).getAttribute('aria-pressed')).toBe('true');
+    expect(pressed()).toEqual(['No']);
     await fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
     expect(onchange).toHaveBeenCalledWith(true);
+  });
+
+  it('offers only Yes and No when an answer is required, with neither chosen until the scout picks', () => {
+    render(Toggle, { question: toggle, value: null, onchange: vi.fn() }); // required
+    expect(names()).toEqual(['Yes', 'No']);
+    expect(pressed()).toEqual([]);
+  });
+
+  it('adds "No answer" when the question is optional, chosen while it is unanswered', async () => {
+    const onchange = vi.fn();
+    render(Toggle, { question: { ...toggle, required: false }, value: null, onchange });
+    expect(names()).toEqual(['Yes', 'No', 'No answer']);
+    expect(pressed()).toEqual(['No answer']);
+    await fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    expect(onchange).toHaveBeenLastCalledWith(true);
+    await fireEvent.click(screen.getByRole('button', { name: 'No answer' }));
+    expect(onchange).toHaveBeenLastCalledWith(null);
   });
 });
 
 describe('Choice', () => {
-  it('picks an option and clears it when tapped again', async () => {
+  const names = () => screen.getAllByRole('button').map(b => b.textContent);
+  const pressed = () => screen.getAllByRole('button').filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.textContent);
+
+  it('picks an option; tapping the chosen one again keeps it', async () => {
     const onchange = vi.fn();
-    render(Choice, { question: choice, value: 'deep', onchange });
-    expect(screen.getByRole('button', { name: 'Deep' }).getAttribute('aria-pressed')).toBe('true');
+    render(Choice, { question: choice, value: 'deep', onchange }); // required
+    expect(names()).toEqual(['None', 'Deep']);
+    expect(pressed()).toEqual(['Deep']);
     await fireEvent.click(screen.getByRole('button', { name: 'None' }));
     expect(onchange).toHaveBeenLastCalledWith('none');
+    onchange.mockClear();
     await fireEvent.click(screen.getByRole('button', { name: 'Deep' }));
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  it('adds "No answer" when the question is optional', async () => {
+    const onchange = vi.fn();
+    render(Choice, { question: { ...choice, required: false }, value: 'deep', onchange });
+    expect(names()).toEqual(['None', 'Deep', 'No answer']);
+    await fireEvent.click(screen.getByRole('button', { name: 'No answer' }));
     expect(onchange).toHaveBeenLastCalledWith(null);
   });
-  it('can be a dropdown', async () => {
+
+  it('can be a dropdown; a required one says "Choose…" only until something is picked', async () => {
     const onchange = vi.fn();
-    render(Choice, { question: dropdown, value: null, onchange });
-    const select = screen.getByLabelText('Drivetrain');
+    const { rerender } = render(Choice, { question: dropdown, value: null, onchange }); // required
+    const select = screen.getByLabelText('Drivetrain') as HTMLSelectElement;
+    expect([...select.options].map(o => o.textContent)).toEqual(['Choose…', 'Swerve', 'Tank']);
     await fireEvent.change(select, { target: { value: 'tank' } });
     expect(onchange).toHaveBeenLastCalledWith('tank');
+    await rerender({ question: dropdown, value: 'tank', onchange });
+    expect([...select.options].map(o => o.textContent)).toEqual(['Swerve', 'Tank']);
+  });
+
+  it('offers "No answer" in an optional dropdown', async () => {
+    const onchange = vi.fn();
+    render(Choice, { question: { ...dropdown, required: false }, value: 'tank', onchange });
+    const select = screen.getByLabelText('Drivetrain') as HTMLSelectElement;
+    expect([...select.options].map(o => o.textContent)).toEqual(['No answer', 'Swerve', 'Tank']);
     await fireEvent.change(select, { target: { value: '' } });
     expect(onchange).toHaveBeenLastCalledWith(null);
   });
@@ -128,14 +172,24 @@ describe('TextField', () => {
 });
 
 describe('Rating', () => {
-  it('shows 1..max and clears when the chosen rating is tapped again', async () => {
+  const names = () => screen.getAllByRole('button').map(b => b.textContent);
+
+  it('shows 1..max, and "No answer" when optional; tapping the chosen rating again keeps it', async () => {
     const onchange = vi.fn();
-    render(Rating, { question: rating, value: 4, onchange });
-    expect(screen.getAllByRole('button')).toHaveLength(5);
+    render(Rating, { question: rating, value: 4, onchange }); // optional
+    expect(names()).toEqual(['1', '2', '3', '4', '5', 'No answer']);
     await fireEvent.click(screen.getByRole('button', { name: '2' }));
     expect(onchange).toHaveBeenLastCalledWith(2);
+    onchange.mockClear();
     await fireEvent.click(screen.getByRole('button', { name: '4' }));
+    expect(onchange).not.toHaveBeenCalled();
+    await fireEvent.click(screen.getByRole('button', { name: 'No answer' }));
     expect(onchange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('offers only the ratings when an answer is required', () => {
+    render(Rating, { question: { ...rating, required: true }, value: null, onchange: vi.fn() });
+    expect(names()).toEqual(['1', '2', '3', '4', '5']);
   });
 });
 
