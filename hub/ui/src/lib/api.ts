@@ -1,11 +1,12 @@
 import type { EventInfo, FormDef, FormKind, ScheduleMatch, ScoutRecord, Side } from '@stingr/shared';
 import type { AdbStatus } from '../../../server/src/adb';
 import type { CoverageRow } from '../../../server/src/coverage';
+import type { EventCounts, SeasonCounts } from '../../../server/src/store/clear';
 import type { DeviceRow } from '../../../server/src/store/devices';
 import type { PublishResult } from '../../../server/src/store/forms';
 import type { TeamSummary } from '../../../server/src/summaries';
 
-export type { AdbStatus, CoverageRow, DeviceRow, PublishResult, TeamSummary };
+export type { AdbStatus, CoverageRow, DeviceRow, EventCounts, PublishResult, SeasonCounts, TeamSummary };
 
 export class ApiError extends Error {
   readonly status: number;
@@ -85,6 +86,11 @@ export function createApi(http: Http = (input, init) => fetch(input, init)) {
     qr: (text: string) => call<QrResult>('POST', '/api/qr', { text }, { accept: [422] }),
     devices: () => call<DevicesView>('GET', '/api/devices'),
     restore: (file: Blob) => call<{ ok: true }>('POST', '/api/restore', file, { type: 'application/octet-stream' }),
+    eventClearPreview: (key: string) => call<EventCounts>('GET', `/api/events/${encodeURIComponent(key)}/clear`),
+    deleteEvent: (key: string, confirm: string) =>
+      call<{ ok: true; backup: string | null; removed: EventCounts }>('POST', `/api/events/${encodeURIComponent(key)}/delete`, { confirm }),
+    seasonClearPreview: () => call<SeasonCounts>('GET', '/api/season/clear'),
+    newSeason: (confirm: string) => call<{ ok: true; backup: string | null; removed: SeasonCounts }>('POST', '/api/season/new', { confirm }),
   };
 }
 

@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  let { title, confirmLabel = 'Yes', cancelLabel = 'Cancel', onconfirm, oncancel, children }: {
-    title: string; confirmLabel?: string; cancelLabel?: string; onconfirm: () => void; oncancel: () => void; children?: Snippet;
+  let { title, confirmLabel = 'Yes', cancelLabel = 'Cancel', confirmDisabled = false, onconfirm, oncancel, children }: {
+    title: string; confirmLabel?: string; cancelLabel?: string; confirmDisabled?: boolean; onconfirm: () => void; oncancel: () => void; children?: Snippet;
   } = $props();
 </script>
 
@@ -12,7 +12,7 @@
     {@render children?.()}
     <div class="actions">
       <button type="button" onclick={oncancel}>{cancelLabel}</button>
-      <button type="button" class="primary" onclick={onconfirm}>{confirmLabel}</button>
+      <button type="button" class="primary" disabled={confirmDisabled} onclick={onconfirm}>{confirmLabel}</button>
     </div>
   </div>
 </div>
