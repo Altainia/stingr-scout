@@ -321,6 +321,41 @@ Drafts survive closing Chrome, rebooting and power loss. When the app opens with
 
 **Backup:** downloads a consistent copy of the SQLite database (`VACUUM INTO`). **Restore** replaces the database from a backup file after confirmation.
 
+### 6.8 Clearing data
+
+For moving to a new event or a new season (new game, new forms), and for clearing out tests and demos. Both actions are under **Export & backup → Clear data**.
+
+- **Delete an event** removes that event and everything belonging to it: its schedule, team list, records (match and pit, every revision) and their photos. If it was the current event, no event is current afterwards. Forms are kept.
+- **Start a new season** removes every event (with all of the above), every form (published versions and drafts) and the list of tablets that have synced. Hub settings (the TBA key) are kept.
+
+Safety:
+- **Confirmation:** a dialog states exactly what will be removed, for example "2027demo: 12 matches, 48 records, 3 photos". The button only works once the event key (or `NEW SEASON`) is typed in.
+- **Automatic backup:** before removing anything, the hub writes a backup (`VACUUM INTO`) to `<data folder>/backups/stingr-<time>.db` and names the file in its result. Restore (§6.7) can bring everything back.
+- **Form version numbers never restart.** After a new season the next published form continues the numbering, so a record made with an old form can never be taken for one made with a new form. The hub remembers the highest version it has published of each form kind (settings, not the forms table).
+
+The hub refuses records it can't place:
+- **Unknown event:** sync and QR import refuse a record whose event isn't on the hub. The reason given is "Event <key> isn't on the hub (it may have been deleted)". This prevents an unsynced tablet record from bringing a deleted event's data back.
+- **Unknown form version:** the existing rule that refuses unknown form versions also covers records from before a new season.
+
+**Hub identity.** The hub keeps a `hubId`, created once per database, and a `seasonId`, created afresh by each new season. Both are sent to tablets in the sync config, together with the list of event keys on the hub (`eventKeys`).
+
+### 6.9 Tablets following the hub
+
+After each sync with the same hub (same `hubId` as the tablet's previous config):
+- **Deleted events:** synced records (and their photos) for events no longer in `eventKeys` are removed from the tablet.
+- **New season:** if `seasonId` changed, all synced records and their photos from before are removed. The new config replaces the old forms, event and schedule as usual.
+- **Unsynced records are never removed silently.** Records the hub refused stay on the tablet, marked with the hub's reason, in Past records. From there the scout can delete them, all at once ("Delete refused records…", confirmed).
+
+A tablet syncing with a different hub (different `hubId`) removes nothing.
+
+### 6.10 Tidying a tablet by hand
+
+- **Past records → Remove synced records from other events…** removes synced records and photos whose event isn't the tablet's current event. Unsynced ones are kept. It is confirmed with a count.
+- **Settings → Reset this tablet…** removes all records, photos, any unfinished form, and the loaded event, forms and schedule. It keeps the tablet's identity (device ID, name, default slot) and theme.
+  - It is confirmed with a count.
+  - If anything is unsynced, the dialog says how many records would be lost, and a second confirmation is needed.
+  - The next sync loads the hub's current event and forms again.
+
 ## 7. Packaging and installation
 
 **Release build**
