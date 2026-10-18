@@ -33,6 +33,19 @@ describe('QuestionProps', () => {
     expect(screen.getByLabelText('Key').closest('.row')).toBe(row);
   });
 
+  it("groups a question's own settings apart from those every question has", () => {
+    setup(matchForm(), 0, 1); // auto_coral, a counter
+    const own = screen.getByRole('group', { name: 'Counter (+/−) settings' });
+    for (const name of ['Min', 'Max', 'Step', 'Default', 'Points each']) expect(within(own).getByLabelText(name)).toBeTruthy();
+    for (const name of ['Label', 'Type', 'Key', 'Help text', 'Required', 'Summary']) expect(within(own).queryByLabelText(name)).toBeNull();
+  });
+
+  it('names the settings group after the type, even when the type has nothing to set', () => {
+    const form = addQuestion(emptyForm('match'), 0, 'timer', 'Climb time');
+    setup(form, 0, 0);
+    expect(within(screen.getByRole('group', { name: 'Timer settings' })).getByText(/stopwatch/)).toBeTruthy();
+  });
+
   it('keeps small settings compact instead of stretching across the panel', () => {
     setup(matchForm(), 1, 0); // climb: Show as
     expect(screen.getByLabelText('Show as').closest('.row')).not.toBeNull();

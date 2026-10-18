@@ -37,6 +37,12 @@ th.blue { color: var(--blue); }
 video.camera { width: 100%; max-width: 640px; background: #000; border-radius: 8px; }
 img.thumb { max-width: 320px; display: block; margin: 8px 0; border-radius: 8px; }
 label.inline { flex-direction: row; align-items: center; gap: 8px; }
+.row label.inline { min-height: 48px; font-weight: 400; } /* level with the boxes beside it */
+.row label.inline input[type='checkbox'] { min-height: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field .caption { font-weight: 600; }
+.type-settings { margin-top: 16px; padding: 4px 16px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+.type-settings h3 { margin: 12px 0 4px; font-size: 1.05rem; }
 .outline li[draggable='true'] { cursor: grab; }
 .outline .head { flex-wrap: nowrap; align-items: center; }
 .outline .head input { flex: 1; min-width: 0; }

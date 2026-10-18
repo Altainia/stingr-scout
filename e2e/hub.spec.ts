@@ -139,4 +139,12 @@ test('fits a 1280×800 laptop screen without sideways scrolling', async ({ page 
     return r.getBoundingClientRect().left;
   });
   expect(await textLeft(2), 'question labels line up on the left').toBeCloseTo(await textLeft(0), 0);
+
+  // A checkbox beside a dropdown sits level with the dropdown, not below it.
+  const mid = async (label: string) => { const b = (await page.getByLabel(label, { exact: true }).boundingBox())!; return b.y + b.height / 2; };
+  expect(Math.abs((await mid('Required')) - (await mid('Summary'))), 'Required is level with Summary').toBeLessThanOrEqual(2);
+  const props = page.getByRole('region', { name: 'Question settings' });
+  const requiredCaption = (await props.getByText('Required', { exact: true }).boundingBox())!.y;
+  const summaryCaption = (await page.getByLabel('Summary', { exact: true }).locator('..').boundingBox())!.y; // the label, caption first
+  expect(Math.abs(requiredCaption - summaryCaption), "Required's caption is level with Summary's").toBeLessThanOrEqual(2);
 });
