@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { type AnswerValue, type FormDef, initialAnswers, type Side } from '@stingr/shared';
+  import { type AnswerValue, type FormDef, initialValue, type Question, type Side } from '@stingr/shared';
   import QuestionCard from '../../../../app/src/components/QuestionCard.svelte';
 
   let { form }: { form: FormDef } = $props();
+  // Answers are kept per question and type, so changing a question's type starts its answer afresh.
   let answers = $state<Record<string, AnswerValue>>({});
+  const slot = (q: Question) => `${q.key}:${q.type}`;
   let missed = $state<string[]>([]);
   let side = $state<Side>('left');
   let tab = $state(0);
-  let values = $derived({ ...initialAnswers(form), ...answers });
   let section = $derived(form.sections[Math.min(tab, form.sections.length - 1)]);
 </script>
 
@@ -29,9 +30,9 @@
     {#each section.questions as q, i (i)}
       <QuestionCard
         question={q}
-        value={values[q.key] ?? null}
+        value={slot(q) in answers ? answers[slot(q)] : initialValue(q)}
         missed={missed.includes(q.key)}
-        onchange={v => (answers[q.key] = v)}
+        onchange={v => (answers[slot(q)] = v)}
         onmissed={m => (missed = m ? [...missed, q.key] : missed.filter(k => k !== q.key))}
         venueRedSide={side}
         assets={form.assets}

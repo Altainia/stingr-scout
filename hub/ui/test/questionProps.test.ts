@@ -1,7 +1,7 @@
 import type { FormDef } from '@stingr/shared';
-import { fireEvent, render, screen, within } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
-import { matchForm } from '../../../shared/test/fixtures';
+import { matchForm, pitForm } from '../../../shared/test/fixtures';
 import Preview from '../src/components/Preview.svelte';
 import QuestionProps from '../src/components/QuestionProps.svelte';
 import { addQuestion, emptyForm } from '../src/lib/formEdit';
@@ -141,6 +141,53 @@ describe('QuestionProps', () => {
     expect(screen.getByText("The key is in published data, so it can't change.")).toBeTruthy();
   });
 
+  it('sets or clears the default of a Yes / No, a single choice, a rating and a number', async () => {
+    const pick = async (si: number, qi: number, form = matchForm()) => {
+      const r = setup(form, si, qi);
+      const select = screen.getByLabelText('Default', { exact: true }) as HTMLSelectElement;
+      return { ...r, select, names: [...select.options].map(o => o.textContent) };
+    };
+    let t = await pick(0, 0); // Yes / No, default No in the fixture
+    expect(t.names).toEqual(['No default', 'Yes', 'No']);
+    await fireEvent.change(t.select, { target: { value: '' } });
+    expect(t.q()).not.toHaveProperty('default');
+    await fireEvent.change(t.select, { target: { value: 'yes' } });
+    expect(t.q()).toMatchObject({ default: true });
+    cleanup();
+
+    t = await pick(1, 0); // Single choice: Climb
+    expect(t.names).toEqual(['No default', 'None', 'Shallow', 'Deep']);
+    await fireEvent.change(t.select, { target: { value: 'shallow' } });
+    expect(t.q()).toMatchObject({ default: 'shallow' });
+    cleanup();
+
+    t = await pick(2, 0); // Rating, highest 5
+    expect(t.names).toEqual(['No default', '1', '2', '3', '4', '5']);
+    await fireEvent.change(t.select, { target: { value: '3' } });
+    expect(t.q()).toMatchObject({ default: 3 });
+    cleanup();
+
+    const onchange = vi.fn();
+    const pit = pitForm();
+    render(QuestionProps, { form: pit, si: 0, qi: 1, lockedKeys: new Set(), lockedOptions: new Map(), onchange }); // Number: Weight (lb)
+    await fireEvent.input(screen.getByLabelText('Default', { exact: true }), { target: { value: '120' } });
+    expect((onchange.mock.lastCall![0] as FormDef).sections[0].questions[1]).toMatchObject({ default: 120 });
+    expect((screen.getByRole('button', { name: 'Clear Default' }) as HTMLButtonElement).disabled).toBe(true); // none set yet in the form shown
+  });
+
+  it("brings back a type's settings when the question is switched back to it", async () => {
+    const onchange = vi.fn();
+    const memory = new Map();
+    const form = matchForm(); // auto_coral: a counter worth 4 points each
+    const { rerender } = render(QuestionProps, { form, si: 0, qi: 1, lockedKeys: new Set(), lockedOptions: new Map(), onchange, memory });
+    await fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'toggle' } });
+    const toggled = onchange.mock.lastCall![0] as FormDef;
+    expect(toggled.sections[0].questions[1]).not.toHaveProperty('points');
+    await rerender({ form: toggled, si: 0, qi: 1, lockedKeys: new Set(), lockedOptions: new Map(), onchange, memory });
+    await fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'counter' } });
+    expect((onchange.mock.lastCall![0] as FormDef).sections[0].questions[1]).toEqual(form.sections[0].questions[1]);
+  });
+
   it('locks a key that is in published data', async () => {
     const { q } = setup(matchForm(), 0, 1, ['auto_coral']);
     expect((screen.getByLabelText('Key') as HTMLInputElement).disabled).toBe(true);
@@ -206,6 +253,17 @@ describe('QuestionProps', () => {
 });
 
 describe('Preview', () => {
+  it("starts a question's preview answer afresh when its type changes", async () => {
+    const form = matchForm();
+    const { rerender } = render(Preview, { form });
+    const coral = () => within(screen.getByRole('region', { name: 'Tablet preview' })).getByRole('region', { name: 'Coral scored' });
+    await fireEvent.click(within(coral()).getByLabelText('plus')); // the counter's answer is now 1
+    const asToggle = structuredClone(form);
+    asToggle.sections[0].questions[1] = { key: 'auto_coral', label: 'Coral scored', type: 'toggle', required: true, default: true };
+    await rerender({ form: asToggle });
+    expect(within(coral()).getByRole('button', { name: 'Yes' }).getAttribute('aria-pressed')).toBe('true'); // its default, not the counter's 1
+  });
+
   it('shows the form as the tablet will, section by section', async () => {
     render(Preview, { form: matchForm() });
     const preview = screen.getByRole('region', { name: 'Tablet preview' });

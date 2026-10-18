@@ -9,13 +9,15 @@
     setFieldImage, setOptionPoints, setOptionValue, typeLabel,
   } from '../lib/formEdit';
 
-  let { form, si, qi, lockedKeys, lockedOptions, onchange }: {
+  let { form, si, qi, lockedKeys, lockedOptions, onchange, memory = new Map() }: {
     form: FormDef;
     si: number;
     qi: number;
     lockedKeys: Set<string>;
     lockedOptions: Map<string, Set<string>>;
     onchange: (f: FormDef) => void;
+    /** Each question's settings for the types it has been, so switching back brings them back (question key → type → settings). */
+    memory?: Map<string, Partial<Record<QuestionType, Question>>>;
   } = $props();
 
   let q = $derived(form.sections[si].questions[qi]);
@@ -36,6 +38,13 @@
     scatter: 'Every marked spot, drawn on the field image.',
     none: 'Answers are kept and exported, but not summarized.',
   };
+
+  function switchType(type: QuestionType) {
+    const saved = memory.get(q.key) ?? {};
+    saved[q.type] = q;
+    memory.set(q.key, saved);
+    put(changeType(q, type, saved[type]));
+  }
 
   function put(next: Question) {
     onchange(replaceQuestion(form, si, qi, next));
@@ -78,7 +87,7 @@
   <div class="row">
     <label>Label <input aria-label="Label" value={q.label} oninput={e => put(renameQuestion(form, q, e.currentTarget.value, locked, lockedKeys))} /></label>
     <label>Type
-      <select aria-label="Type" value={q.type} onchange={e => put(changeType(q, e.currentTarget.value as QuestionType))}>
+      <select aria-label="Type" value={q.type} onchange={e => switchType(e.currentTarget.value as QuestionType)}>
         {#each QUESTION_TYPES as t (t.type)}<option value={t.type}>{t.label}</option>{/each}
       </select>
     </label>
@@ -133,8 +142,9 @@
     {:else if q.type === 'toggle'}
       <div class="fields">
         <label class="compact">Default
-          <select aria-label="Default" value={q.default ? 'yes' : 'no'} onchange={e => set({ default: e.currentTarget.value === 'yes' })}>
-            <option value="no">No</option><option value="yes">Yes</option>
+          <select aria-label="Default" value={q.default === undefined ? '' : q.default ? 'yes' : 'no'}
+            onchange={e => set({ default: e.currentTarget.value === '' ? undefined : e.currentTarget.value === 'yes' })}>
+            <option value="">No default</option><option value="yes">Yes</option><option value="no">No</option>
           </select>
         </label>
         <label class="compact">Points for yes <input aria-label="Points for yes" type="number" placeholder="none" value={q.points ?? ''} oninput={e => set({ points: optNum(e.currentTarget.value) })} /></label>
@@ -147,6 +157,12 @@
           <label class="compact">Show as
             <select aria-label="Show as" value={opts.display} onchange={e => set({ display: e.currentTarget.value })}>
               <option value="buttons">Buttons</option><option value="dropdown">Dropdown</option>
+            </select>
+          </label>
+          <label class="compact">Default
+            <select aria-label="Default" value={opts.default ?? ''} onchange={e => set({ default: e.currentTarget.value || undefined })}>
+              <option value="">No default</option>
+              {#each opts.options as o, i (i)}<option value={o.value}>{o.label}</option>{/each}
             </select>
           </label>
         </div>
@@ -182,12 +198,20 @@
         {@render clear('Min', q.min, 'min')}
         <label class="compact">Max <input aria-label="Max" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
         {@render clear('Max', q.max, 'max')}
+        <label class="compact">Default <input aria-label="Default" type="number" placeholder="none" value={q.default ?? ''} oninput={e => set({ default: optNum(e.currentTarget.value) })} /></label>
+        {@render clear('Default', q.default, 'default')}
       </div>
     {:else if q.type === 'text'}
       <label class="inline"><input type="checkbox" aria-label="Several lines" checked={q.multiline} onchange={e => set({ multiline: e.currentTarget.checked })} /> Several lines</label>
     {:else if q.type === 'rating'}
       <div class="fields">
         <label class="compact">Highest rating <input aria-label="Highest rating" type="number" min="2" max="10" value={q.max} oninput={e => set({ max: reqNum(e.currentTarget.value, 5) })} /></label>
+        <label class="compact">Default
+          <select aria-label="Default" value={q.default === undefined ? '' : String(q.default)} onchange={e => set({ default: optNum(e.currentTarget.value) })}>
+            <option value="">No default</option>
+            {#each Array.from({ length: Number.isInteger(q.max) && q.max > 0 ? Math.min(q.max, 10) : 0 }, (_, i) => i + 1) as n (n)}<option value={String(n)}>{n}</option>{/each}
+          </select>
+        </label>
       </div>
     {:else if q.type === 'timer'}
       <p class="hint">Scouts start and stop a stopwatch; the total time is saved in seconds.</p>

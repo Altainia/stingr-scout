@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { allQuestions, type FormDef, type FormKind, validateFormDef } from '@stingr/shared';
+  import { allQuestions, type FormDef, type FormKind, type Question, type QuestionType, validateFormDef } from '@stingr/shared';
   import { onDestroy, onMount } from 'svelte';
   import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
   import ErrorNote from '../components/ErrorNote.svelte';
@@ -26,6 +26,8 @@
   let confirmDiscard = $state(false);
   let showPreview = $state(true);
   let timer: ReturnType<typeof setTimeout> | null = null;
+  // Each question's settings for every type it has been while this page is open, so switching back restores them.
+  const typeMemory = new Map<string, Partial<Record<QuestionType, Question>>>();
 
   let mine = $derived(published.filter(f => f.kind === kind));
   let latest = $derived(mine.at(-1) ?? null);
@@ -262,7 +264,7 @@
     <Outline {form} {selected} onselect={s => (selected = s)} onchange={edit} reserved={lockedKeys} />
     <div>
       {#if selected.qi !== null && form.sections[selected.si]?.questions[selected.qi]}
-        <QuestionProps {form} si={selected.si} qi={selected.qi} {lockedKeys} {lockedOptions} onchange={edit} />
+        <QuestionProps {form} si={selected.si} qi={selected.qi} {lockedKeys} {lockedOptions} onchange={edit} memory={typeMemory} />
       {:else}
         <p class="card muted">Select a question to change it, or add one.</p>
       {/if}
