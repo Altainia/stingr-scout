@@ -1,19 +1,23 @@
-.hub { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.hub { display: grid; grid-template-columns: 180px minmax(0, 1fr); min-height: 100vh; } /* minmax: wide content scrolls in place, never the page */
 .hub nav.side { background: var(--bar); color: var(--bar-text); padding: 16px 0; }
 .hub nav.side .brand { padding: 0 20px 16px; color: var(--brand); font-weight: 700; font-size: 1.2rem; }
 .hub nav.side a { display: block; padding: 10px 20px; color: var(--bar-text); text-decoration: none; }
 .hub nav.side a.active { background: var(--accent); color: var(--accent-text); font-weight: 700; }
-.hub main { max-width: none; margin: 0; padding: 24px; }
+.hub main { max-width: none; margin: 0; padding: 20px 24px; min-width: 0; }
+/* Laptop-sized controls (the tablet's are sized for fingers). The form preview keeps the tablet's sizes. */
+:where(.hub) button:where(:not(.preview button)) { min-height: 40px; min-width: 40px; padding: 0 12px; }
+.hub .row { gap: 8px 12px; }
+.scroll-x { overflow-x: auto; }
 .card { background: var(--surface); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--border); }
 .muted { color: var(--muted); }
 .banner.ok { background: var(--ok-bg); }
 .errors li { color: var(--red); }
 button.small { min-height: 32px; min-width: 32px; padding: 0 8px; font-size: 0.9rem; }
-label.filebtn { display: inline-flex; flex-direction: row; align-items: center; min-height: 48px; padding: 0 16px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font-weight: 400; cursor: pointer; }
+label.filebtn { display: inline-flex; flex-direction: row; align-items: center; min-height: 40px; padding: 0 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font-weight: 400; cursor: pointer; }
 table.grid { border-collapse: collapse; width: 100%; background: var(--surface); }
 table.grid th, table.grid td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
 table.grid th button.sort { border: none; background: none; color: var(--text); min-height: 0; min-width: 0; padding: 0; font-weight: 700; }
-table.grid input { min-height: 36px; padding: 4px; }
+table.grid input { min-height: 36px; padding: 4px; width: 8ch; }
 .cell-ok { background: var(--ok-bg); }
 .cell-missed { background: var(--warn-bg); }
 .cell-noshow { background: var(--bad-bg); }
@@ -32,6 +36,8 @@ video.camera { width: 100%; max-width: 640px; background: #000; border-radius: 8
 img.thumb { max-width: 320px; display: block; margin: 8px 0; border-radius: 8px; }
 label.inline { flex-direction: row; align-items: center; gap: 8px; }
 .outline li[draggable='true'] { cursor: grab; }
+.outline .head { flex-wrap: nowrap; align-items: center; }
+.outline .head input { flex: 1; min-width: 0; }
 .outline .handle { cursor: grab; font-size: 1.4rem; padding: 0 4px; user-select: none; }
 .outline li.drop-before { box-shadow: inset 0 3px 0 var(--blue); }
 .outline section.drop-before { box-shadow: 0 -4px 0 var(--blue); }
@@ -42,7 +48,7 @@ dl.pit dd { margin: 0; }
 .figures strong { font-size: 1.6rem; }
 .scanlog li.ok { color: var(--green); }
 .scanlog li.bad { color: var(--red); }
-a.button { display: inline-flex; align-items: center; min-height: 48px; padding: 0 16px; border: 2px solid var(--line); border-radius: 8px; background: var(--accent); color: var(--accent-text); text-decoration: none; }
+a.button { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--accent); color: var(--accent-text); text-decoration: none; }
 td.row-actions { white-space: nowrap; width: 1%; }
 td.row-actions button + button { margin-left: 4px; }
 input.narrow { width: 6em; }

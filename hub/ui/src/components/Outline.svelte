@@ -91,7 +91,7 @@
       ondragover={e => overSection(e, si)}
       ondrop={drop}
     >
-      <div class="row">
+      <div class="row head">
         <span class="handle" draggable="true" title="Drag to reorder" role="presentation"
           ondragstart={e => dragStart(e, { kind: 'section', si })} ondragend={dragEnd}>⠿</span>
         <input aria-label="Section title" value={s.title} oninput={e => onchange(renameSection(form, si, e.currentTarget.value))} />

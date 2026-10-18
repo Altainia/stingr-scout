@@ -89,7 +89,7 @@
 {#if data}
   {#if !data.form}<p class="banner warn">No match form is published yet, so there is nothing to summarize.</p>{/if}
   <p class="muted">Est. points is the average a team scores per match, using the point values in the match form. Missed answers and no-shows are left out. Click a column to sort.</p>
-  <div style="overflow-x: auto">
+  <div class="scroll-x">
     <table class="grid">
       <thead>
         <tr>

@@ -128,20 +128,22 @@
   {/if}
 
   <h3>Edit by hand</h3>
-  <table class="grid">
-    <thead><tr><th>Match</th>{#each COLS as c (c)}<th class={c.startsWith('Red') ? 'red' : 'blue'}>{c}</th>{/each}<th></th></tr></thead>
-    <tbody>
-      {#each rows as r, i (i)}
-        <tr>
-          <td><input aria-label="Match {i + 1}" size="6" value={r.matchKey} oninput={e => { r.matchKey = e.currentTarget.value; dirty = true; }} /></td>
-          {#each r.teams as t, j (j)}
-            <td><input aria-label="Match {i + 1} {COLS[j]}" size="5" inputmode="numeric" value={t} oninput={e => { r.teams[j] = e.currentTarget.value; dirty = true; }} /></td>
-          {/each}
-          <td><button type="button" class="small" aria-label="Remove match {i + 1}" onclick={() => { rows = rows.filter((_, k) => k !== i); dirty = true; }}>✕</button></td>
-        </tr>
-      {/each}
-    </tbody>
-  </table>
+  <div class="scroll-x">
+    <table class="grid">
+      <thead><tr><th>Match</th>{#each COLS as c (c)}<th class={c.startsWith('Red') ? 'red' : 'blue'}>{c}</th>{/each}<th></th></tr></thead>
+      <tbody>
+        {#each rows as r, i (i)}
+          <tr>
+            <td><input aria-label="Match {i + 1}" size="6" value={r.matchKey} oninput={e => { r.matchKey = e.currentTarget.value; dirty = true; }} /></td>
+            {#each r.teams as t, j (j)}
+              <td><input aria-label="Match {i + 1} {COLS[j]}" size="5" inputmode="numeric" value={t} oninput={e => { r.teams[j] = e.currentTarget.value; dirty = true; }} /></td>
+            {/each}
+            <td><button type="button" class="small" aria-label="Remove match {i + 1}" onclick={() => { rows = rows.filter((_, k) => k !== i); dirty = true; }}>✕</button></td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
   <div class="row">
     <button type="button" onclick={addRow}>Add match</button>
     <button type="button" class="primary" disabled={busy} onclick={saveRows}>Save schedule</button>

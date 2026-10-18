@@ -51,25 +51,27 @@
   {:else}
     <p>{totals.scouted} of {totals.cells} robot-matches scouted · {totals.missed} with missed answers · {totals.noshow} robots not present</p>
     <p class="muted">✓ scouted · ⚠ has missed answers · ✗ robot not present · 2× scouted by more than one tablet</p>
-    <table class="grid">
-      <thead>
-        <tr><th>Match</th>{#each SLOTS as s (s)}<th class={s.startsWith('red') ? 'red' : 'blue'}>{slotLabel(s)}</th>{/each}</tr>
-      </thead>
-      <tbody>
-        {#each rows as r (r.matchKey)}
-          <tr>
-            <th scope="row">{matchLabel(r.matchKey)}{#if !r.scheduled} <span class="muted">(not in schedule)</span>{/if}</th>
-            {#each SLOTS as s (s)}
-              {@const c = r.cells[s]}
-              <td class="cell-{c.status}" title={TITLE[c.status]} aria-label="{matchLabel(r.matchKey)} {slotLabel(s)}">
-                {#if c.team}<a href="#/teams/{c.team}">{c.team}</a>{/if}
-                {SYMBOL[c.status]}
-                {#if c.recordIds.length > 1}<span class="tag">{c.recordIds.length}×</span>{/if}
-              </td>
-            {/each}
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+    <div class="scroll-x">
+      <table class="grid">
+        <thead>
+          <tr><th>Match</th>{#each SLOTS as s (s)}<th class={s.startsWith('red') ? 'red' : 'blue'}>{slotLabel(s)}</th>{/each}</tr>
+        </thead>
+        <tbody>
+          {#each rows as r (r.matchKey)}
+            <tr>
+              <th scope="row">{matchLabel(r.matchKey)}{#if !r.scheduled} <span class="muted">(not in schedule)</span>{/if}</th>
+              {#each SLOTS as s (s)}
+                {@const c = r.cells[s]}
+                <td class="cell-{c.status}" title={TITLE[c.status]} aria-label="{matchLabel(r.matchKey)} {slotLabel(s)}">
+                  {#if c.team}<a href="#/teams/{c.team}">{c.team}</a>{/if}
+                  {SYMBOL[c.status]}
+                  {#if c.recordIds.length > 1}<span class="tag">{c.recordIds.length}×</span>{/if}
+                </td>
+              {/each}
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
   {/if}
 {/if}

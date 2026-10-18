@@ -70,7 +70,7 @@
     {#if detail.matchRecords.length === 0}
       <p class="muted">No matches scouted yet.</p>
     {:else}
-      <div style="overflow-x: auto">
+      <div class="scroll-x">
         <table class="grid">
           <thead>
             <tr><th>Match</th><th>Scout</th><th>Points</th>{#each questions as q (q.key)}<th>{q.label}</th>{/each}<th></th></tr>

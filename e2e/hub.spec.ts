@@ -107,3 +107,23 @@ test('downloads the match CSV', async ({ page }) => {
   const file = await download;
   expect(file.suggestedFilename()).toBe('2027hub-matches.csv');
 });
+
+test('fits a 1280×800 laptop screen without sideways scrolling', async ({ page }) => {
+  // 1280×800 less the desktop panel and browser toolbars.
+  await page.setViewportSize({ width: 1280, height: 650 });
+  for (const path of ['', 'event', 'forms/match', 'forms/pit', 'coverage', 'teams', 'teams/5098', 'qr', 'data', 'settings']) {
+    await page.goto(`/hub/#/${path}`);
+    await expect(page.locator('main h1')).toBeVisible();
+    const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    expect(scroll, `#/${path} scrolls sideways`).toBeLessThanOrEqual(client);
+  }
+
+  await page.goto('/hub/#/forms/match');
+  await expect(page.getByText(/Published version \d+ · no unpublished changes/)).toBeVisible();
+  const top = async (name: string) => (await page.getByRole('button', { name, exact: true }).boundingBox())!.y;
+  expect(await top('Publish'), 'the form toolbar wraps').toBe(await top('Hide preview'));
+  const auto = page.getByRole('region', { name: 'Section Auto' });
+  const titleBox = (await auto.getByLabel('Section title').boundingBox())!;
+  const deleteBox = (await auto.getByRole('button', { name: 'Delete section Auto' }).boundingBox())!;
+  expect(deleteBox.y, "the section's delete button wraps below its title").toBeLessThan(titleBox.y + titleBox.height);
+});

@@ -226,8 +226,8 @@
 <ErrorNote {error} />
 
 {#if form}
-  <div class="row">
-    <span class="grow" role="status">{statusText}</span>
+  <p class="status" role="status">{statusText}</p>
+  <div class="row toolbar">
     <button type="button" onclick={() => (showPreview = !showPreview)}>{showPreview ? 'Hide preview' : 'Show preview'}</button>
     <button type="button" onclick={exportJson}>Export JSON</button>
     <label class="filebtn">Import JSON<input type="file" accept="application/json,.json" hidden aria-label="Import JSON file" onchange={importJson} /></label>
