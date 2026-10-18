@@ -67,6 +67,12 @@ export interface ScheduleMatch { matchKey: string; red: [number, number, number]
 export interface DeviceInfo { id: string; name: string }
 
 export interface HubConfig {
+  /** Created once per hub database; tablets only follow deletions from the hub they last synced with. */
+  hubId: string;
+  /** Changes when the hub starts a new season. */
+  seasonId: string;
+  /** Every event on the hub, so tablets can drop synced records of deleted ones. */
+  eventKeys: string[];
   event: EventInfo | null;
   forms: FormDef[];
   schedule: ScheduleMatch[];

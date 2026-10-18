@@ -4,8 +4,9 @@ import {
 } from '@stingr/shared';
 import { type Db, tx } from './db';
 import { touchDevice } from './store/devices';
-import { currentEvent } from './store/events';
+import { currentEvent, listEvents } from './store/events';
 import { getForm, listForms } from './store/forms';
+import { hubIdentity } from './store/identity';
 import { missingPhotoIds } from './store/photos';
 import { type InsertOutcome, insertRecord } from './store/records';
 import { listSchedule, listTeams } from './store/schedule';
@@ -13,6 +14,8 @@ import { listSchedule, listTeams } from './store/schedule';
 export function buildConfig(db: Db, appBuild: string): HubConfig {
   const event = currentEvent(db);
   return {
+    ...hubIdentity(db),
+    eventKeys: listEvents(db).map(e => e.key),
     event,
     forms: listForms(db),
     schedule: event ? listSchedule(db, event.key) : [],

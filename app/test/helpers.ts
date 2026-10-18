@@ -4,6 +4,9 @@ import { openStingrDb, type Settings, type StingrDb } from '../src/lib/db';
 import { AppStore } from '../src/lib/store.svelte';
 
 export const CONFIG: HubConfig = {
+  hubId: 'hub-1',
+  seasonId: 'season-1',
+  eventKeys: ['2027test'],
   event: { key: '2027test', name: 'Test Event' },
   forms: [matchForm(), pitForm()],
   schedule: [

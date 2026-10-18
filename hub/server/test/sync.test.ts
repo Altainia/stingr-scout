@@ -89,3 +89,17 @@ describe('parseSyncRequest', () => {
     [{ device }, 'Sync request needs a records list'],
   ])('rejects %j', (body, msg) => expect(parseSyncRequest(body)).toBe(msg));
 });
+
+describe('hub identity', () => {
+  it('sends a stable hub id, a season id and the event keys in the config', () => {
+    const db = setup();
+    upsertEvent(db, { key: '2027other', name: 'Other' });
+    const first = handleSync(db, { device, records: [] }, 'b', NOW).config;
+    const second = handleSync(db, { device, records: [] }, 'b', NOW).config;
+    expect(first.hubId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(first.seasonId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(second.hubId).toBe(first.hubId);
+    expect(second.seasonId).toBe(first.seasonId);
+    expect(first.eventKeys).toEqual(['2027other', '2027test']);
+  });
+});
