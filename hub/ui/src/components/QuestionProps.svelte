@@ -127,8 +127,10 @@
               <td><input aria-label="Option {i + 1}" value={o.label} oninput={e => put(renameOption(opts, i, e.currentTarget.value, optLocked))} /></td>
               <td><input aria-label="Option {i + 1} value" value={o.value} disabled={optLocked} oninput={e => put(setOptionValue(opts, i, e.currentTarget.value))} /></td>
               {#if opts.type === 'choice'}
-                <td><input class="narrow" aria-label="Option {i + 1} points" type="number" placeholder="none" value={(o as ChoiceOption).points ?? ''}
-                  oninput={e => put(setOptionPoints(opts as ChoiceQuestion, i, optNum(e.currentTarget.value)))} /></td>
+                <td><span class="with-clear"><input class="narrow" aria-label="Option {i + 1} points" type="number" placeholder="none" value={(o as ChoiceOption).points ?? ''}
+                  oninput={e => put(setOptionPoints(opts as ChoiceQuestion, i, optNum(e.currentTarget.value)))} />
+                  <button type="button" class="small" aria-label="Clear option {i + 1} points" title="Clear" disabled={(o as ChoiceOption).points === undefined}
+                    onclick={() => put(setOptionPoints(opts as ChoiceQuestion, i, undefined))}>✕</button></span></td>
               {/if}
               <td class="row-actions">
                 <button type="button" class="small" aria-label="Move option {i + 1} up" onclick={() => put(moveOption(opts, i, -1))}>↑</button>

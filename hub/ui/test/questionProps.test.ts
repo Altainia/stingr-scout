@@ -90,6 +90,25 @@ describe('QuestionProps', () => {
     expect(q()).toMatchObject({ label: 'Algae removed', key: 'algae_removed' });
   });
 
+  it("clears an option's points", async () => {
+    const { q } = setup(matchForm(), 1, 0); // climb: 0, 6, 12 points
+    await fireEvent.click(screen.getByRole('button', { name: 'Clear option 2 points' }));
+    const climb = q();
+    const options = climb.type === 'choice' ? climb.options : [];
+    expect(options[1]).not.toHaveProperty('points');
+    expect(options.map(o => o.points)).toEqual([0, undefined, 12]);
+  });
+
+  it("greys out an option's Clear button while it has no points", () => {
+    const form = matchForm();
+    const climb = form.sections[1].questions[0];
+    if (climb.type !== 'choice') throw new Error('fixture changed');
+    delete climb.options[0].points;
+    setup(form, 1, 0);
+    expect((screen.getByRole('button', { name: 'Clear option 1 points' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Clear option 2 points' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('edits options and their points', async () => {
     const { q } = setup(matchForm(), 1, 0); // climb
     await fireEvent.input(screen.getByLabelText('Option 2 points'), { target: { value: '7' } });

@@ -69,3 +69,4 @@ a.button { display: inline-flex; align-items: center; min-height: 40px; padding:
 td.row-actions { white-space: nowrap; width: 1%; }
 td.row-actions button + button { margin-left: 4px; }
 input.narrow { width: 6em; }
+.with-clear { display: inline-flex; align-items: center; gap: 4px; }
