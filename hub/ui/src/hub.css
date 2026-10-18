@@ -26,7 +26,9 @@ th.blue { color: var(--blue); }
 .chips { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .chips li { background: var(--chip); border-radius: 999px; padding: 2px 4px 2px 12px; display: flex; align-items: center; gap: 4px; }
 .editor { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.2fr); gap: 16px; align-items: start; }
+.outline .list li { padding: 8px; border-radius: 8px; } /* room inside the highlight */
 .outline li.selected { background: var(--highlight); }
+.outline .list li button.grow { text-align: left; }
 .preview { border: 2px dashed var(--input-border); border-radius: 12px; padding: 12px; background: var(--bg); }
 .scatter { position: relative; max-width: 480px; }
 .scatter img { width: 100%; display: block; }

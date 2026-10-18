@@ -126,4 +126,17 @@ test('fits a 1280×800 laptop screen without sideways scrolling', async ({ page 
   const titleBox = (await auto.getByLabel('Section title').boundingBox())!;
   const deleteBox = (await auto.getByRole('button', { name: 'Delete section Auto' }).boundingBox())!;
   expect(deleteBox.y, "the section's delete button wraps below its title").toBeLessThan(titleBox.y + titleBox.height);
+
+  // A selected question's highlight leaves room around its buttons, and labels line up on the left.
+  const rows = auto.getByRole('listitem');
+  await rows.first().getByRole('button').first().click();
+  const rowBox = (await rows.first().boundingBox())!;
+  const rowDelete = (await rows.first().getByRole('button', { name: /^Delete/ }).boundingBox())!;
+  expect(rowBox.x + rowBox.width - (rowDelete.x + rowDelete.width), 'gap between the delete button and the highlight edge').toBeGreaterThanOrEqual(6);
+  const textLeft = (i: number) => rows.nth(i).getByRole('button').first().evaluate(b => {
+    const r = document.createRange();
+    r.selectNodeContents(b);
+    return r.getBoundingClientRect().left;
+  });
+  expect(await textLeft(2), 'question labels line up on the left').toBeCloseTo(await textLeft(0), 0);
 });
