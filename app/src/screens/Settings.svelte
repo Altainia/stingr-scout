@@ -1,6 +1,7 @@
 <script lang="ts">
   import { applyTheme, loadTheme, SLOTS, type Slot, THEMES, type ThemeId } from '@stingr/shared';
   import { onMount } from 'svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import { slotLabel } from '../lib/session';
   import type { AppStore } from '../lib/store.svelte';
 
@@ -15,6 +16,16 @@
   onMount(async () => {
     lastSync = (await store.db.getKv('lastSyncAt')) ?? null;
   });
+
+  // Reset: one confirmation, and a second one when unsynced records would be lost.
+  let resetStep = $state<'confirm' | 'lose' | null>(null);
+  let unsynced = $derived(store.pendingCount);
+  const records = (n: number) => `${n} ${n === 1 ? 'record' : 'records'}`;
+
+  async function reset() {
+    resetStep = null;
+    await store.resetTablet();
+  }
 
   async function save() {
     await store.saveSettings({ deviceName: name.trim() || store.settings.deviceName, defaultSlot: slot, redSideOverride: redSide });
@@ -57,6 +68,12 @@
     <p class="hint">Theme changes right away.</p>
   </div>
 
+  <h2 class="sub">This tablet</h2>
+  <div class="stack">
+    <button type="button" class="danger" onclick={() => (resetStep = 'confirm')}>Reset this tablet…</button>
+    <p class="hint">Removes records, photos and the loaded event and forms, for demos and testing. Keeps this tablet's name and slot.</p>
+  </div>
+
   <h2 class="sub">About this tablet</h2>
   <dl class="facts">
     <dt>Device ID</dt><dd>{store.settings.deviceId}</dd>
@@ -65,3 +82,19 @@
     <dt>Records on this tablet</dt><dd>{store.records.length} ({store.pendingCount} not synced)</dd>
   </dl>
 </section>
+
+{#if resetStep === 'confirm'}
+  <ConfirmDialog title="Reset this tablet?" confirmLabel="Reset" cancelLabel="Cancel"
+    onconfirm={() => (unsynced > 0 ? (resetStep = 'lose') : reset())} oncancel={() => (resetStep = null)}>
+    <p>This removes {records(store.records.length)}, their photos and the loaded event and forms. The tablet's name and slot are kept, and the next sync loads the hub's event and forms again.</p>
+    {#if unsynced > 0}<p class="banner warn">{records(unsynced)} {unsynced === 1 ? 'has' : 'have'} not been synced and will be lost.</p>{/if}
+    {#if store.draft}<p>The unfinished form is also lost.</p>{/if}
+  </ConfirmDialog>
+{/if}
+
+{#if resetStep === 'lose'}
+  <ConfirmDialog title="Lose {unsynced} unsynced {unsynced === 1 ? 'record' : 'records'}?" confirmLabel="Yes, reset and lose {unsynced === 1 ? 'it' : 'them'}"
+    cancelLabel="Keep them" onconfirm={reset} oncancel={() => (resetStep = null)}>
+    <p>{unsynced === 1 ? 'It is' : 'They are'} only on this tablet. Plug it into the hub first to keep {unsynced === 1 ? 'it' : 'them'}.</p>
+  </ConfirmDialog>
+{/if}

@@ -1,5 +1,5 @@
 import type { HubConfig } from '@stingr/shared';
-import { matchForm, pitForm } from '../../shared/test/fixtures';
+import { matchForm, pitForm, record } from '../../shared/test/fixtures';
 import { openStingrDb, type Settings, type StingrDb } from '../src/lib/db';
 import { AppStore } from '../src/lib/store.svelte';
 
@@ -28,4 +28,18 @@ export async function makeStore(opts: { config?: HubConfig | null; settings?: Pa
   const store = new AppStore({ db, now: () => '2027-03-01T10:00:00.000Z', newId: () => `id-${++id}` });
   await store.load();
   return { store, db };
+}
+
+/** A tablet holding a synced record of this event, a synced and an unsynced one of an older event, and one the hub refused. */
+export async function withMixedRecords() {
+  const ctx = await makeStore();
+  const here = record(matchForm(), { eventKey: '2027test' });
+  const old = record(matchForm(), { eventKey: '2027old' });
+  const oldUnsynced = record(matchForm(), { eventKey: '2027old', slot: 'blue1' });
+  const refused = record(matchForm(), { eventKey: '2027gone', slot: 'blue2' });
+  for (const r of [here, old, oldUnsynced, refused]) await ctx.db.putRecord(r);
+  await ctx.db.markSynced([{ id: here.id, revision: 1 }, { id: old.id, revision: 1 }]);
+  await ctx.db.markRejected({ id: refused.id, revision: 1 }, "Event 2027gone isn't on the hub (it may have been deleted)");
+  await ctx.store.reload();
+  return { ...ctx, here, old, oldUnsynced, refused };
 }

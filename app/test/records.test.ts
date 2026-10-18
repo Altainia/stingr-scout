@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/sve
 import { describe, expect, it } from 'vitest';
 import PastRecords from '../src/screens/PastRecords.svelte';
 import QrView from '../src/screens/QrView.svelte';
-import { CONFIG, makeStore } from './helpers';
+import { CONFIG, makeStore, withMixedRecords } from './helpers';
 
 const TITLE = 'Qual 1 · Red 1 · Team 5098';
 
@@ -59,5 +59,25 @@ describe('QrView', () => {
     if (res.status !== 'complete') throw new Error('expected a single complete code');
     const lookup = (kind: FormKind, v: number) => CONFIG.forms.find(f => f.kind === kind && f.version === v);
     expect(await decodeRecordData(res.data, lookup)).toEqual(store.records[0].rec);
+  });
+});
+
+describe('PastRecords: other events', () => {
+  it('lists unsynced records from other events, and offers both tidy-up actions', async () => {
+    const { store } = await withMixedRecords();
+    render(PastRecords, { store });
+    const other = screen.getByRole('region', { name: 'Other events' });
+    expect(within(within(other).getByRole('listitem', { name: /\(2027gone\)/ })).getByText(/isn't on the hub/)).toBeTruthy();
+    expect(within(other).getByRole('listitem', { name: /\(2027old\)/ })).toBeTruthy(); // the unsynced one
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove synced records from other events…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Remove 1 synced record from other events?' });
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(store.records).toHaveLength(3));
+    expect(screen.queryByRole('button', { name: 'Remove synced records from other events…' })).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete refused records…' }));
+    const refuse = screen.getByRole('dialog', { name: 'Delete 1 record the hub refused?' });
+    expect(refuse.textContent).toContain("can't be synced");
+    await fireEvent.click(within(refuse).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.queryByRole('listitem', { name: /\(2027gone\)/ })).toBeNull());
   });
 });

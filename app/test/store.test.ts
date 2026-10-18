@@ -2,7 +2,7 @@ import { setAnswer } from '@stingr/shared';
 import { describe, expect, it } from 'vitest';
 import { openStingrDb } from '../src/lib/db';
 import { AppStore } from '../src/lib/store.svelte';
-import { CONFIG, makeStore } from './helpers';
+import { CONFIG, makeStore, withMixedRecords } from './helpers';
 
 const match = { matchKey: 'qm1', slot: 'red1' as const, team: 5098 };
 
@@ -181,5 +181,32 @@ describe('AppStore', () => {
     await store.addExtraTeam(254);
     expect(store.extraTeams).toEqual([254]);
     expect(await db.getKv('extraTeams')).toEqual([254]);
+  });
+});
+
+describe('tidying a tablet', () => {
+  it('removes synced records of other events, keeping unsynced ones', async () => {
+    const { store, here, oldUnsynced, refused } = await withMixedRecords();
+    expect(await store.removeSyncedFromOtherEvents()).toBe(1);
+    expect(store.records.map(r => r.id).sort()).toEqual([here.id, oldUnsynced.id, refused.id].sort());
+  });
+
+  it('deletes the records the hub refused', async () => {
+    const { store, refused } = await withMixedRecords();
+    expect(await store.deleteRefused()).toBe(1);
+    expect(store.records.some(r => r.id === refused.id)).toBe(false);
+  });
+
+  it('resets the tablet but keeps its name and slot', async () => {
+    const { store, db } = await withMixedRecords();
+    await store.startMatch(match);
+    await store.resetTablet();
+    expect(store.records).toEqual([]);
+    expect(store.draft).toBeNull();
+    expect(store.config).toBeNull();
+    expect(await db.getKv('config')).toBeUndefined();
+    expect(await db.getKv('draft')).toBeUndefined();
+    expect(store.settings).toMatchObject({ deviceId: 'dev-1', deviceName: 'Tablet 1', defaultSlot: 'red1' });
+    expect(store.screen).toEqual({ name: 'home' });
   });
 });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import Settings from '../src/screens/Settings.svelte';
 import Setup from '../src/screens/Setup.svelte';
@@ -34,5 +34,37 @@ describe('Settings', () => {
     expect(document.documentElement.dataset.theme).toBe('dark'); // applies straight away
     await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(store.screen).toEqual({ name: 'home' });
+  });
+});
+
+describe('Reset this tablet', () => {
+  it('resets after one confirmation when everything is synced', async () => {
+    const { store, db } = await makeStore();
+    await store.startMatch({ matchKey: 'qm1', slot: 'red1', team: 5098 });
+    await store.submitDraft();
+    const [rec] = await db.listRecords();
+    await db.markSynced([{ id: rec.id, revision: rec.rec.revision }]);
+    await store.reload();
+    render(Settings, { store });
+    await fireEvent.click(screen.getByRole('button', { name: 'Reset this tablet…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Reset this tablet?' });
+    expect(dialog.textContent).toContain('1 record');
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Reset' }));
+    await waitFor(() => expect(store.records).toEqual([]));
+  });
+
+  it('asks a second time when records are unsynced', async () => {
+    const { store } = await makeStore();
+    await store.startMatch({ matchKey: 'qm1', slot: 'red1', team: 5098 });
+    await store.submitDraft();
+    render(Settings, { store });
+    await fireEvent.click(screen.getByRole('button', { name: 'Reset this tablet…' }));
+    const first = screen.getByRole('dialog', { name: 'Reset this tablet?' });
+    expect(first.textContent).toContain('1 record has not been synced and will be lost');
+    await fireEvent.click(within(first).getByRole('button', { name: 'Reset' }));
+    expect(store.records).toHaveLength(1); // not yet
+    const second = screen.getByRole('dialog', { name: 'Lose 1 unsynced record?' });
+    await fireEvent.click(within(second).getByRole('button', { name: 'Yes, reset and lose it' }));
+    await waitFor(() => expect(store.records).toEqual([]));
   });
 });

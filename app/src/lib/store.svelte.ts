@@ -71,6 +71,39 @@ export class AppStore {
     return this.records.map(r => r.rec).filter(r => !key || r.eventKey === key);
   }
 
+  /** Records of events other than the current one (none when no event is loaded). */
+  get otherEventRecords(): LocalRecord[] {
+    const key = this.event?.key;
+    return key ? this.records.filter(r => r.rec.eventKey !== key) : [];
+  }
+
+  /** Tidying between events: synced records of other events go; unsynced ones stay. */
+  async removeSyncedFromOtherEvents(): Promise<number> {
+    return this.removeRecords(this.otherEventRecords.filter(r => r.sync === 'synced'));
+  }
+
+  /** Records the hub refused (for example because their event was deleted) can't be synced, so the scout may delete them. */
+  async deleteRefused(): Promise<number> {
+    return this.removeRecords(this.records.filter(r => r.sync === 'rejected'));
+  }
+
+  private async removeRecords(rows: LocalRecord[]): Promise<number> {
+    const ids = new Set(rows.map(r => r.id));
+    if (!ids.size) return 0;
+    await this.db.deleteRecords([...ids]);
+    for (const p of this.photos) if (ids.has(p.recordId)) await this.db.deletePhoto(p.id);
+    await this.reload();
+    return rows.length;
+  }
+
+  /** For demos and testing: everything but the tablet's identity and theme goes; the next sync loads the hub's event again. */
+  async resetTablet(): Promise<void> {
+    await this.db.clearAll();
+    this.draft = null;
+    await this.reload();
+    this.screen = { name: 'home' };
+  }
+
   get pendingCount(): number {
     return this.records.filter(r => r.sync !== 'synced').length;
   }
