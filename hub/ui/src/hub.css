@@ -71,3 +71,6 @@ td.row-actions { white-space: nowrap; width: 1%; }
 td.row-actions button + button { margin-left: 4px; }
 input.narrow { width: 6em; }
 .with-clear { display: inline-flex; align-items: center; gap: 4px; }
+.toolbar { align-items: center; }
+.toolbar .problems { display: inline-flex; align-items: center; gap: 4px; }
+.toolbar .problems .error { font-weight: 600; }

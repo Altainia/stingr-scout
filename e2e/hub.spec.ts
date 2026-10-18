@@ -215,3 +215,24 @@ test('shows every remove and delete button in red', async ({ page }) => {
   allRed(await isRed(/^Remove match /));
   allRed(await isRed(/^Remove team /));
 });
+
+test('shows the problem count and its link level with each other, after Publish', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 650 });
+  await page.goto('/hub/#/forms/match');
+  await expect(page.getByText(/Published version/)).toBeVisible();
+  await page.locator('.outline').getByRole('button', { name: /^Coral scored\*? ·/ }).click();
+  await page.getByLabel('Label', { exact: true }).fill(''); // a question needs a label
+  const count = page.getByText(/^\d+ problems?$/);
+  const link = page.getByRole('button', { name: 'Show problems' });
+  await expect(link).toBeVisible();
+  const c = (await count.boundingBox())!;
+  const l = (await link.boundingBox())!;
+  const p = (await page.getByRole('button', { name: 'Publish', exact: true }).boundingBox())!;
+  expect(Math.abs(c.y + c.height / 2 - (l.y + l.height / 2)), 'count and link are level').toBeLessThanOrEqual(2);
+  expect(Math.abs(c.y + c.height / 2 - (p.y + p.height / 2)), 'level with Publish too').toBeLessThanOrEqual(2);
+  expect(c.x, 'after Publish').toBeGreaterThan(p.x + p.width);
+
+  await page.getByRole('button', { name: 'Discard changes' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click();
+  await expect(page.getByText(/no unpublished changes/)).toBeVisible();
+});

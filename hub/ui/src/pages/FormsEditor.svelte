@@ -232,11 +232,13 @@
     <button type="button" onclick={exportJson}>Export JSON</button>
     <label class="filebtn">Import JSON<input type="file" accept="application/json,.json" hidden aria-label="Import JSON file" onchange={importJson} /></label>
     <button type="button" disabled={!isDraft && status === 'saved'} onclick={() => (confirmDiscard = true)}>Discard changes</button>
-    {#if problems.length}
-      <span class="error">{problems.length} problem{problems.length === 1 ? '' : 's'}</span>
-      <button type="button" class="link" onclick={() => (showProblems = !showProblems)}>{showProblems ? 'Hide problems' : 'Show problems'}</button>
-    {/if}
     <button type="button" class="primary" disabled={nothingToPublish || problems.length > 0 || status === 'saving' || publishing} onclick={publish}>Publish</button>
+    {#if problems.length}
+      <span class="problems">
+        <span class="error">{problems.length} problem{problems.length === 1 ? '' : 's'}</span>
+        <button type="button" class="link" onclick={() => (showProblems = !showProblems)}>{showProblems ? 'Hide problems' : 'Show problems'}</button>
+      </span>
+    {/if}
   </div>
 
   {#if message}<p class="banner ok">{message}</p>{/if}
