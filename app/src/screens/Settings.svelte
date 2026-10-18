@@ -27,7 +27,7 @@
     <h1>Settings</h1>
     <button type="button" onclick={() => store.go({ name: 'home' })}>Back</button>
   </header>
-  <div class="row">
+  <div class="stack">
     <label>Tablet name <input aria-label="Tablet name" value={name} oninput={e => { name = e.currentTarget.value; saved = false; }} /></label>
     <label>Default slot
       <select aria-label="Default slot" value={slot} onchange={e => { slot = e.currentTarget.value as Slot; saved = false; }}>
@@ -41,15 +41,24 @@
         <option value="right">On our right</option>
       </select>
     </label>
-    <button type="button" class="primary" onclick={save}>Save</button>
+    <div class="save-row">
+      <button type="button" class="primary" onclick={save}>Save</button>
+      {#if saved}<span>Saved ✓</span>{/if}
+    </div>
+  </div>
+
+  <h2 class="sub">Appearance</h2>
+  <div class="stack">
     <label>Theme
       <select aria-label="Theme" value={theme} onchange={e => { theme = e.currentTarget.value as ThemeId; applyTheme(theme); }}>
         {#each THEMES as t (t.id)}<option value={t.id}>{t.label}</option>{/each}
       </select>
     </label>
-    {#if saved}<span>Saved ✓</span>{/if}
+    <p class="hint">Theme changes right away.</p>
   </div>
-  <dl>
+
+  <h2 class="sub">About this tablet</h2>
+  <dl class="facts">
     <dt>Device ID</dt><dd>{store.settings.deviceId}</dd>
     <dt>App version</dt><dd>{__BUILD_ID__}</dd>
     <dt>Last sync</dt><dd>{lastSync ? new Date(lastSync).toLocaleString() : 'Never'}</dd>

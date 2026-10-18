@@ -89,3 +89,19 @@ test('QR codes made on the tablet decode on the hub', async ({ page }) => {
   const res = await (await api.post('/api/qr', { data: { text } })).json();
   expect(res.status).toBe('duplicate'); // the same record already arrived over USB
 });
+
+test('lists the settings one per line, with Save right under the ones it saves', async ({ page }) => {
+  await firstLaunch(page);
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const order = [
+    page.getByLabel('Tablet name'), page.getByLabel('Default slot'), page.getByLabel('Red alliance side'),
+    page.getByRole('button', { name: 'Save' }), page.getByLabel('Theme'),
+  ];
+  const boxes = [];
+  for (const l of order) boxes.push((await l.boundingBox())!);
+  for (let i = 1; i < boxes.length; i++) {
+    expect(Math.round(boxes[i].x), 'lined up on the left').toBe(Math.round(boxes[0].x));
+    expect(boxes[i].y, 'each below the one before').toBeGreaterThan(boxes[i - 1].y + boxes[i - 1].height - 1);
+  }
+  await expect(page.getByText('Theme changes right away.')).toBeVisible();
+});
