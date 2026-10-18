@@ -48,7 +48,7 @@ describe('QuestionProps', () => {
 
   it('keeps small settings compact instead of stretching across the panel', () => {
     setup(matchForm(), 1, 0); // climb: Show as
-    expect(screen.getByLabelText('Show as').closest('.row')).not.toBeNull();
+    expect(screen.getByLabelText('Show as').closest('.fields')).not.toBeNull(); // the caption-and-box grid
   });
 
   it('locks a key that is in published data', async () => {

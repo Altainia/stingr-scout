@@ -84,7 +84,7 @@
   <div class="type-settings" role="group" aria-labelledby="type-settings-title">
     <h3 id="type-settings-title">{typeLabel(q.type)} settings</h3>
     {#if q.type === 'counter'}
-      <div class="row">
+      <div class="fields">
         <label class="compact">Min <input aria-label="Min" type="number" value={q.min} oninput={e => set({ min: reqNum(e.currentTarget.value, 0) })} /></label>
         <label class="compact">Max <input aria-label="Max" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
         <label class="compact">Step <input aria-label="Step" type="number" min="1" value={q.step} oninput={e => set({ step: reqNum(e.currentTarget.value, 1) })} /></label>
@@ -92,7 +92,7 @@
         <label class="compact">Points each <input aria-label="Points each" type="number" placeholder="none" value={q.points ?? ''} oninput={e => set({ points: optNum(e.currentTarget.value) })} /></label>
       </div>
     {:else if q.type === 'toggle'}
-      <div class="row">
+      <div class="fields">
         <label class="compact">Default
           <select aria-label="Default" value={q.default ? 'yes' : 'no'} onchange={e => set({ default: e.currentTarget.value === 'yes' })}>
             <option value="no">No</option><option value="yes">Yes</option>
@@ -103,7 +103,7 @@
     {:else if q.type === 'choice' || q.type === 'multi'}
       {@const opts = q}
       {#if opts.type === 'choice'}
-        <div class="row">
+        <div class="fields">
           <label class="compact">Show as
             <select aria-label="Show as" value={opts.display} onchange={e => set({ display: e.currentTarget.value })}>
               <option value="buttons">Buttons</option><option value="dropdown">Dropdown</option>
@@ -134,7 +134,7 @@
       </table>
       <button type="button" onclick={() => put(addOption(opts))}>Add option</button>
     {:else if q.type === 'number'}
-      <div class="row">
+      <div class="fields">
         <label class="inline"><input type="checkbox" aria-label="Whole numbers only" checked={q.integer} onchange={e => set({ integer: e.currentTarget.checked })} /> Whole numbers only</label>
         <label class="compact">Min <input aria-label="Min" type="number" placeholder="none" value={q.min ?? ''} oninput={e => set({ min: optNum(e.currentTarget.value) })} /></label>
         <label class="compact">Max <input aria-label="Max" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
@@ -142,7 +142,7 @@
     {:else if q.type === 'text'}
       <label class="inline"><input type="checkbox" aria-label="Several lines" checked={q.multiline} onchange={e => set({ multiline: e.currentTarget.checked })} /> Several lines</label>
     {:else if q.type === 'rating'}
-      <div class="row">
+      <div class="fields">
         <label class="compact">Highest rating <input aria-label="Highest rating" type="number" min="2" max="10" value={q.max} oninput={e => set({ max: reqNum(e.currentTarget.value, 5) })} /></label>
       </div>
     {:else if q.type === 'timer'}
@@ -155,7 +155,7 @@
       {/if}
       <label class="filebtn">Choose field image<input type="file" accept="image/*" hidden aria-label="Field image file" onchange={pickImage} /></label>
       {#if imageError}<p class="error">{imageError}</p>{/if}
-      <div class="row">
+      <div class="fields">
         <label class="compact">Points to mark <input aria-label="Points to mark" type="number" min="1" value={q.maxPoints} oninput={e => set({ maxPoints: reqNum(e.currentTarget.value, 1) })} /></label>
       </div>
       <div class="choices" role="group" aria-label="Red side of this image">
