@@ -286,3 +286,17 @@ test('joins single-answer buttons, sizes the timer steadily, and shows it runnin
   }
   expect(checked.sort(), 'every kind of joined group was found').toEqual(['1', 'None', 'Yes']);
 });
+
+test('deletes an event from Export & backup after typing its key', async ({ page }) => {
+  expect((await api.post('/api/events', { data: { key: '2027gone', name: 'Gone Regional' } })).ok()).toBe(true);
+  await page.goto('/hub/#/data');
+  await page.getByLabel('Event to delete').selectOption('2027gone');
+  await page.getByRole('button', { name: 'Delete event…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete Gone Regional (2027gone)?' });
+  await expect(dialog.getByRole('button', { name: 'Delete event' })).toBeDisabled();
+  await dialog.getByLabel('Type 2027gone to confirm').fill('2027gone');
+  await dialog.getByRole('button', { name: 'Delete event' }).click();
+  await expect(page.getByText(/Deleted 2027gone\. A backup was saved first: backups\/stingr-/)).toBeVisible();
+  const { events } = await (await api.get('/api/events')).json();
+  expect(events.map((e: { key: string }) => e.key)).not.toContain('2027gone');
+});
