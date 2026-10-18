@@ -1,8 +1,9 @@
 import type { HubConfig, ScoutRecord, SyncResponse } from '@stingr/shared';
 import type { StingrDb } from './db';
+import { pruneForHub } from './prune';
 
 export interface SyncProgress { done: number; total: number }
-export interface SyncResult { acked: number; rejected: number; photos: number; config: HubConfig }
+export interface SyncResult { acked: number; rejected: number; photos: number; removed: number; config: HubConfig }
 export interface SyncDeps { db: StingrDb; fetch: typeof fetch; device: { id: string; name: string }; now: () => string }
 
 export const BATCH = 25;
@@ -45,6 +46,7 @@ async function send(deps: SyncDeps, url: string, init: RequestInit): Promise<Res
 
 export async function runSync(deps: SyncDeps, onProgress: (p: SyncProgress) => void = () => {}): Promise<SyncResult> {
   const { db } = deps;
+  const before = await db.getKv('config'); // to notice events the hub deleted, or a new season
   const waiting = (await db.listRecords()).filter(r => r.sync !== 'synced').map(r => r.rec);
   const batches: ScoutRecord[][] = [];
   for (let i = 0; i < waiting.length; i += BATCH) batches.push(waiting.slice(i, i + BATCH));
@@ -71,7 +73,11 @@ export async function runSync(deps: SyncDeps, onProgress: (p: SyncProgress) => v
     progress.done += records.length;
     onProgress({ ...progress });
   }
-  if (config) await db.setKv('config', config);
+  let removed = 0;
+  if (config) {
+    removed = await pruneForHub(db, before, config);
+    await db.setKv('config', config);
+  }
   await db.setKv('lastSyncAt', deps.now());
 
   // Upload every waiting photo that a record the hub now has actually lists (not photos from an
@@ -91,5 +97,5 @@ export async function runSync(deps: SyncDeps, onProgress: (p: SyncProgress) => v
     progress.done++;
     onProgress({ ...progress });
   }
-  return { acked, rejected, photos: uploaded, config: config as HubConfig };
+  return { acked, rejected, photos: uploaded, removed, config: config as HubConfig };
 }

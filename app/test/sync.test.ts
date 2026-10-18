@@ -74,8 +74,19 @@ describe('runSync', () => {
     expect((await db.listRecords()).every(r => r.sync === 'synced')).toBe(true);
     expect(await db.getKv('config')).toEqual(CONFIG);
     expect(await db.getKv('lastSyncAt')).toBe(NOW);
-    expect(result).toEqual({ acked: 2, rejected: 0, photos: 0, config: CONFIG });
+    expect(result).toEqual({ acked: 2, rejected: 0, photos: 0, removed: 0, config: CONFIG });
     expect(progress).toEqual([{ done: 0, total: 2 }, { done: 2, total: 2 }]); // counts records, not batches
+  });
+
+  it('drops synced records of events the hub deleted', async () => {
+    const db = await fresh();
+    await db.setKv('config', { ...CONFIG, eventKeys: ['2027test', '2027gone'] });
+    const old = record(matchForm(), { eventKey: '2027gone' });
+    await db.putRecord(old);
+    await db.markSynced([{ id: old.id, revision: 1 }]);
+    const result = await runSync(deps(db, okHub().fetchImpl)); // the hub's config lists only 2027test now
+    expect(result.removed).toBe(1);
+    expect(await db.listRecords()).toEqual([]);
   });
 
   it('still fetches the hub config when nothing is waiting', async () => {

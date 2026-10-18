@@ -3,7 +3,7 @@ import type { SyncResult } from '../src/lib/sync';
 import { SyncController, type SyncControllerDeps, type SyncView } from '../src/lib/syncController';
 import { CONFIG } from './helpers';
 
-const RESULT: SyncResult = { acked: 1, rejected: 0, photos: 0, config: CONFIG };
+const RESULT: SyncResult = { acked: 1, rejected: 0, photos: 0, removed: 0, config: CONFIG };
 
 function setup(syncImpl?: SyncControllerDeps['sync']) {
   const state = { online: true, pending: false };

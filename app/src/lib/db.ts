@@ -26,6 +26,9 @@ export interface StingrDb {
   putPhoto(photo: LocalPhoto): Promise<void>;
   deletePhoto(id: string): Promise<void>;
   markPhotoUploaded(id: string): Promise<void>;
+  deleteRecords(ids: string[]): Promise<void>;
+  /** Everything but the tablet's own settings: records, photos, the hub's config, any unfinished form. */
+  clearAll(): Promise<void>;
 }
 
 export async function openStingrDb(name = 'stingr'): Promise<StingrDb> {
@@ -77,6 +80,16 @@ function wrap(db: IDBPDatabase<Schema>): StingrDb {
     async markPhotoUploaded(id) {
       const p = await db.get('photos', id);
       if (p) await db.put('photos', { ...p, uploaded: true });
+    },
+    async deleteRecords(ids) {
+      const tx = db.transaction('records', 'readwrite');
+      for (const id of ids) await tx.store.delete(id);
+      await tx.done;
+    },
+    async clearAll() {
+      await db.clear('records');
+      await db.clear('photos');
+      for (const key of ['config', 'draft', 'extraTeams', 'lastSyncAt']) await db.delete('kv', key);
     },
   };
 }
