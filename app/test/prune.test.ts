@@ -36,4 +36,34 @@ describe('pruneForHub', () => {
     expect(await pruneForHub(db, undefined, { ...CONFIG, eventKeys: [] })).toBe(0);
     expect(await ids(db)).toHaveLength(3);
   });
+
+  it('only removes records synced to this hub', async () => {
+    const db = await openStingrDb(`prune-${Math.random()}`);
+    const toB = record(matchForm(), { eventKey: '2027gone' });
+    const toA = record(matchForm(), { eventKey: '2027gone' });
+    for (const r of [toB, toA]) await db.putRecord(r);
+    await db.markSynced([{ id: toB.id, revision: 1 }], 'hub-B');
+    await db.markSynced([{ id: toA.id, revision: 1 }], 'hub-1');
+    expect(await pruneForHub(db, CONFIG, { ...CONFIG, eventKeys: [] })).toBe(1); // hub-1 is CONFIG's hub
+    expect(await ids(db)).toEqual([toB.id]);
+  });
+
+  it("removes synced records of a deleted event even when an event with the same key was set up again", async () => {
+    const db = await openStingrDb(`prune-${Math.random()}`);
+    const old = record(matchForm(), { eventKey: '2027test' });
+    await db.putRecord(old, 'instance-old');
+    await db.markSynced([{ id: old.id, revision: 1 }], 'hub-1');
+    expect(await pruneForHub(db, CONFIG, { ...CONFIG, eventInstances: { '2027test': 'instance-new' } })).toBe(1);
+    expect(await ids(db)).toEqual([]);
+  });
+
+  it('keeps a record whose new edit is waiting, even if it was listed for removal', async () => {
+    const db = await openStingrDb(`prune-${Math.random()}`);
+    const r = record(matchForm(), { eventKey: '2027gone' });
+    await db.putRecord(r);
+    await db.markSynced([{ id: r.id, revision: 1 }], 'hub-1');
+    await db.putRecord({ ...r, revision: 2 }); // edited after the list was made: pending again
+    await db.deleteRecords([r.id], 'synced');
+    expect(await ids(db)).toEqual([r.id]);
+  });
 });

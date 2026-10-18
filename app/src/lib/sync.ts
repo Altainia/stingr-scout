@@ -47,6 +47,10 @@ async function send(deps: SyncDeps, url: string, init: RequestInit): Promise<Res
 export async function runSync(deps: SyncDeps, onProgress: (p: SyncProgress) => void = () => {}): Promise<SyncResult> {
   const { db } = deps;
   const before = await db.getKv('config'); // to notice events the hub deleted, or a new season
+  const rows = new Map((await db.listRecords()).map(r => [r.id, r]));
+  // Which instance of its event each record was made under, so the hub can refuse records of a deleted one.
+  const instancesOf = (records: ScoutRecord[]) =>
+    Object.fromEntries(records.flatMap(r => { const i = rows.get(r.id)?.eventInstance; return i ? [[r.id, i]] : []; }));
   const waiting = (await db.listRecords()).filter(r => r.sync !== 'synced').map(r => r.rec);
   const batches: ScoutRecord[][] = [];
   for (let i = 0; i < waiting.length; i += BATCH) batches.push(waiting.slice(i, i + BATCH));
@@ -62,10 +66,10 @@ export async function runSync(deps: SyncDeps, onProgress: (p: SyncProgress) => v
     const res = await send(deps, '/api/sync', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ device: deps.device, records }),
+      body: JSON.stringify({ device: deps.device, records, eventInstances: instancesOf(records) }),
     });
     const body = (await res.json()) as SyncResponse;
-    await db.markSynced(body.acked);
+    await db.markSynced(body.acked, body.config.hubId);
     acked += body.acked.length;
     for (const r of body.rejected) await db.markRejected(r, r.reason);
     rejected += body.rejected.length;

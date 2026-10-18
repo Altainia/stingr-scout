@@ -78,6 +78,15 @@ describe('runSync', () => {
     expect(progress).toEqual([{ done: 0, total: 2 }, { done: 2, total: 2 }]); // counts records, not batches
   });
 
+  it('sends the event instance each record was made under', async () => {
+    const db = await fresh();
+    const r = record(matchForm());
+    await db.putRecord(r, 'instance-1');
+    const hub = okHub();
+    await runSync(deps(db, hub.fetchImpl));
+    expect(posted(hub.calls[0].init).eventInstances).toEqual({ [r.id]: 'instance-1' });
+  });
+
   it('drops synced records of events the hub deleted', async () => {
     const db = await fresh();
     await db.setKv('config', { ...CONFIG, eventKeys: ['2027test', '2027gone'] });

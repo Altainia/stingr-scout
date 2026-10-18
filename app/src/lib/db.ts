@@ -2,7 +2,16 @@ import type { HubConfig, RecordRef, ScoutRecord, Side, Slot } from '@stingr/shar
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb';
 
 export type SyncState = 'pending' | 'synced' | 'rejected';
-export interface LocalRecord { id: string; rec: ScoutRecord; sync: SyncState; reason?: string }
+export interface LocalRecord {
+  id: string;
+  rec: ScoutRecord;
+  sync: SyncState;
+  reason?: string;
+  /** The instance of its event the record was made under (see HubConfig.eventInstances). */
+  eventInstance?: string;
+  /** The hub that accepted it, so only that hub's deletions remove it from the tablet. */
+  hubId?: string;
+}
 export interface LocalPhoto { id: string; recordId: string; mime: string; data: ArrayBuffer; uploaded: boolean; createdAt: string }
 export interface Settings { deviceId: string; deviceName: string; defaultSlot: Slot; scout: string; redSideOverride?: 'event' | Side }
 export interface Draft { rec: ScoutRecord; isEdit: boolean }
@@ -19,14 +28,16 @@ export interface StingrDb {
   setKv<K extends keyof KvMap>(key: K, value: KvMap[K]): Promise<void>;
   deleteKv(key: keyof KvMap): Promise<void>;
   listRecords(): Promise<LocalRecord[]>;
-  putRecord(rec: ScoutRecord): Promise<void>;
-  markSynced(refs: RecordRef[]): Promise<void>;
+  /** Saves a new or edited record as waiting to sync; an edit keeps the event instance it was first made under. */
+  putRecord(rec: ScoutRecord, eventInstance?: string): Promise<void>;
+  markSynced(refs: RecordRef[], hubId?: string): Promise<void>;
   markRejected(ref: RecordRef, reason: string): Promise<void>;
   listPhotos(): Promise<LocalPhoto[]>;
   putPhoto(photo: LocalPhoto): Promise<void>;
   deletePhoto(id: string): Promise<void>;
   markPhotoUploaded(id: string): Promise<void>;
-  deleteRecords(ids: string[]): Promise<void>;
+  /** Deletes those records, only if still in `state` when given (checked in the same transaction); returns the ids deleted. */
+  deleteRecords(ids: string[], state?: SyncState): Promise<string[]>;
   /** Everything but the tablet's own settings: records, photos, the hub's config, any unfinished form. */
   clearAll(): Promise<void>;
 }
@@ -54,15 +65,21 @@ function wrap(db: IDBPDatabase<Schema>): StingrDb {
       await db.delete('kv', key);
     },
     listRecords: () => db.getAll('records'),
-    async putRecord(rec) {
-      await db.put('records', { id: rec.id, rec, sync: 'pending' });
+    async putRecord(rec, eventInstance) {
+      const tx = db.transaction('records', 'readwrite');
+      const instance = eventInstance ?? (await tx.store.get(rec.id))?.eventInstance;
+      await tx.store.put({ id: rec.id, rec, sync: 'pending', ...(instance ? { eventInstance: instance } : {}) });
+      await tx.done;
     },
-    async markSynced(refs) {
+    async markSynced(refs, hubId) {
       const tx = db.transaction('records', 'readwrite');
       for (const ref of refs) {
         const row = await tx.store.get(ref.id);
         // An edit may have replaced the revision the hub just acknowledged; that newer one is still unsynced.
-        if (row && row.rec.revision === ref.revision) await tx.store.put({ id: row.id, rec: row.rec, sync: 'synced' });
+        if (row && row.rec.revision === ref.revision) {
+          const { reason: _reason, ...rest } = row;
+          await tx.store.put({ ...rest, sync: 'synced', ...(hubId ? { hubId } : {}) });
+        }
       }
       await tx.done;
     },
@@ -81,10 +98,17 @@ function wrap(db: IDBPDatabase<Schema>): StingrDb {
       const p = await db.get('photos', id);
       if (p) await db.put('photos', { ...p, uploaded: true });
     },
-    async deleteRecords(ids) {
+    async deleteRecords(ids, state) {
       const tx = db.transaction('records', 'readwrite');
-      for (const id of ids) await tx.store.delete(id);
+      const deleted: string[] = [];
+      for (const id of ids) {
+        const row = await tx.store.get(id);
+        if (!row || (state && row.sync !== state)) continue; // changed meanwhile (for example edited): keep it
+        await tx.store.delete(id);
+        deleted.push(id);
+      }
       await tx.done;
+      return deleted;
     },
     async clearAll() {
       await db.clear('records');

@@ -8,6 +8,7 @@ import type { HubContext } from '../app';
 import { openDb, SCHEMA_VERSION, schemaVersion } from '../db';
 import { HttpError } from '../http';
 import { listDevices } from '../store/devices';
+import { setSetting } from '../store/settings';
 
 const sqlString = (s: string) => `'${s.replace(/'/g, "''")}'`;
 const stamp = (iso: string) => iso.replace(/[:.]/g, '-');
@@ -51,6 +52,8 @@ export function adminRoutes(app: FastifyInstance, ctx: HubContext): void {
     for (const suffix of ['-wal', '-shm']) await rm(dbPath + suffix, { force: true });
     await rename(incoming, dbPath);
     ctx.db = openDb(dbPath); // migrates older backups forward
+    // A new identity: tablets must not prune their synced records against older restored data.
+    setSetting(ctx.db, 'hub_id', randomUUID());
     return { ok: true };
   });
 

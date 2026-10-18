@@ -2,7 +2,7 @@ import {
   type EventInfo, finalizeSubmit, type FormDef, type FormKind, type HubConfig, markNoShow, newRecord,
   reviseRecord, type ScoutRecord, type Side, type Slot, undoNoShow,
 } from '@stingr/shared';
-import type { Draft, LocalPhoto, LocalRecord, Settings, StingrDb } from './db';
+import type { Draft, LocalPhoto, LocalRecord, Settings, StingrDb, SyncState } from './db';
 import { formVersion, latestForm } from './session';
 
 export type Screen =
@@ -79,21 +79,20 @@ export class AppStore {
 
   /** Tidying between events: synced records of other events go; unsynced ones stay. */
   async removeSyncedFromOtherEvents(): Promise<number> {
-    return this.removeRecords(this.otherEventRecords.filter(r => r.sync === 'synced'));
+    return this.removeRecords(this.otherEventRecords.filter(r => r.sync === 'synced'), 'synced');
   }
 
   /** Records the hub refused (for example because their event was deleted) can't be synced, so the scout may delete them. */
   async deleteRefused(): Promise<number> {
-    return this.removeRecords(this.records.filter(r => r.sync === 'rejected'));
+    return this.removeRecords(this.records.filter(r => r.sync === 'rejected'), 'rejected');
   }
 
-  private async removeRecords(rows: LocalRecord[]): Promise<number> {
-    const ids = new Set(rows.map(r => r.id));
-    if (!ids.size) return 0;
-    await this.db.deleteRecords([...ids]);
-    for (const p of this.photos) if (ids.has(p.recordId)) await this.db.deletePhoto(p.id);
+  private async removeRecords(rows: LocalRecord[], state: SyncState): Promise<number> {
+    if (!rows.length) return 0;
+    const deleted = new Set(await this.db.deleteRecords(rows.map(r => r.id), state));
+    for (const p of this.photos) if (deleted.has(p.recordId)) await this.db.deletePhoto(p.id);
     await this.reload();
-    return rows.length;
+    return deleted.size;
   }
 
   /** For demos and testing: everything but the tablet's identity and theme goes; the next sync loads the hub's event again. */
@@ -250,7 +249,7 @@ export class AppStore {
   }
 
   private async saveRecord(rec: ScoutRecord): Promise<void> {
-    await this.db.putRecord(rec);
+    await this.db.putRecord(rec, this.config?.eventInstances?.[rec.eventKey]);
     this.records = await this.db.listRecords();
   }
 

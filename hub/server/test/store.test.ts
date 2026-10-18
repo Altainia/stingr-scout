@@ -13,7 +13,7 @@ describe('openDb', () => {
     try {
       const path = join(dir, 'x.db');
       const a = openDb(path);
-      expect(schemaVersion(a)).toBe(2);
+      expect(schemaVersion(a)).toBe(3);
       upsertEvent(a, { key: '2027a', name: 'A' });
       a.close();
       const b = openDb(path);

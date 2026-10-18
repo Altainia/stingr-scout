@@ -35,6 +35,15 @@ describe('backup and restore', () => {
     expect(readdirSync(dir).some(f => f.startsWith('stingr.db.before-restore-'))).toBe(true);
   });
 
+  it('gives the hub a new identity after a restore, so tablets do not prune against the restored data', async () => {
+    const { app } = await fileApp();
+    const sync = async () => (await app.inject({ method: 'POST', url: '/api/sync', payload: { device: { id: 'd', name: 'T' }, records: [] } })).json().config;
+    const before = await sync();
+    const backup = await app.inject({ url: '/api/backup' });
+    await app.inject({ method: 'POST', url: '/api/restore', headers: { 'content-type': 'application/octet-stream' }, payload: backup.rawPayload });
+    expect((await sync()).hubId).not.toBe(before.hubId);
+  });
+
   it('refuses a file that is not a backup and changes nothing', async () => {
     const { app } = await fileApp();
     await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027one' } });

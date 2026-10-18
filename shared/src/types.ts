@@ -73,13 +73,20 @@ export interface HubConfig {
   seasonId: string;
   /** Every event on the hub, so tablets can drop synced records of deleted ones. */
   eventKeys: string[];
+  /** Each event's instance id, new each time an event is set up; a record made for a deleted instance is refused. */
+  eventInstances: Record<string, string>;
   event: EventInfo | null;
   forms: FormDef[];
   schedule: ScheduleMatch[];
   teams: number[];
   appBuild: string;
 }
-export interface SyncRequest { device: DeviceInfo; records: ScoutRecord[] }
+export interface SyncRequest {
+  device: DeviceInfo;
+  records: ScoutRecord[];
+  /** record id → the instance of its event it was made under, when the tablet knows it */
+  eventInstances?: Record<string, string>;
+}
 export interface RecordRef { id: string; revision: number }
 export interface SyncResponse {
   acked: RecordRef[];

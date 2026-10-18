@@ -210,3 +210,12 @@ describe('tidying a tablet', () => {
     expect(store.screen).toEqual({ name: 'home' });
   });
 });
+
+describe('event instances', () => {
+  it('remembers which instance of the event a record was made under, and keeps it through edits', async () => {
+    const { store, db } = await makeStore({ config: { ...CONFIG, eventInstances: { '2027test': 'instance-1' } } });
+    await store.startMatch(match);
+    await store.submitDraft();
+    expect((await db.listRecords())[0].eventInstance).toBe('instance-1');
+  });
+});

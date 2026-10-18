@@ -29,6 +29,9 @@ const MIGRATIONS: string[] = [
   CREATE TABLE devices (id TEXT PRIMARY KEY, name TEXT NOT NULL, last_sync_at TEXT);
   `,
   `ALTER TABLE events ADD COLUMN red_side TEXT NOT NULL DEFAULT 'left';`,
+  // Each time an event is set up it gets a new instance id, so records of a deleted event can't join a new one with the same key.
+  `ALTER TABLE events ADD COLUMN instance TEXT NOT NULL DEFAULT '';
+   UPDATE events SET instance = lower(hex(randomblob(16))) WHERE instance = '';`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

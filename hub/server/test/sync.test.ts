@@ -6,6 +6,7 @@ import { listDevices } from '../src/store/devices';
 import { setCurrentEvent, upsertEvent } from '../src/store/events';
 import { publishDraft, saveDraft } from '../src/store/forms';
 import { getPhoto, putPhoto } from '../src/store/photos';
+import { deleteEvent } from '../src/store/clear';
 import { currentRecords, recordHistory } from '../src/store/records';
 import { replaceSchedule } from '../src/store/schedule';
 import { handleSync, parseSyncRequest } from '../src/sync';
@@ -88,6 +89,35 @@ describe('parseSyncRequest', () => {
     [{ records: [] }, 'Sync request needs device.id and device.name'],
     [{ device }, 'Sync request needs a records list'],
   ])('rejects %j', (body, msg) => expect(parseSyncRequest(body)).toBe(msg));
+});
+
+describe('event instances', () => {
+  it('gives each event an instance id in the config, new when the event is set up again', () => {
+    const db = setup();
+    const first = handleSync(db, { device, records: [] }, 'b', NOW).config.eventInstances['2027test'];
+    expect(first).toMatch(/^[0-9a-f-]{36}$/);
+    upsertEvent(db, { key: '2027test', name: 'Renamed' }); // an update keeps the instance
+    expect(handleSync(db, { device, records: [] }, 'b', NOW).config.eventInstances['2027test']).toBe(first);
+    deleteEvent(db, '2027test');
+    upsertEvent(db, { key: '2027test', name: 'Again' });
+    expect(handleSync(db, { device, records: [] }, 'b', NOW).config.eventInstances['2027test']).not.toBe(first);
+  });
+
+  it('refuses a record made for a deleted event even after an event with the same key is set up again', () => {
+    const db = setup();
+    const old = handleSync(db, { device, records: [] }, 'b', NOW).config.eventInstances['2027test'];
+    deleteEvent(db, '2027test');
+    upsertEvent(db, { key: '2027test', name: 'Again' });
+    const rec = record(matchForm());
+    const res = handleSync(db, { device, records: [rec], eventInstances: { [rec.id]: old } }, 'b', NOW);
+    expect(res.rejected).toEqual([{ id: rec.id, revision: 1, reason: 'Event 2027test was deleted on the hub; this record belongs to the deleted one' }]);
+    const now = handleSync(db, { device, records: [], eventInstances: {} }, 'b', NOW).config.eventInstances['2027test'];
+    expect(handleSync(db, { device, records: [rec], eventInstances: { [rec.id]: now } }, 'b', NOW).acked).toHaveLength(1);
+  });
+
+  it('keeps the instances it was sent when parsing a request', () => {
+    expect(parseSyncRequest({ device, records: [], eventInstances: { r1: 'i1' } })).toEqual({ device, records: [], eventInstances: { r1: 'i1' } });
+  });
 });
 
 describe('records for unknown events', () => {
