@@ -31,6 +31,9 @@
   {#if store.pendingCount > 0 && (view.phase === 'done' || view.phase === 'error')}
     <button type="button" class="primary" onclick={() => void sync.retry()}>Sync now</button>
   {/if}
+  {#if store.screen.name === 'home'}
+    <button type="button" class="bar-button" onclick={() => store.go({ name: 'settings' })}>Settings</button>
+  {/if}
   <span class="badge" class:ok={store.pendingCount === 0}>
     {store.pendingCount === 0 ? 'All synced ✓' : `${store.pendingCount} unsynced`}
   </span>

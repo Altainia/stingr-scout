@@ -78,52 +78,60 @@
     <p class="banner warn">The hub hasn't published a match form yet.</p>
   {/if}
 
-  <div class="row">
-    <label>Your name
-      <input aria-label="Your name" value={scout} autocomplete="off" oninput={e => (scout = e.currentTarget.value)} onchange={saveScout} />
-    </label>
-    <label>Slot
-      <select aria-label="Slot" value={slot} onchange={e => { slot = e.currentTarget.value as Slot; teamOverride = null; }}>
-        {#each SLOTS as s (s)}<option value={s}>{slotLabel(s)}</option>{/each}
-      </select>
-    </label>
-    {#if slot !== store.settings.defaultSlot}
-      <button type="button" class="link" onclick={() => store.saveSettings({ defaultSlot: slot })}>Make {slotLabel(slot)} this tablet's default</button>
-    {/if}
-  </div>
-
-  <div class="row">
-    {#if schedule.length}
-      <label>Match
-        <select aria-label="Match" value={matchChoice} onchange={e => { matchChoice = e.currentTarget.value; matchTouched = true; teamOverride = null; }}>
-          {#each schedule as m (m.matchKey)}<option value={m.matchKey}>{matchLabel(m.matchKey)}</option>{/each}
-          <option value={OTHER}>Other…</option>
-        </select>
-      </label>
-    {/if}
-    {#if !schedule.length || matchChoice === OTHER}
-      <label>Match number
-        <input aria-label="Match number" value={otherMatch} inputmode="numeric" placeholder="e.g. 12 or sf3m1"
-          oninput={e => { otherMatch = e.currentTarget.value; matchTouched = true; teamOverride = null; }} />
-      </label>
-    {/if}
-    <label>Team
-      <input aria-label="Team" value={teamText} inputmode="numeric" oninput={e => (teamOverride = e.currentTarget.value)} />
-    </label>
-  </div>
-
+  <label class="scout-name">Scouting as
+    <input aria-label="Your name" value={scout} autocomplete="off" placeholder="Your name" oninput={e => (scout = e.currentTarget.value)} onchange={saveScout} />
+  </label>
   {#if !scout.trim()}<p class="hint">Enter your name to start.</p>{/if}
 
-  <div class="row">
-    <button type="button" class="primary big" disabled={!canStart} onclick={start}>Start scouting</button>
-    <button type="button" class="big" disabled={!canStart} onclick={() => (confirmNoShow = true)}>Robot not present</button>
-  </div>
+  <div class="home-grid">
+    <section class="card" aria-labelledby="match-title">
+      <h2 id="match-title">Match scouting</h2>
+      <div class="row">
+        {#if schedule.length}
+          <label>Match
+            <select aria-label="Match" value={matchChoice} onchange={e => { matchChoice = e.currentTarget.value; matchTouched = true; teamOverride = null; }}>
+              {#each schedule as m (m.matchKey)}<option value={m.matchKey}>{matchLabel(m.matchKey)}</option>{/each}
+              <option value={OTHER}>Other…</option>
+            </select>
+          </label>
+        {/if}
+        {#if !schedule.length || matchChoice === OTHER}
+          <label>Match number
+            <input aria-label="Match number" class="short" value={otherMatch} inputmode="numeric" placeholder="e.g. 12 or sf3m1"
+              oninput={e => { otherMatch = e.currentTarget.value; matchTouched = true; teamOverride = null; }} />
+          </label>
+        {/if}
+        <label>Slot
+          <select aria-label="Slot" value={slot} onchange={e => { slot = e.currentTarget.value as Slot; teamOverride = null; }}>
+            {#each SLOTS as s (s)}<option value={s}>{slotLabel(s)}</option>{/each}
+          </select>
+        </label>
+        <label>Team
+          <input aria-label="Team" class="short" value={teamText} inputmode="numeric" oninput={e => (teamOverride = e.currentTarget.value)} />
+        </label>
+      </div>
+      {#if slot !== store.settings.defaultSlot}
+        <button type="button" class="link" onclick={() => store.saveSettings({ defaultSlot: slot })}>Make {slotLabel(slot)} this tablet's default</button>
+      {/if}
+      <button type="button" class="primary big wide" disabled={!canStart} onclick={start}>Start scouting</button>
+      <div class="secondary-action">
+        <button type="button" disabled={!canStart} onclick={() => (confirmNoShow = true)}>Robot not present</button>
+      </div>
+    </section>
 
-  <nav class="row">
-    <button type="button" onclick={() => store.go({ name: 'pit' })}>Pit scouting</button>
-    <button type="button" onclick={() => store.go({ name: 'records' })}>Past records</button>
-    <button type="button" onclick={() => store.go({ name: 'settings' })}>Settings</button>
-  </nav>
+    <div class="side">
+      <section class="card" aria-labelledby="pit-title">
+        <h2 id="pit-title">Pit scouting</h2>
+        <p class="hint">Scout a team's robot in the pits.</p>
+        <button type="button" onclick={() => store.go({ name: 'pit' })}>Pit scouting</button>
+      </section>
+      <section class="card" aria-labelledby="records-title">
+        <h2 id="records-title">Past records</h2>
+        <p class="hint">{store.records.length} on this tablet</p>
+        <button type="button" onclick={() => store.go({ name: 'records' })}>Past records</button>
+      </section>
+    </div>
+  </div>
 </section>
 
 {#if confirmNoShow}

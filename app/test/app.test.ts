@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import App from '../src/App.svelte';
@@ -30,6 +30,13 @@ describe('App', () => {
     expect(screen.getByText('Test Event')).toBeTruthy();
     expect(screen.getByText('All synced ✓')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Start scouting' })).toBeTruthy();
+  });
+
+  it('offers Settings in the top bar on the main page', async () => {
+    const { store } = await makeStore();
+    render(App, { store, sync: fakeSync() });
+    await fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Settings' }));
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeTruthy();
   });
 
   it('counts records waiting to sync', async () => {

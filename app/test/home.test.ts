@@ -7,6 +7,22 @@ const value = (label: string) => (screen.getByLabelText(label) as HTMLInputEleme
 const button = (name: string) => screen.getByRole('button', { name }) as HTMLButtonElement;
 
 describe('Home', () => {
+  it('groups everything for the next match in a "Match scouting" card, with pit scouting and past records beside it', async () => {
+    const { store } = await makeStore();
+    render(Home, { store });
+    const match = screen.getByRole('region', { name: 'Match scouting' });
+    for (const label of ['Match', 'Slot', 'Team']) expect(within(match).getByLabelText(label)).toBeTruthy();
+    expect(within(match).getByRole('button', { name: 'Start scouting' })).toBeTruthy();
+    expect(within(match).getByRole('button', { name: 'Robot not present' })).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Pit scouting' })).getByRole('button', { name: 'Pit scouting' })).toBeTruthy();
+    const past = screen.getByRole('region', { name: 'Past records' });
+    expect(within(past).getByText('0 on this tablet')).toBeTruthy();
+    expect(within(past).getByRole('button', { name: 'Past records' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Settings' })).toBeNull(); // in the top bar now
+    expect(screen.getByLabelText('Your name')).toBeTruthy();
+    expect(screen.getByText('Scouting as')).toBeTruthy();
+  });
+
   it("fills in the next match and the team for this tablet's slot", async () => {
     const { store } = await makeStore();
     render(Home, { store });

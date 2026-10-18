@@ -122,3 +122,16 @@ h2.sub { font-size: 1.1rem; margin: 8px 0 0; }
 dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 24px; margin: 12px 0; }
 dl.facts dt { font-weight: 600; }
 dl.facts dd { margin: 0; }
+/* Main page: the next match on the left, pit scouting and past records beside it. */
+.scout-name { flex-direction: row; align-items: center; gap: 12px; margin: 4px 0 16px; }
+.scout-name input { width: 18em; }
+.home-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+.home-grid .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px 20px; }
+.home-grid h2 { font-size: 1.15rem; margin: 0 0 4px; }
+.home-grid .side { display: flex; flex-direction: column; gap: 24px; }
+.home-grid .side .hint { margin: 0 0 12px; }
+.home-grid input.short { width: 7em; }
+button.wide { width: 100%; margin-top: 16px; }
+.secondary-action { margin-top: 16px; display: flex; justify-content: flex-end; }
+.topbar .bar-button { min-height: 36px; padding: 0 14px; background: transparent; color: var(--bar-text); border-color: var(--bar-text); }
+.home-grid .card > button.link { padding: 0; min-height: 32px; }
