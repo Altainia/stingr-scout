@@ -40,6 +40,32 @@ describe('QuestionProps', () => {
     for (const name of ['Label', 'Type', 'Key', 'Help text', 'Required', 'Summary']) expect(within(own).queryByLabelText(name)).toBeNull();
   });
 
+  it('clears a setting that may be blank', async () => {
+    const form = matchForm();
+    const coral = form.sections[0].questions[1];
+    if (coral.type !== 'counter') throw new Error('fixture changed');
+    coral.max = 12;
+    const { q } = setup(form, 0, 1); // auto_coral: max 12, 4 points each
+    await fireEvent.click(screen.getByRole('button', { name: 'Clear Max' }));
+    expect(q()).not.toHaveProperty('max');
+    expect(q()).toMatchObject({ points: 4 });
+    await fireEvent.click(screen.getByRole('button', { name: 'Clear Points each' }));
+    expect(q()).not.toHaveProperty('points');
+  });
+
+  it('offers to clear exactly the settings that may be blank, greyed out while they are', () => {
+    const cases: [number, number, string[]][] = [[0, 1, ['Max', 'Points each']], [0, 0, ['Points for yes']]];
+    for (const [si, qi, names] of cases) {
+      const { unmount } = render(QuestionProps, { form: matchForm(), si, qi, lockedKeys: new Set(), lockedOptions: new Map(), onchange: vi.fn() });
+      const own = screen.getByRole('group', { name: /settings$/ });
+      expect(within(own).queryAllByRole('button', { name: /^Clear / }).map(b => b.getAttribute('aria-label'))).toEqual(names.map(n => `Clear ${n}`));
+      unmount();
+    }
+    render(QuestionProps, { form: matchForm(), si: 0, qi: 1, lockedKeys: new Set(), lockedOptions: new Map(), onchange: vi.fn() });
+    expect((screen.getByRole('button', { name: 'Clear Max' }) as HTMLButtonElement).disabled).toBe(true); // no max set
+    expect((screen.getByRole('button', { name: 'Clear Points each' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('names the settings group after the type, even when the type has nothing to set', () => {
     const form = addQuestion(emptyForm('match'), 0, 'timer', 'Climb time');
     setup(form, 0, 0);

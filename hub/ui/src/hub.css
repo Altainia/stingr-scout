@@ -39,13 +39,14 @@ img.thumb { max-width: 320px; display: block; margin: 8px 0; border-radius: 8px;
 label.inline { flex-direction: row; align-items: center; gap: 8px; }
 .row label.inline { min-height: 48px; font-weight: 400; } /* level with the boxes beside it */
 label.inline input[type='checkbox'] { min-height: 0; }
+.type-settings > label.inline { font-weight: 400; margin: 8px 0; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 /* Small settings sit on one line with their caption, in boxes sized for what they hold. */
 label.compact { flex-direction: row; align-items: center; gap: 8px; }
 /* A type's settings form a grid: caption, then box, one per line, boxes lined up. */
-.fields { display: grid; grid-template-columns: max-content max-content; gap: 8px 12px; align-items: center; margin: 8px 0; }
-.fields > label.compact { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
-.fields > label.inline { grid-column: 1 / -1; font-weight: 400; }
+.fields { display: grid; grid-template-columns: max-content max-content max-content; gap: 8px 12px; align-items: center; margin: 8px 0; }
+.fields > label.compact { display: grid; grid-column: 1 / 3; grid-template-columns: subgrid; } /* the third column holds a Clear button */
+.fields > button { justify-self: start; }
 label.compact input { width: 8ch; }
 label.compact select { width: auto; }
 .field .caption { font-weight: 600; }

@@ -43,7 +43,7 @@ test('edits and publishes the match form', async ({ page }) => {
   await expect(page.getByText(/Published version \d+ · no unpublished changes/)).toBeVisible();
   await page.getByRole('button', { name: 'Add question to Endgame' }).click();
   await page.getByLabel('Label').fill('Algae in net');
-  await page.getByLabel('Points each').fill('4');
+  await page.getByLabel('Points each', { exact: true }).fill('4');
   await expect(page.getByText(/Draft saved/)).toBeVisible();
   await page.getByRole('button', { name: 'Publish' }).click();
   await expect(page.getByText(/Published version \d+\. Tablets get it on their next sync\./)).toBeVisible();
@@ -165,6 +165,7 @@ test("lays each type's small settings out in a grid: caption, then a narrow box"
     const own = page.getByRole('group', { name: /settings$/ });
     const lefts: number[] = [];
     const tops: number[] = [];
+    const clearLefts: number[] = [];
     for (const field of fields) {
       const box = own.getByLabel(field, { exact: true });
       const control = (await box.boundingBox())!;
@@ -172,11 +173,18 @@ test("lays each type's small settings out in a grid: caption, then a narrow box"
       const isSelect = await box.evaluate(e => e.tagName === 'SELECT');
       expect(control.width, `${question}: ${field} is narrow`).toBeLessThanOrEqual(isSelect ? 160 : 120); // a dropdown is as wide as its longest option
       expect(label.height, `${question}: ${field} is on the same line as its caption`).toBeLessThanOrEqual(control.height + 4);
+      const clear = own.getByRole('button', { name: `Clear ${field}`, exact: true });
+      if (await clear.count()) {
+        const c = (await clear.boundingBox())!;
+        expect(Math.abs(c.y + c.height / 2 - (control.y + control.height / 2)), `${question}: Clear ${field} is on its line`).toBeLessThanOrEqual(2);
+        clearLefts.push(Math.round(c.x));
+      }
       lefts.push(Math.round(control.x));
       tops.push(control.y);
     }
     // A grid: one field per line, boxes lined up.
     expect(new Set(lefts).size, `${question}: boxes line up`).toBe(1);
+    expect(new Set(clearLefts).size, `${question}: Clear buttons line up`).toBeLessThanOrEqual(1);
     for (let i = 1; i < tops.length; i++) expect(tops[i], `${question}: ${fields[i]} is on its own line`).toBeGreaterThan(tops[i - 1] + 20);
   }
 });

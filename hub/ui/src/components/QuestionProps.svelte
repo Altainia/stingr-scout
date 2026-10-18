@@ -55,6 +55,10 @@
   }
 </script>
 
+{#snippet clear(name: string, value: unknown, key: string)}
+  <button type="button" class="small" aria-label="Clear {name}" title="Clear" disabled={value === undefined} onclick={() => set({ [key]: undefined })}>✕</button>
+{/snippet}
+
 <section class="card" aria-label="Question settings">
   <h2>Question</h2>
   <div class="row">
@@ -87,9 +91,11 @@
       <div class="fields">
         <label class="compact">Min <input aria-label="Min" type="number" value={q.min} oninput={e => set({ min: reqNum(e.currentTarget.value, 0) })} /></label>
         <label class="compact">Max <input aria-label="Max" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
+        {@render clear('Max', q.max, 'max')}
         <label class="compact">Step <input aria-label="Step" type="number" min="1" value={q.step} oninput={e => set({ step: reqNum(e.currentTarget.value, 1) })} /></label>
         <label class="compact">Default <input aria-label="Default" type="number" value={q.default} oninput={e => set({ default: reqNum(e.currentTarget.value, 0) })} /></label>
         <label class="compact">Points each <input aria-label="Points each" type="number" placeholder="none" value={q.points ?? ''} oninput={e => set({ points: optNum(e.currentTarget.value) })} /></label>
+        {@render clear('Points each', q.points, 'points')}
       </div>
     {:else if q.type === 'toggle'}
       <div class="fields">
@@ -99,6 +105,7 @@
           </select>
         </label>
         <label class="compact">Points for yes <input aria-label="Points for yes" type="number" placeholder="none" value={q.points ?? ''} oninput={e => set({ points: optNum(e.currentTarget.value) })} /></label>
+        {@render clear('Points for yes', q.points, 'points')}
       </div>
     {:else if q.type === 'choice' || q.type === 'multi'}
       {@const opts = q}
@@ -134,10 +141,12 @@
       </table>
       <button type="button" onclick={() => put(addOption(opts))}>Add option</button>
     {:else if q.type === 'number'}
+      <label class="inline"><input type="checkbox" aria-label="Whole numbers only" checked={q.integer} onchange={e => set({ integer: e.currentTarget.checked })} /> Whole numbers only</label>
       <div class="fields">
-        <label class="inline"><input type="checkbox" aria-label="Whole numbers only" checked={q.integer} onchange={e => set({ integer: e.currentTarget.checked })} /> Whole numbers only</label>
         <label class="compact">Min <input aria-label="Min" type="number" placeholder="none" value={q.min ?? ''} oninput={e => set({ min: optNum(e.currentTarget.value) })} /></label>
+        {@render clear('Min', q.min, 'min')}
         <label class="compact">Max <input aria-label="Max" type="number" placeholder="none" value={q.max ?? ''} oninput={e => set({ max: optNum(e.currentTarget.value) })} /></label>
+        {@render clear('Max', q.max, 'max')}
       </div>
     {:else if q.type === 'text'}
       <label class="inline"><input type="checkbox" aria-label="Several lines" checked={q.multiline} onchange={e => set({ multiline: e.currentTarget.checked })} /> Several lines</label>
