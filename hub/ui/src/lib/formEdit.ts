@@ -52,7 +52,7 @@ export function newQuestion(type: QuestionType, label: string, taken: Iterable<s
   const base = { key: uniqueKey(slugify(label), taken), label, required: false };
   switch (type) {
     case 'counter': return { ...base, type, min: 0, step: 1, default: 0 };
-    case 'toggle': return { ...base, type, default: false };
+    case 'toggle': return { ...base, type }; // no default: starts unanswered
     case 'choice': return { ...base, type, display: 'buttons', options: starterOptions() };
     case 'multi': return { ...base, type, options: starterOptions() };
     case 'number': return { ...base, type, integer: true };
@@ -63,9 +63,14 @@ export function newQuestion(type: QuestionType, label: string, taken: Iterable<s
   }
 }
 
-export function changeType(q: Question, type: QuestionType): Question {
-  const fresh = newQuestion(type, q.label, []);
-  return { ...fresh, key: q.key, required: q.required, ...(q.help ? { help: q.help } : {}) } as Question;
+/**
+ * Switch a question to another type. Its own settings start fresh, or come back as they were if `remembered`
+ * (the same question as that type, earlier) is given; nothing carries over from the type being left.
+ */
+export function changeType(q: Question, type: QuestionType, remembered?: Question): Question {
+  const settings = remembered?.type === type ? remembered : newQuestion(type, q.label, []);
+  const { help: _help, ...rest } = settings;
+  return { ...rest, key: q.key, label: q.label, required: q.required, ...(q.help ? { help: q.help } : {}) } as Question;
 }
 
 function swap<T>(list: T[], i: number, j: number): T[] {
@@ -158,11 +163,16 @@ export function renameOption<Q extends WithOptions>(q: Q, i: number, label: stri
   const value = !locked && followsLabel(o.value, o.label)
     ? uniqueKey(slugify(label), q.options.filter((_, k) => k !== i).map(x => x.value))
     : o.value;
-  return { ...q, options: q.options.map((x, k) => (k === i ? { ...x, label, value } : x)) } as Q;
+  return followDefault({ ...q, options: q.options.map((x, k) => (k === i ? { ...x, label, value } : x)) } as Q, o.value, value);
+}
+
+/** A single choice's default stays on its option when that option's value changes. */
+function followDefault<Q extends WithOptions>(q: Q, from: string, to: string): Q {
+  return 'default' in q && q.default === from ? ({ ...q, default: to } as Q) : q;
 }
 
 export function setOptionValue<Q extends WithOptions>(q: Q, i: number, value: string): Q {
-  return { ...q, options: q.options.map((x, k) => (k === i ? { ...x, value } : x)) } as Q;
+  return followDefault({ ...q, options: q.options.map((x, k) => (k === i ? { ...x, value } : x)) } as Q, q.options[i].value, value);
 }
 
 export function setOptionPoints(q: ChoiceQuestion, i: number, points: number | undefined): ChoiceQuestion {
@@ -176,7 +186,11 @@ export function setOptionPoints(q: ChoiceQuestion, i: number, points: number | u
   };
 }
 
-export const removeOption = <Q extends WithOptions>(q: Q, i: number): Q => ({ ...q, options: q.options.filter((_, k) => k !== i) }) as Q;
+export function removeOption<Q extends WithOptions>(q: Q, i: number): Q {
+  const next = { ...q, options: q.options.filter((_, k) => k !== i) } as Q;
+  if ('default' in next && next.default === q.options[i].value) delete (next as { default?: string }).default; // its option is gone
+  return next;
+}
 export const moveOption = <Q extends WithOptions>(q: Q, i: number, delta: -1 | 1): Q => ({ ...q, options: swap(q.options, i, i + delta) }) as Q;
 
 export function setFieldImage(f: FormDef, si: number, qi: number, dataUrl: string): FormDef {

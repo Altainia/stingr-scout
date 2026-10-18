@@ -185,7 +185,8 @@ describe('QuestionProps', () => {
   it('switches the question type', async () => {
     const { q } = setup(matchForm(), 0, 1);
     await fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'toggle' } });
-    expect(q()).toMatchObject({ key: 'auto_coral', type: 'toggle', default: false });
+    expect(q()).toMatchObject({ key: 'auto_coral', type: 'toggle' });
+    expect(q()).not.toHaveProperty('default'); // a new Yes / No starts with no default
   });
 
   it('sets which side Red is on in a field image', async () => {

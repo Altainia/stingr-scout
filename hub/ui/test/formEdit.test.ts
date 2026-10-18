@@ -1,4 +1,4 @@
-import { type ChoiceQuestion, validateFormDef } from '@stingr/shared';
+import { type ChoiceQuestion, type CounterQuestion, validateFormDef } from '@stingr/shared';
 import { describe, expect, it } from 'vitest';
 import { matchForm } from '../../../shared/test/fixtures';
 import {
@@ -87,9 +87,18 @@ describe('questions', () => {
     expect(moveSectionTo(f, 1, 2)).toEqual(f);
   });
 
-  it('changes type but keeps the key, label and required flag', () => {
+  it('changes type but keeps the key, label and required flag; a new Yes / No has no default', () => {
     const q = { ...newQuestion('counter', 'Coral', []), required: true };
-    expect(changeType(q, 'toggle')).toEqual({ key: 'coral', label: 'Coral', required: true, type: 'toggle', default: false });
+    expect(changeType(q, 'toggle')).toEqual({ key: 'coral', label: 'Coral', required: true, type: 'toggle' });
+  });
+
+  it('brings back what a type was set to before, and carries nothing across types', () => {
+    const counter: CounterQuestion = { ...(newQuestion('counter', 'Coral', []) as CounterQuestion), max: 12, points: 4, default: 2, summary: 'list' as const };
+    const toggle = changeType(counter, 'toggle');
+    expect(toggle).not.toHaveProperty('max');
+    expect(toggle).not.toHaveProperty('default');
+    const renamed = { ...toggle, label: 'Coral pieces', required: true };
+    expect(changeType(renamed, 'counter', counter)).toEqual({ ...counter, label: 'Coral pieces', required: true });
   });
 
   it('never reuses a key that is in published data', () => {
@@ -119,6 +128,16 @@ describe('questions', () => {
 });
 
 describe('options', () => {
+  it("keeps a choice's default on its option when the option's value changes, and clears it when the option goes", () => {
+    const climb = { ...(matchForm().sections[1].questions[0] as ChoiceQuestion), default: 'shallow' };
+    expect(setOptionValue(climb, 1, 'low').default).toBe('low');
+    expect(renameOption({ ...climb, options: climb.options.map(o => (o.value === 'shallow' ? { ...o, value: 'shallow' } : o)) }, 1, 'Low climb', false).default)
+      .toBe(renameOption(climb, 1, 'Low climb', false).options[1].value);
+    expect(removeOption(climb, 1)).not.toHaveProperty('default');
+    expect(removeOption(climb, 2).default).toBe('shallow');
+    expect(setOptionValue(climb, 0, 'nothing').default).toBe('shallow');
+  });
+
   const choice = newQuestion('choice', 'Climb', []) as ChoiceQuestion;
 
   it('adds options with unique values', () => {

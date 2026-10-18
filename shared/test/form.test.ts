@@ -147,3 +147,62 @@ describe('validateFormDef: summaries', () => {
     }
   });
 });
+
+describe('defaults', () => {
+  const withQuestion = (key: string) => {
+    const f = [matchForm(), pitForm()].find(form => findQuestion(form, key))!;
+    return { f, q: findQuestion(f, key)! };
+  };
+
+  it('starts each answer at its default, or blank when there is none', () => {
+    const { f, q } = withQuestion('auto_leave');
+    if (q.type !== 'toggle') throw new Error('fixture changed');
+    delete q.default;
+    expect(initialAnswers(f).auto_leave).toBeNull();
+    q.default = true;
+    expect(initialAnswers(f).auto_leave).toBe(true);
+
+    const climb = withQuestion('climb');
+    if (climb.q.type !== 'choice') throw new Error('fixture changed');
+    expect(initialAnswers(climb.f).climb).toBeNull();
+    climb.q.default = 'shallow';
+    expect(initialAnswers(climb.f).climb).toBe('shallow');
+
+    const defense = withQuestion('defense');
+    if (defense.q.type !== 'rating') throw new Error('fixture changed');
+    defense.q.default = 3;
+    expect(initialAnswers(defense.f).defense).toBe(3);
+
+    const weight = withQuestion('weight_lb');
+    if (weight.q.type !== 'number') throw new Error('fixture changed');
+    weight.q.default = 120;
+    expect(initialAnswers(weight.f).weight_lb).toBe(120);
+  });
+
+  it('accepts a Yes / No question with no default', () => {
+    const { f, q } = withQuestion('auto_leave');
+    if (q.type !== 'toggle') throw new Error('fixture changed');
+    delete q.default;
+    expect(validateFormDef(f).errors).toEqual([]);
+  });
+
+  it('refuses defaults that do not fit the question', () => {
+    const climb = withQuestion('climb');
+    if (climb.q.type !== 'choice') throw new Error('fixture changed');
+    climb.q.default = 'ladder';
+    expect(validateFormDef(climb.f).errors).toEqual(['Climb: Default must be one of the options']);
+
+    const defense = withQuestion('defense');
+    if (defense.q.type !== 'rating') throw new Error('fixture changed');
+    defense.q.default = 6; // highest rating is 5
+    expect(validateFormDef(defense.f).errors).toEqual(['Defense rating: Default must be a whole number from 1 to the highest rating']);
+
+    const weight = withQuestion('weight_lb');
+    if (weight.q.type !== 'number') throw new Error('fixture changed');
+    weight.q.default = 250; // max 200
+    expect(validateFormDef(weight.f).errors).toEqual(['Weight (lb): Default must be between Min and Max']);
+    weight.q.default = 120.5;
+    weight.q.integer = true;
+    expect(validateFormDef(weight.f).errors).toEqual(['Weight (lb): Default must be a whole number']);
+  });
+});

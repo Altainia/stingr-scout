@@ -14,12 +14,13 @@ interface QuestionBase {
 export interface ChoiceOption { value: string; label: string; points?: number }
 
 export interface CounterQuestion extends QuestionBase { type: 'counter'; min: number; max?: number; step: number; default: number; points?: number }
-export interface ToggleQuestion extends QuestionBase { type: 'toggle'; default: boolean; points?: number }
-export interface ChoiceQuestion extends QuestionBase { type: 'choice'; options: ChoiceOption[]; display: 'buttons' | 'dropdown' }
+/** A default is the answer a question starts with; without one it starts unanswered. */
+export interface ToggleQuestion extends QuestionBase { type: 'toggle'; default?: boolean; points?: number }
+export interface ChoiceQuestion extends QuestionBase { type: 'choice'; options: ChoiceOption[]; display: 'buttons' | 'dropdown'; default?: string }
 export interface MultiQuestion extends QuestionBase { type: 'multi'; options: { value: string; label: string }[] }
-export interface NumberQuestion extends QuestionBase { type: 'number'; min?: number; max?: number; integer: boolean }
+export interface NumberQuestion extends QuestionBase { type: 'number'; min?: number; max?: number; integer: boolean; default?: number }
 export interface TextQuestion extends QuestionBase { type: 'text'; multiline: boolean }
-export interface RatingQuestion extends QuestionBase { type: 'rating'; max: number }
+export interface RatingQuestion extends QuestionBase { type: 'rating'; max: number; default?: number }
 export interface TimerQuestion extends QuestionBase { type: 'timer' }
 export interface FieldMapQuestion extends QuestionBase { type: 'fieldmap'; assetId: string; maxPoints: number; redSide: Side }
 

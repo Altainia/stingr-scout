@@ -14,7 +14,7 @@ export function findQuestion(form: FormDef, key: string): Question | undefined {
 export function initialValue(q: Question): AnswerValue {
   switch (q.type) {
     case 'counter': return q.default;
-    case 'toggle': return q.default;
+    case 'toggle': case 'choice': case 'number': case 'rating': return q.default ?? null;
     default: return null;
   }
 }
@@ -70,7 +70,7 @@ function typeErrors(q: Question, form: FormDef): string[] {
       }
       break;
     case 'toggle':
-      if (typeof q.default !== 'boolean') e.push('Default must be Yes or No');
+      if (q.default !== undefined && typeof q.default !== 'boolean') e.push('Default must be Yes or No');
       break;
     case 'choice':
     case 'multi': {
@@ -81,14 +81,24 @@ function typeErrors(q: Question, form: FormDef): string[] {
       const values = q.options.map(o => o.value);
       if (values.some(v => !v.trim())) e.push('Option values can\'t be empty');
       if (new Set(values).size !== values.length) e.push('Option values must all be different');
+      if (q.type === 'choice' && q.default !== undefined && !values.includes(q.default)) e.push('Default must be one of the options');
       break;
     }
     case 'number':
       if ((q.min !== undefined && !isNum(q.min)) || (q.max !== undefined && !isNum(q.max))) e.push('Min and Max must be numbers');
       else if (q.min !== undefined && q.max !== undefined && q.max <= q.min) e.push('Max must be greater than Min');
+      else if (q.default !== undefined) {
+        if (!isNum(q.default)) e.push('Default must be a number');
+        else if ((q.min !== undefined && q.default < q.min) || (q.max !== undefined && q.default > q.max)) {
+          e.push(q.min !== undefined && q.max !== undefined ? 'Default must be between Min and Max' : q.min !== undefined ? 'Default must be at least Min' : 'Default must be at most Max');
+        } else if (q.integer && !Number.isInteger(q.default)) e.push('Default must be a whole number');
+      }
       break;
     case 'rating':
       if (!(Number.isInteger(q.max) && q.max >= 2 && q.max <= 10)) e.push('Highest rating must be a whole number from 2 to 10');
+      else if (q.default !== undefined && !(Number.isInteger(q.default) && q.default >= 1 && q.default <= q.max)) {
+        e.push('Default must be a whole number from 1 to the highest rating');
+      }
       break;
     case 'fieldmap':
       if (!(q.assetId in form.assets)) e.push('Choose a field image');
