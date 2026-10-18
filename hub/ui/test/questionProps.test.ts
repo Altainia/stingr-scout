@@ -77,6 +77,43 @@ describe('QuestionProps', () => {
     expect(screen.getByLabelText('Show as').closest('.fields')).not.toBeNull(); // the caption-and-box grid
   });
 
+  it('explains each Summary choice in a popup beside the Summary caption', async () => {
+    setup(matchForm(), 0, 1); // auto_coral, a counter
+    expect(screen.queryByRole('dialog', { name: 'About Summary' })).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: 'About Summary' }));
+    const pop = screen.getByRole('dialog', { name: 'About Summary' });
+    for (const choice of ['Average and max', 'Percent yes', 'How often each option', 'List of answers', 'Field map plot', "Don't summarize"]) {
+      expect(within(pop).getByText(choice)).toBeTruthy();
+    }
+    expect(pop.textContent).toContain('For this Counter (+/−) question, the default is Average and max.');
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'About Summary' })).toBeNull();
+  });
+
+  it('closes an info popup when clicking elsewhere or on its button again', async () => {
+    setup(matchForm(), 0, 1);
+    const button = screen.getByRole('button', { name: 'About Summary' });
+    await fireEvent.click(button);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    await fireEvent.click(button);
+    expect(screen.queryByRole('dialog', { name: 'About Summary' })).toBeNull();
+    await fireEvent.click(button);
+    await fireEvent.click(document.body);
+    expect(screen.queryByRole('dialog', { name: 'About Summary' })).toBeNull();
+  });
+
+  it('explains what a key is in a popup instead of under the field', async () => {
+    setup(matchForm(), 0, 1);
+    expect(screen.queryByText(/column name in exports/)).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: 'About Key' }));
+    expect(within(screen.getByRole('dialog', { name: 'About Key' })).getByText(/column name in exports/)).toBeTruthy();
+  });
+
+  it("still says why a locked key can't change", () => {
+    setup(matchForm(), 0, 1, ['auto_coral']);
+    expect(screen.getByText("The key is in published data, so it can't change.")).toBeTruthy();
+  });
+
   it('locks a key that is in published data', async () => {
     const { q } = setup(matchForm(), 0, 1, ['auto_coral']);
     expect((screen.getByLabelText('Key') as HTMLInputElement).disabled).toBe(true);

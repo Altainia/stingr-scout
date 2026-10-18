@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { ChoiceOption, ChoiceQuestion, FormDef, Question, QuestionType } from '@stingr/shared';
+  import { type ChoiceOption, type ChoiceQuestion, type FormDef, type Question, type QuestionType, summaryKind } from '@stingr/shared';
+  import InfoTip from './InfoTip.svelte';
   import {
     addOption, changeType, moveOption, QUESTION_TYPES, removeOption, renameOption, renameQuestion, replaceQuestion,
     setFieldImage, setOptionPoints, setOptionValue, typeLabel,
@@ -17,10 +18,21 @@
   let q = $derived(form.sections[si].questions[qi]);
   let locked = $derived(lockedKeys.has(q.key));
   let imageError = $state<string | null>(null);
+  let defaultSummaryLabel = $derived(SUMMARY_LABELS[summaryKind({ ...q, summary: undefined } as Question)]);
 
   const SUMMARIES: [string, string][] = [
     ['', 'Default for this type'], ['avg', 'Average and max'], ['pct', 'Percent yes'], ['distribution', 'How often each option'],
     ['list', 'List of answers'], ['scatter', 'Field map plot'], ['none', "Don't summarize"],
+  ];
+  const SUMMARY_LABELS = Object.fromEntries(SUMMARIES) as Record<string, string>;
+  // What each summary shows, for the Summary info popup.
+  const SUMMARY_HELP: [string, string][] = [
+    ['Average and max', 'The average and the highest value. For counters, numbers, ratings and timers.'],
+    ['Percent yes', 'How often the answer was Yes. For Yes / No questions.'],
+    ['How often each option', 'The share of matches each option was chosen. For single and multiple choice.'],
+    ['List of answers', "Every answer, listed on the team's page. For text."],
+    ['Field map plot', 'Every marked spot, drawn on the field image. For field maps.'],
+    ["Don't summarize", 'Answers are kept and exported, but not summarized.'],
   ];
 
   function put(next: Question) {
@@ -68,20 +80,37 @@
         {#each QUESTION_TYPES as t (t.type)}<option value={t.type}>{t.label}</option>{/each}
       </select>
     </label>
-    <label>Key <input aria-label="Key" value={q.key} disabled={locked} oninput={e => set({ key: e.currentTarget.value })} /></label>
+    <div class="field">
+      <span class="caption">Key
+        <InfoTip label="About Key">
+          <p>The key is the name this question's answers are saved under, and its column name in exports: lowercase letters, digits and _.</p>
+          <p>It follows the label until the form is published. After that it can't change, because collected answers use it.</p>
+        </InfoTip>
+      </span>
+      <input aria-label="Key" value={q.key} disabled={locked} oninput={e => set({ key: e.currentTarget.value })} />
+    </div>
   </div>
-  <p class="hint">{locked ? "The key is in published data, so it can't change." : 'The key is the column name in exports: lowercase letters, digits and _.'}</p>
+  {#if locked}<p class="hint">The key is in published data, so it can't change.</p>{/if}
   <label>Help text <input aria-label="Help text" value={q.help ?? ''} oninput={e => set({ help: e.currentTarget.value || undefined })} /></label>
   <div class="row">
     <div class="field">
       <span class="caption">Required</span>
       <label class="inline"><input type="checkbox" aria-label="Required" checked={q.required} onchange={e => set({ required: e.currentTarget.checked })} /> Scouts must answer</label>
     </div>
-    <label>Summary
+    <div class="field">
+      <span class="caption">Summary
+        <InfoTip label="About Summary">
+          <p>How this question's answers are summarized for each team, on the Teams page, each team's page and in the team summary export.</p>
+          <dl>
+            {#each SUMMARY_HELP as [name, text] (name)}<dt>{name}</dt><dd>{text}</dd>{/each}
+          </dl>
+          <p>For this {typeLabel(q.type)} question, the default is {defaultSummaryLabel}.</p>
+        </InfoTip>
+      </span>
       <select aria-label="Summary" value={q.summary ?? ''} onchange={e => set({ summary: e.currentTarget.value || undefined })}>
         {#each SUMMARIES as [value, label] (value)}<option {value}>{label}</option>{/each}
       </select>
-    </label>
+    </div>
   </div>
 
   <!-- Settings only this type of question has, set apart from those every question has. -->

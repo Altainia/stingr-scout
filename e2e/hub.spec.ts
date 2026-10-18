@@ -236,3 +236,14 @@ test('shows the problem count and its link level with each other, after Publish'
   await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click();
   await expect(page.getByText(/no unpublished changes/)).toBeVisible();
 });
+
+test('keeps an info popup on screen at the right edge', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 650 });
+  await page.goto('/hub/#/forms/match');
+  await page.locator('.outline').getByRole('button', { name: /^Coral scored ·/ }).click();
+  await page.getByRole('button', { name: 'About Summary' }).click();
+  const pop = (await page.getByRole('dialog', { name: 'About Summary' }).boundingBox())!;
+  expect(pop.x + pop.width, 'popup ends on screen').toBeLessThanOrEqual(1280);
+  const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+  expect(scroll, 'the page does not scroll sideways').toBeLessThanOrEqual(client);
+});
