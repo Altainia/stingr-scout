@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import { matchForm, pitForm, record } from '../../../shared/test/fixtures';
 import { openDb } from '../src/db';
 import { deleteEvent, eventCounts, seasonCounts, startNewSeason } from '../src/store/clear';
@@ -10,6 +13,7 @@ import { getPhoto, putPhoto } from '../src/store/photos';
 import { currentRecords, insertRecord } from '../src/store/records';
 import { listSchedule, listTeams, replaceSchedule } from '../src/store/schedule';
 import { getSetting } from '../src/store/settings';
+import { makeApp, setupEvent } from './helpers';
 
 const NOW = '2027-03-01T12:00:00.000Z';
 
@@ -70,5 +74,56 @@ describe('starting a new season', () => {
     const after = hubIdentity(db);
     expect(after.hubId).toBe(before.hubId);
     expect(after.seasonId).not.toBe(before.seasonId);
+  });
+});
+
+const dirs: string[] = [];
+afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
+async function fileApp() {
+  const dir = mkdtempSync(join(tmpdir(), 'stingr-clear-'));
+  dirs.push(dir);
+  const dbPath = join(dir, 'stingr.db');
+  return { dir, app: await makeApp({ db: openDb(dbPath), dbPath }) };
+}
+
+describe('clearing routes', () => {
+  it('previews, refuses without the typed confirmation, then deletes an event after saving a backup', async () => {
+    const { dir, app } = await fileApp();
+    await setupEvent(app);
+    expect((await app.inject({ url: '/api/events/2027test/clear' })).json()).toEqual({ matches: 0, teams: 0, records: 0, photos: 0 });
+    const wrong = await app.inject({ method: 'POST', url: '/api/events/2027test/delete', payload: { confirm: '2027tes' } });
+    expect(wrong.statusCode).toBe(400);
+    expect(wrong.json().error).toBe('Type the event key to confirm');
+    const res = await app.inject({ method: 'POST', url: '/api/events/2027test/delete', payload: { confirm: '2027test' } });
+    expect(res.json()).toEqual({ ok: true, backup: 'stingr-2027-03-01T12-00-00-000Z.db', removed: { matches: 0, teams: 0, records: 0, photos: 0 } });
+    expect(existsSync(join(dir, 'backups', 'stingr-2027-03-01T12-00-00-000Z.db'))).toBe(true);
+    expect((await app.inject({ url: '/api/events' })).json().events).toEqual([]);
+    expect((await app.inject({ url: '/api/events/2027test/clear' })).statusCode).toBe(404);
+  });
+
+  it('starts a new season only with NEW SEASON typed', async () => {
+    const { app } = await fileApp();
+    await setupEvent(app);
+    expect((await app.inject({ url: '/api/season/clear' })).json()).toMatchObject({ events: 1, forms: 2 });
+    expect((await app.inject({ method: 'POST', url: '/api/season/new', payload: { confirm: 'new season' } })).statusCode).toBe(400);
+    const res = await app.inject({ method: 'POST', url: '/api/season/new', payload: { confirm: 'NEW SEASON' } });
+    expect(res.json()).toMatchObject({ ok: true, removed: { events: 1, forms: 2 } });
+    expect((await app.inject({ url: '/api/forms' })).json()).toEqual([]);
+  });
+
+  it('clears without a backup when there is no database file', async () => {
+    const app = await makeApp();
+    await setupEvent(app);
+    const res = await app.inject({ method: 'POST', url: '/api/events/2027test/delete', payload: { confirm: '2027test' } });
+    expect(res.json()).toMatchObject({ ok: true, backup: null });
+  });
+
+  it('does not clear anything when the backup cannot be written', async () => {
+    const { dir, app } = await fileApp();
+    await setupEvent(app);
+    writeFileSync(join(dir, 'backups'), 'not a folder'); // the backups folder can't be created
+    const res = await app.inject({ method: 'POST', url: '/api/season/new', payload: { confirm: 'NEW SEASON' } });
+    expect(res.statusCode).toBe(500);
+    expect((await app.inject({ url: '/api/events' })).json().events).toHaveLength(1);
   });
 });
