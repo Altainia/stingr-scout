@@ -23,6 +23,23 @@ export function initialAnswers(form: FormDef): Answers {
   return Object.fromEntries(allQuestions(form).map(q => [q.key, initialValue(q)]));
 }
 
+/** What each summary is called in the hub. */
+export const SUMMARY_NAMES: Record<SummaryKind, string> = {
+  avg: 'Average and max', pct: 'Percent yes', distribution: 'How often each option', list: 'List of answers',
+  scatter: 'Field map plot', none: "Don't summarize",
+};
+
+/** The summaries that give a meaningful result for a type of question, its default first. */
+export function summaryOptions(type: Question['type']): SummaryKind[] {
+  switch (type) {
+    case 'counter': case 'number': case 'rating': case 'timer': return ['avg', 'list', 'none'];
+    case 'toggle': return ['pct', 'none'];
+    case 'choice': case 'multi': return ['distribution', 'none'];
+    case 'text': return ['list', 'none'];
+    case 'fieldmap': return ['scatter', 'none'];
+  }
+}
+
 function defaultSummary(q: Question): SummaryKind {
   switch (q.type) {
     case 'counter': case 'number': case 'rating': case 'timer': return 'avg';
@@ -113,6 +130,9 @@ export function validateFormDef(form: FormDef, earlier: FormDef[] = []): { error
     if (!q.label.trim()) errors.push(`${where}: Label is empty`);
     if (typeof q.required !== 'boolean') errors.push(`${where}: Required must be true or false`);
     for (const msg of typeErrors(q, form)) errors.push(`${where}: ${msg}`);
+    if (q.summary !== undefined && !summaryOptions(q.type).includes(q.summary)) {
+      errors.push(`${where}: Summary "${SUMMARY_NAMES[q.summary] ?? q.summary}" doesn't work for this type of question`);
+    }
   }
 
   const previous = new Map<string, { type: string; version: number }>();

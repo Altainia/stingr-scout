@@ -82,12 +82,39 @@ describe('QuestionProps', () => {
     expect(screen.queryByRole('dialog', { name: 'About Summary' })).toBeNull();
     await fireEvent.click(screen.getByRole('button', { name: 'About Summary' }));
     const pop = screen.getByRole('dialog', { name: 'About Summary' });
-    for (const choice of ['Average and max', 'Percent yes', 'How often each option', 'List of answers', 'Field map plot', "Don't summarize"]) {
+    for (const choice of ['Average and max', 'List of answers', "Don't summarize"]) {
       expect(within(pop).getByText(choice)).toBeTruthy();
     }
     expect(pop.textContent).toContain('For this Counter (+/−) question, the default is Average and max.');
     await fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog', { name: 'About Summary' })).toBeNull();
+  });
+
+  it("offers only the summaries that work for the question's type", () => {
+    const optionsFor = (si: number, qi: number) => {
+      const { unmount } = render(QuestionProps, { form: matchForm(), si, qi, lockedKeys: new Set(), lockedOptions: new Map(), onchange: vi.fn() });
+      const names = [...(screen.getByLabelText('Summary') as HTMLSelectElement).options].map(o => o.textContent);
+      unmount();
+      return names;
+    };
+    expect(optionsFor(2, 0)).toEqual(['Default (Average and max)', 'List of answers', "Don't summarize"]); // rating
+    expect(optionsFor(0, 0)).toEqual(['Default (Percent yes)', "Don't summarize"]); // yes / no
+    expect(optionsFor(0, 2)).toEqual(['Default (Field map plot)', "Don't summarize"]); // field map
+  });
+
+  it('shows a summary that does not fit the type, marked so it can be changed', () => {
+    const form = matchForm();
+    form.sections[2].questions[0].summary = 'scatter'; // a rating
+    setup(form, 2, 0);
+    const select = screen.getByLabelText('Summary') as HTMLSelectElement;
+    expect(select.selectedOptions[0].textContent).toBe("Field map plot (doesn't work for this type)");
+  });
+
+  it('explains only the summaries this type offers', async () => {
+    setup(matchForm(), 0, 0); // yes / no
+    await fireEvent.click(screen.getByRole('button', { name: 'About Summary' }));
+    const pop = screen.getByRole('dialog', { name: 'About Summary' });
+    expect([...pop.querySelectorAll('dt')].map(d => d.textContent)).toEqual(['Percent yes', "Don't summarize"]);
   });
 
   it('closes an info popup when clicking elsewhere or on its button again', async () => {

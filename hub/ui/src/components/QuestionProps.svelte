@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { type ChoiceOption, type ChoiceQuestion, type FormDef, type Question, type QuestionType, summaryKind } from '@stingr/shared';
+  import {
+    type ChoiceOption, type ChoiceQuestion, type FormDef, type Question, type QuestionType, SUMMARY_NAMES, summaryKind, summaryOptions,
+    type SummaryKind,
+  } from '@stingr/shared';
   import InfoTip from './InfoTip.svelte';
   import {
     addOption, changeType, moveOption, QUESTION_TYPES, removeOption, renameOption, renameQuestion, replaceQuestion,
@@ -18,22 +21,21 @@
   let q = $derived(form.sections[si].questions[qi]);
   let locked = $derived(lockedKeys.has(q.key));
   let imageError = $state<string | null>(null);
-  let defaultSummaryLabel = $derived(SUMMARY_LABELS[summaryKind({ ...q, summary: undefined } as Question)]);
+  // Only the summaries that work for this type are offered; the default one is the "Default (…)" choice.
+  let summaries = $derived(summaryOptions(q.type));
+  let defaultSummary = $derived(summaryKind({ ...q, summary: undefined } as Question));
+  let summaryValue = $derived(q.summary === undefined || q.summary === defaultSummary ? '' : q.summary);
+  let summaryMisfit = $derived(q.summary !== undefined && !summaries.includes(q.summary));
 
-  const SUMMARIES: [string, string][] = [
-    ['', 'Default for this type'], ['avg', 'Average and max'], ['pct', 'Percent yes'], ['distribution', 'How often each option'],
-    ['list', 'List of answers'], ['scatter', 'Field map plot'], ['none', "Don't summarize"],
-  ];
-  const SUMMARY_LABELS = Object.fromEntries(SUMMARIES) as Record<string, string>;
   // What each summary shows, for the Summary info popup.
-  const SUMMARY_HELP: [string, string][] = [
-    ['Average and max', 'The average and the highest value. For counters, numbers, ratings and timers.'],
-    ['Percent yes', 'How often the answer was Yes. For Yes / No questions.'],
-    ['How often each option', 'The share of matches each option was chosen. For single and multiple choice.'],
-    ['List of answers', "Every answer, listed on the team's page. For text."],
-    ['Field map plot', 'Every marked spot, drawn on the field image. For field maps.'],
-    ["Don't summarize", 'Answers are kept and exported, but not summarized.'],
-  ];
+  const SUMMARY_HELP: Record<SummaryKind, string> = {
+    avg: 'The average and the highest value.',
+    pct: 'How often the answer was Yes.',
+    distribution: 'The share of matches each option was chosen.',
+    list: "Every answer, listed on the team's page.",
+    scatter: 'Every marked spot, drawn on the field image.',
+    none: 'Answers are kept and exported, but not summarized.',
+  };
 
   function put(next: Question) {
     onchange(replaceQuestion(form, si, qi, next));
@@ -102,13 +104,15 @@
         <InfoTip label="About Summary">
           <p>How this question's answers are summarized for each team, on the Teams page, each team's page and in the team summary export.</p>
           <dl>
-            {#each SUMMARY_HELP as [name, text] (name)}<dt>{name}</dt><dd>{text}</dd>{/each}
+            {#each summaries as kind (kind)}<dt>{SUMMARY_NAMES[kind]}</dt><dd>{SUMMARY_HELP[kind]}</dd>{/each}
           </dl>
-          <p>For this {typeLabel(q.type)} question, the default is {defaultSummaryLabel}.</p>
+          <p>For this {typeLabel(q.type)} question, the default is {SUMMARY_NAMES[defaultSummary]}.</p>
         </InfoTip>
       </span>
-      <select aria-label="Summary" value={q.summary ?? ''} onchange={e => set({ summary: e.currentTarget.value || undefined })}>
-        {#each SUMMARIES as [value, label] (value)}<option {value}>{label}</option>{/each}
+      <select aria-label="Summary" value={summaryValue} onchange={e => set({ summary: e.currentTarget.value || undefined })}>
+        <option value="">Default ({SUMMARY_NAMES[defaultSummary]})</option>
+        {#each summaries.filter(k => k !== defaultSummary) as kind (kind)}<option value={kind}>{SUMMARY_NAMES[kind]}</option>{/each}
+        {#if summaryMisfit && q.summary}<option value={q.summary}>{SUMMARY_NAMES[q.summary]} (doesn't work for this type)</option>{/if}
       </select>
     </div>
   </div>

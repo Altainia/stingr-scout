@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findQuestion, initialAnswers, summaryKind, validateFormDef } from '../src/form';
+import { allQuestions, findQuestion, initialAnswers, SUMMARY_NAMES, summaryKind, summaryOptions, validateFormDef } from '../src/form';
 import { matchForm, pitForm } from './fixtures';
 
 describe('initialAnswers', () => {
@@ -102,5 +102,48 @@ describe('validateFormDef', () => {
     expect(validateFormDef(v2, [v1]).warnings).toEqual([
       'Coral scored was a counter in version 1 and is now a toggle, so its older answers are left out of summaries',
     ]);
+  });
+});
+
+describe('summaryOptions', () => {
+  it('offers only the summaries that work for each type', () => {
+    expect(summaryOptions('counter')).toEqual(['avg', 'list', 'none']);
+    expect(summaryOptions('number')).toEqual(['avg', 'list', 'none']);
+    expect(summaryOptions('rating')).toEqual(['avg', 'list', 'none']);
+    expect(summaryOptions('timer')).toEqual(['avg', 'list', 'none']);
+    expect(summaryOptions('toggle')).toEqual(['pct', 'none']);
+    expect(summaryOptions('choice')).toEqual(['distribution', 'none']);
+    expect(summaryOptions('multi')).toEqual(['distribution', 'none']);
+    expect(summaryOptions('text')).toEqual(['list', 'none']);
+    expect(summaryOptions('fieldmap')).toEqual(['scatter', 'none']);
+  });
+
+  it("puts each type's default first", () => {
+    for (const q of allQuestions(matchForm())) expect(summaryOptions(q.type)[0]).toBe(summaryKind({ ...q, summary: undefined }));
+  });
+
+  it('names every summary for people', () => {
+    expect(SUMMARY_NAMES).toEqual({
+      avg: 'Average and max', pct: 'Percent yes', distribution: 'How often each option', list: 'List of answers',
+      scatter: 'Field map plot', none: "Don't summarize",
+    });
+  });
+});
+
+describe('validateFormDef: summaries', () => {
+  it("refuses a summary that doesn't work for the question's type", () => {
+    const form = matchForm();
+    const defense = allQuestions(form).find(q => q.key === 'defense')!;
+    defense.summary = 'scatter';
+    expect(validateFormDef(form).errors).toContain('Defense rating: Summary "Field map plot" doesn\'t work for this type of question');
+  });
+
+  it('accepts every summary a type offers', () => {
+    const form = matchForm();
+    const defense = allQuestions(form).find(q => q.key === 'defense')!;
+    for (const s of summaryOptions('rating')) {
+      defense.summary = s;
+      expect(validateFormDef(form).errors).toEqual([]);
+    }
   });
 });
