@@ -247,3 +247,42 @@ test('keeps an info popup on screen at the right edge', async ({ page }) => {
   const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(scroll, 'the page does not scroll sideways').toBeLessThanOrEqual(client);
 });
+
+test('joins single-answer buttons, sizes the timer steadily, and shows it running after editing the time', async ({ page }) => {
+  await page.goto('/hub/#/forms/match');
+  const preview = page.getByRole('region', { name: 'Tablet preview' });
+  const box = async (l: ReturnType<typeof page.locator>) => (await l.boundingBox())!;
+  const checked: string[] = [];
+
+  for (const tab of ['Auto', 'Endgame', 'Notes']) {
+    await preview.getByRole('button', { name: tab, exact: true }).click();
+    // Single answers (Yes / No, a rating, a choice shown as buttons): neighbouring buttons touch, sharing a border.
+    for (const [left, right] of [['Yes', 'No'], ['1', '2'], ['None', 'Shallow']]) {
+      const l = preview.getByRole('button', { name: left, exact: true });
+      if (!(await l.count())) continue;
+      const a = await box(l.first());
+      const b = await box(preview.getByRole('button', { name: right, exact: true }).first());
+      expect(b.x - (a.x + a.width), `${left} and ${right} touch`).toBeLessThanOrEqual(0);
+      checked.push(left);
+    }
+    // Multi-select keeps its gap.
+    const multi = preview.getByRole('button', { name: 'Far', exact: true });
+    if (await multi.count()) {
+      const near = await box(preview.getByRole('button', { name: 'Near', exact: true }));
+      expect((await box(multi)).x - (near.x + near.width), 'multi-select buttons keep a gap').toBeGreaterThanOrEqual(6);
+    }
+    // Timer: Start and Stop are the same width; started from the time box, the running time shows.
+    const start = preview.getByRole('button', { name: 'Start', exact: true });
+    if (await start.count()) {
+      const startWidth = (await box(start)).width;
+      await preview.getByRole('button', { name: 'Edit time' }).click();
+      await expect(preview.getByLabel('Seconds')).toBeFocused();
+      await start.click();
+      const stop = preview.getByRole('button', { name: 'Stop', exact: true });
+      expect((await box(stop)).width, 'Start and Stop are the same width').toBe(startWidth);
+      await expect(preview.getByRole('button', { name: 'Edit time' })).not.toHaveText('0.0 s');
+      await stop.click();
+    }
+  }
+  expect(checked.sort(), 'every kind of joined group was found').toEqual(['1', 'None', 'Yes']);
+});

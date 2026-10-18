@@ -12,7 +12,7 @@
     {/each}
   </select>
 {:else}
-  <div class="choices">
+  <div class="choices segmented">
     {#each question.options as o, i (i)}
       <button type="button" aria-pressed={value === o.value} onclick={() => onchange(value === o.value ? null : o.value)}>{o.label}</button>
     {/each}

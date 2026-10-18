@@ -139,6 +139,20 @@ describe('Rating', () => {
   });
 });
 
+describe('button groups', () => {
+  it('joins the buttons of single answers into one bar, and keeps multi-select buttons apart', () => {
+    const groupOf = (name: string) => screen.getByRole('button', { name }).parentElement!;
+    render(Rating, { question: rating, value: null, onchange: vi.fn() });
+    expect(groupOf('3').classList.contains('segmented')).toBe(true);
+    render(Toggle, { question: toggle, value: null, onchange: vi.fn() });
+    expect(groupOf('Yes').classList.contains('segmented')).toBe(true);
+    render(Choice, { question: choice, value: null, onchange: vi.fn() });
+    expect(groupOf('Deep').classList.contains('segmented')).toBe(true);
+    render(Multi, { question: multi, value: null, onchange: vi.fn() });
+    expect(groupOf('Far').classList.contains('segmented')).toBe(false);
+  });
+});
+
 describe('Timer', () => {
   afterEach(() => vi.useRealTimers());
 
@@ -166,6 +180,36 @@ describe('Timer', () => {
     await fireEvent.click(screen.getByLabelText('Edit time'));
     await fireEvent.change(screen.getByLabelText('Seconds'), { target: { value: '7' } });
     expect(onchange).toHaveBeenLastCalledWith(7);
+  });
+
+  it('goes back to the time when the box loses focus, even if nothing was changed', async () => {
+    render(Timer, { question: timer, value: 2.5, onchange: vi.fn() });
+    await fireEvent.click(screen.getByLabelText('Edit time'));
+    const box = screen.getByLabelText('Seconds');
+    expect(document.activeElement).toBe(box); // ready to type
+    await fireEvent.blur(box);
+    expect(screen.getByLabelText('Edit time').textContent).toBe('2.5 s');
+  });
+
+  it('keeps the time when Escape is pressed in the box', async () => {
+    const onchange = vi.fn();
+    render(Timer, { question: timer, value: 2.5, onchange });
+    await fireEvent.click(screen.getByLabelText('Edit time'));
+    const box = screen.getByLabelText('Seconds') as HTMLInputElement;
+    await fireEvent.input(box, { target: { value: '9' } });
+    await fireEvent.keyDown(box, { key: 'Escape' });
+    expect(screen.getByLabelText('Edit time').textContent).toBe('2.5 s');
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  it('shows the time running when started from the box', async () => {
+    vi.useFakeTimers();
+    render(Timer, { question: timer, value: 2, onchange: vi.fn() });
+    await fireEvent.click(screen.getByLabelText('Edit time'));
+    await fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    expect(screen.getByLabelText('Edit time').textContent).toBe('3.0 s');
   });
 });
 

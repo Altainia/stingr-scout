@@ -13,6 +13,7 @@
   let shown = $derived(startedAt === null ? base : base + (now - startedAt) / 1000);
 
   function start() {
+    editing = false; // show the time running
     startedAt = Date.now();
     now = startedAt;
     ticker = setInterval(() => { now = Date.now(); }, 100);
@@ -36,13 +37,29 @@
 
   // Leaving the section while the timer runs keeps the time counted so far.
   onDestroy(stop);
+
+  /** Finish typing a time: Enter, a change, or leaving the box. */
+  function commit(text: string) {
+    if (!editing) return; // already finished (for example by Escape)
+    editing = false;
+    const t = text.trim();
+    const next = t === '' ? null : round(Number(t));
+    if (next !== (typeof value === 'number' ? value : null)) onchange(next);
+  }
+
+  function onKey(e: KeyboardEvent & { currentTarget: HTMLInputElement }) {
+    if (e.key === 'Enter') commit(e.currentTarget.value);
+    else if (e.key === 'Escape') editing = false; // keep the time as it was
+  }
+
+  const focus = (el: HTMLInputElement) => { el.focus(); el.select(); };
 </script>
 
 <div class="timer" role="group" aria-label={question.label}>
   {#if editing}
     <input
-      type="number" step="0.1" min="0" aria-label="Seconds" value={base}
-      onchange={e => { const t = e.currentTarget.value; onchange(t === '' ? null : round(Number(t))); editing = false; }}
+      type="number" step="0.1" min="0" aria-label="Seconds" value={base} use:focus
+      onchange={e => commit(e.currentTarget.value)} onblur={e => commit(e.currentTarget.value)} onkeydown={onKey}
     />
   {:else}
     <button type="button" class="readout" aria-label="Edit time" onclick={() => { if (startedAt === null) editing = true; }}>{shown.toFixed(1)} s</button>

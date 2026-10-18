@@ -64,6 +64,13 @@ main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .hint { color: var(--muted); }
 .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin: 12px 0; }
 .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+/* One answer from a few: the buttons join into one bar. */
+.choices.segmented { gap: 0; }
+.choices.segmented button { border-radius: 0; }
+.choices.segmented button + button { margin-left: -2px; } /* share the border between neighbours */
+.choices.segmented button:first-child { border-radius: 8px 0 0 8px; }
+.choices.segmented button:last-child { border-radius: 0 8px 8px 0; }
+.choices.segmented button[aria-pressed='true'] { position: relative; z-index: 1; }
 .question { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
 .question header { display: flex; justify-content: space-between; align-items: center; }
 .question h3 { margin: 0; font-size: 1.1rem; }
@@ -81,7 +88,9 @@ main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .fieldmap img { width: 100%; display: block; user-select: none; }
 .fieldmap .dot { position: absolute; width: 28px; height: 28px; min-width: 0; min-height: 0; padding: 0; margin: -14px 0 0 -14px; border-radius: 50%; background: var(--accent); }
 .timer { display: flex; gap: 12px; align-items: center; }
-.timer .readout { font-size: 1.8rem; border: none; }
+.timer .readout { font-size: 1.8rem; border: none; min-width: 4.4em; padding: 0 8px; font-variant-numeric: tabular-nums; text-align: left; }
+.timer input { width: 5.5em; font-size: 1.4rem; }
+.timer .big { min-width: 7em; } /* Start and Stop are the same size */
 .backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
 .dialog { background: var(--surface); color: var(--text); border-radius: 12px; padding: 24px; max-width: 560px; width: 90%; }
 .dialog .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
