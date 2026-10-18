@@ -1,5 +1,6 @@
 import { type FormDef, type FormKind, validateFormDef } from '@stingr/shared';
 import { type Db, tx } from '../db';
+import { getSetting } from './settings';
 
 type JsonRow = { json: string };
 const parse = (row: JsonRow | undefined): FormDef | undefined => (row ? (JSON.parse(row.json) as FormDef) : undefined);
@@ -45,7 +46,9 @@ export function publishDraft(db: Db, kind: FormKind, now: string): PublishResult
   const draft = parse(db.prepare('SELECT json FROM form_drafts WHERE kind = ?').get(kind) as unknown as JsonRow | undefined);
   if (!draft) return { ok: false, errors: ['There are no unpublished changes to publish'], warnings: [] };
   const earlier = listForms(db, kind);
-  const form: FormDef = { ...draft, kind, version: (earlier.at(-1)?.version ?? 0) + 1 };
+  // Numbering never restarts, even after a new season removed the published versions (see startNewSeason).
+  const floor = Number(getSetting(db, `form_version_floor:${kind}`) ?? 0);
+  const form: FormDef = { ...draft, kind, version: Math.max(earlier.at(-1)?.version ?? 0, floor) + 1 };
   const { errors, warnings } = validateFormDef(form, earlier);
   if (errors.length) return { ok: false, errors, warnings };
   tx(db, () => {

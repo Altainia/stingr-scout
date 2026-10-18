@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { matchForm, pitForm } from '../../../shared/test/fixtures';
 import { openDb } from '../src/db';
 import { discardDraft, getDraft, getForm, hasDraft, latestForm, listForms, publishDraft, saveDraft } from '../src/store/forms';
+import { setSetting } from '../src/store/settings';
 
 const NOW = '2027-03-01T12:00:00.000Z';
 
@@ -56,5 +57,13 @@ describe('form storage', () => {
     saveDraft(db, matchForm(), NOW);
     publishDraft(db, 'match', NOW);
     expect(listForms(db).map(f => `${f.kind}${f.version}`)).toEqual(['match1', 'pit1']);
+  });
+
+  it('keeps counting form versions after the published ones are gone', () => {
+    const db = openDb(':memory:');
+    setSetting(db, 'form_version_floor:match', '4');
+    saveDraft(db, matchForm(), NOW);
+    const res = publishDraft(db, 'match', NOW);
+    expect(res.ok && res.form.version).toBe(5);
   });
 });
