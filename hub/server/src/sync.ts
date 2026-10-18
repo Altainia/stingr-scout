@@ -40,6 +40,9 @@ export function ingestRecord(db: Db, value: unknown, via: 'usb' | 'qr', now: str
   const errors = checkRecord(value);
   if (errors.length) return { ok: false, reason: errors.join('; ') };
   const rec = value as ScoutRecord;
+  if (!db.prepare('SELECT 1 FROM events WHERE key = ?').get(rec.eventKey)) {
+    return { ok: false, reason: `Event ${rec.eventKey} isn't on the hub (it may have been deleted)` };
+  }
   if (!getForm(db, rec.kind, rec.formVersion)) return { ok: false, reason: `Unknown ${rec.kind} form version ${rec.formVersion}` };
   return { ok: true, outcome: insertRecord(db, rec, via, now), record: rec };
 }

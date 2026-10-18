@@ -90,6 +90,16 @@ describe('parseSyncRequest', () => {
   ])('rejects %j', (body, msg) => expect(parseSyncRequest(body)).toBe(msg));
 });
 
+describe('records for unknown events', () => {
+  it('refuses a record for an event that is not on the hub', () => {
+    const db = setup();
+    const rec = record(matchForm(), { eventKey: '2027gone' });
+    const res = handleSync(db, { device, records: [rec] }, 'b', NOW);
+    expect(res.rejected).toEqual([{ id: rec.id, revision: 1, reason: "Event 2027gone isn't on the hub (it may have been deleted)" }]);
+    expect(currentRecords(db, '2027gone', 'match')).toEqual([]);
+  });
+});
+
 describe('hub identity', () => {
   it('sends a stable hub id, a season id and the event keys in the config', () => {
     const db = setup();
