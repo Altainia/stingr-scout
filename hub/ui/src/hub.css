@@ -40,6 +40,10 @@ label.inline { flex-direction: row; align-items: center; gap: 8px; }
 .row label.inline { min-height: 48px; font-weight: 400; } /* level with the boxes beside it */
 .row label.inline input[type='checkbox'] { min-height: 0; }
 .field { display: flex; flex-direction: column; gap: 4px; }
+/* Small settings sit on one line with their caption, in boxes sized for what they hold. */
+label.compact { flex-direction: row; align-items: center; gap: 8px; }
+label.compact input { width: 8ch; }
+label.compact select { width: auto; }
 .field .caption { font-weight: 600; }
 .type-settings { margin-top: 16px; padding: 4px 16px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
 .type-settings h3 { margin: 12px 0 4px; font-size: 1.05rem; }

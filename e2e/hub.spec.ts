@@ -148,3 +148,28 @@ test('fits a 1280×800 laptop screen without sideways scrolling', async ({ page 
   const summaryCaption = (await page.getByLabel('Summary', { exact: true }).locator('..').boundingBox())!.y; // the label, caption first
   expect(Math.abs(requiredCaption - summaryCaption), "Required's caption is level with Summary's").toBeLessThanOrEqual(2);
 });
+
+test("puts each type's small settings on one line with their captions", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 650 });
+  const cases: [string, string, string[]][] = [
+    ['match', 'Coral scored', ['Min', 'Max', 'Step', 'Default', 'Points each']],
+    ['match', 'Left starting zone', ['Default', 'Points for yes']],
+    ['match', 'Climb', ['Show as']],
+    ['match', 'Defense rating', ['Highest rating']],
+    ['match', 'Start position', ['Points to mark']],
+    ['pit', 'Weight (lb)', ['Min', 'Max']],
+  ];
+  for (const [kind, question, fields] of cases) {
+    await page.goto(`/hub/#/forms/${kind}`);
+    await page.locator('.outline').getByRole('button', { name: new RegExp(`^${question.replace(/[()]/g, '\\$&')}\\*? ·`) }).click();
+    const own = page.getByRole('group', { name: /settings$/ });
+    for (const field of fields) {
+      const box = own.getByLabel(field, { exact: true });
+      const control = (await box.boundingBox())!;
+      const label = (await box.locator('xpath=ancestor::label[1]').boundingBox())!;
+      const isSelect = await box.evaluate(e => e.tagName === 'SELECT');
+      expect(control.width, `${question}: ${field} is narrow`).toBeLessThanOrEqual(isSelect ? 160 : 120); // a dropdown is as wide as its longest option
+      expect(label.height, `${question}: ${field} is on the same line as its caption`).toBeLessThanOrEqual(control.height + 4);
+    }
+  }
+});
