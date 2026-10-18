@@ -9,6 +9,7 @@
 
 - HP Compaq 6730b: Core 2 Duo P8400 (64-bit, no SSE4.2), 4 GB RAM, Intel GM45 graphics, legacy BIOS (no UEFI), 1280×800 screen.
 - Ubuntu's installer crashed on it. **Linux Mint Xfce** installed and the hub runs, including the bundled Node.js 22.22.1 on this CPU.
+- The ZenPad synced with the installed hub over USB and updated to the release's tablet app (Settings → App version: v0.1.0).
 - At 1280×800 the hub screens wrapped (form editor toolbar, section headers) and Event setup scrolled sideways; Firefox at 70% zoom worked around it. Fixed after v0.1.0 (laptop-sized controls, narrower menu, tables scroll inside their card) with an e2e test that checks every hub page at 1280×650.
 
 Recommendation for other team laptops of this age: Linux Mint Xfce (Ubuntu base, so the README instructions apply unchanged). On legacy-BIOS machines, write the USB stick with an MBR partition scheme.
