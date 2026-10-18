@@ -74,3 +74,4 @@ input.narrow { width: 6em; }
 .toolbar { align-items: center; }
 .toolbar .problems { display: inline-flex; align-items: center; gap: 4px; }
 .toolbar .problems .error { font-weight: 600; }
+.tag.required { background: var(--chip); color: var(--text); font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; margin-left: 4px; text-decoration: none; display: inline-block; }

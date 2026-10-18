@@ -111,7 +111,7 @@
             ondragover={e => overQuestion(e, si, qi)}
           >
             <button type="button" class="link grow" onclick={() => onselect({ si, qi })}>
-              {q.label}{#if q.required} *{/if} <span class="muted">· {typeLabel(q.type)}</span>
+              {q.label} <span class="muted">· {typeLabel(q.type)}</span>{#if q.required} <span class="tag required">Required</span>{/if}
             </button>
             <button type="button" class="small" aria-label="Move {q.label} up" onclick={() => move(si, qi, -1)}>↑</button>
             <button type="button" class="small" aria-label="Move {q.label} down" onclick={() => move(si, qi, 1)}>↓</button>

@@ -161,7 +161,7 @@ test("lays each type's small settings out in a grid: caption, then a narrow box"
   ];
   for (const [kind, question, fields] of cases) {
     await page.goto(`/hub/#/forms/${kind}`);
-    await page.locator('.outline').getByRole('button', { name: new RegExp(`^${question.replace(/[()]/g, '\\$&')}\\*? ·`) }).click();
+    await page.locator('.outline').getByRole('button', { name: new RegExp(`^${question.replace(/[()]/g, '\\$&')} ·`) }).click();
     const own = page.getByRole('group', { name: /settings$/ });
     const lefts: number[] = [];
     const tops: number[] = [];
@@ -207,7 +207,7 @@ test('shows every remove and delete button in red', async ({ page }) => {
   await expect(page.getByText(/Published version/)).toBeVisible();
   allRed(await isRed(/^Delete section /));
   allRed(await isRed(/^Delete (?!section )/));
-  await page.locator('.outline').getByRole('button', { name: /^Climb\*? ·/ }).click();
+  await page.locator('.outline').getByRole('button', { name: /^Climb ·/ }).click();
   allRed(await isRed(/^Remove option /));
 
   await page.goto('/hub/#/event');
@@ -220,7 +220,7 @@ test('shows the problem count and its link level with each other, after Publish'
   await page.setViewportSize({ width: 1280, height: 650 });
   await page.goto('/hub/#/forms/match');
   await expect(page.getByText(/Published version/)).toBeVisible();
-  await page.locator('.outline').getByRole('button', { name: /^Coral scored\*? ·/ }).click();
+  await page.locator('.outline').getByRole('button', { name: /^Coral scored ·/ }).click();
   await page.getByLabel('Label', { exact: true }).fill(''); // a question needs a label
   const count = page.getByText(/^\d+ problems?$/);
   const link = page.getByRole('button', { name: 'Show problems' });
