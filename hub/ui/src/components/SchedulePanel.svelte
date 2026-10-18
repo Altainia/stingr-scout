@@ -138,7 +138,7 @@
             {#each r.teams as t, j (j)}
               <td><input aria-label="Match {i + 1} {COLS[j]}" size="5" inputmode="numeric" value={t} oninput={e => { r.teams[j] = e.currentTarget.value; dirty = true; }} /></td>
             {/each}
-            <td><button type="button" class="small" aria-label="Remove match {i + 1}" onclick={() => { rows = rows.filter((_, k) => k !== i); dirty = true; }}>✕</button></td>
+            <td><button type="button" class="small danger" aria-label="Remove match {i + 1}" onclick={() => { rows = rows.filter((_, k) => k !== i); dirty = true; }}>✕</button></td>
           </tr>
         {/each}
       </tbody>

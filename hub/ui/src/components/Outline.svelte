@@ -97,7 +97,7 @@
         <input aria-label="Section title" value={s.title} oninput={e => onchange(renameSection(form, si, e.currentTarget.value))} />
         <button type="button" class="small" aria-label="Move section {s.title} up" disabled={si === 0} onclick={() => onchange(moveSection(form, si, -1))}>↑</button>
         <button type="button" class="small" aria-label="Move section {s.title} down" disabled={si === form.sections.length - 1} onclick={() => onchange(moveSection(form, si, 1))}>↓</button>
-        <button type="button" class="small" aria-label="Delete section {s.title}" onclick={() => (s.questions.length ? (confirmSection = si) : deleteSection(si))}>✕</button>
+        <button type="button" class="small danger" aria-label="Delete section {s.title}" onclick={() => (s.questions.length ? (confirmSection = si) : deleteSection(si))}>✕</button>
       </div>
       {#if s.questions.length === 0}<p class="muted">No questions yet.</p>{/if}
       <ul class="list">
@@ -115,7 +115,7 @@
             </button>
             <button type="button" class="small" aria-label="Move {q.label} up" onclick={() => move(si, qi, -1)}>↑</button>
             <button type="button" class="small" aria-label="Move {q.label} down" onclick={() => move(si, qi, 1)}>↓</button>
-            <button type="button" class="small" aria-label="Delete {q.label}" onclick={() => (confirmQuestion = { si, qi })}>✕</button>
+            <button type="button" class="small danger" aria-label="Delete {q.label}" onclick={() => (confirmQuestion = { si, qi })}>✕</button>
           </li>
         {/each}
       </ul>

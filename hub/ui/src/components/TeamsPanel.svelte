@@ -45,7 +45,7 @@
   <p class="hint">Teams come from the schedule. Add any others you want to pit-scout.</p>
   <ul class="chips">
     {#each teams as t (t)}
-      <li>{t} <button type="button" class="small" aria-label="Remove team {t}" onclick={() => askRemove(t)}>✕</button></li>
+      <li>{t} <button type="button" class="small danger" aria-label="Remove team {t}" onclick={() => askRemove(t)}>✕</button></li>
     {/each}
   </ul>
   <div class="row">

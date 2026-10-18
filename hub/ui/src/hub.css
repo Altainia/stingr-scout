@@ -13,6 +13,7 @@
 .banner.ok { background: var(--ok-bg); }
 .errors li { color: var(--red); }
 button.small { min-height: 32px; min-width: 32px; padding: 0 8px; font-size: 0.9rem; }
+button.danger { color: var(--red); border-color: var(--red); } /* removes or deletes something */
 label.filebtn { display: inline-flex; flex-direction: row; align-items: center; min-height: 40px; padding: 0 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font-weight: 400; cursor: pointer; }
 table.grid { border-collapse: collapse; width: 100%; background: var(--surface); }
 table.grid th, table.grid td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }

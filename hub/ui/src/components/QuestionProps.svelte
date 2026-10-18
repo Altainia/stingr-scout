@@ -135,7 +135,7 @@
               <td class="row-actions">
                 <button type="button" class="small" aria-label="Move option {i + 1} up" onclick={() => put(moveOption(opts, i, -1))}>↑</button>
                 <button type="button" class="small" aria-label="Move option {i + 1} down" onclick={() => put(moveOption(opts, i, 1))}>↓</button>
-                <button type="button" class="small" aria-label="Remove option {i + 1}" onclick={() => put(removeOption(opts, i))}>✕</button>
+                <button type="button" class="small danger" aria-label="Remove option {i + 1}" onclick={() => put(removeOption(opts, i))}>✕</button>
               </td>
             </tr>
           {/each}

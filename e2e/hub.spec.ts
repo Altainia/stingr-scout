@@ -188,3 +188,30 @@ test("lays each type's small settings out in a grid: caption, then a narrow box"
     for (let i = 1; i < tops.length; i++) expect(tops[i], `${question}: ${fields[i]} is on its own line`).toBeGreaterThan(tops[i - 1] + 20);
   }
 });
+
+test('shows every remove and delete button in red', async ({ page }) => {
+  const isRed = (name: RegExp) => page.getByRole('button', { name }).evaluateAll(buttons => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--red)';
+    document.body.append(probe);
+    const red = getComputedStyle(probe).color;
+    probe.remove();
+    return buttons.map(b => `${b.getAttribute('aria-label')}: ${getComputedStyle(b).color === red && getComputedStyle(b).borderColor === red}`);
+  });
+  const allRed = (labels: string[]) => {
+    expect(labels.length).toBeGreaterThan(0);
+    for (const l of labels) expect(l).toMatch(/: true$/);
+  };
+
+  await page.goto('/hub/#/forms/match');
+  await expect(page.getByText(/Published version/)).toBeVisible();
+  allRed(await isRed(/^Delete section /));
+  allRed(await isRed(/^Delete (?!section )/));
+  await page.locator('.outline').getByRole('button', { name: /^Climb\*? ·/ }).click();
+  allRed(await isRed(/^Remove option /));
+
+  await page.goto('/hub/#/event');
+  await expect(page.getByText('Teams (12)')).toBeVisible();
+  allRed(await isRed(/^Remove match /));
+  allRed(await isRed(/^Remove team /));
+});
