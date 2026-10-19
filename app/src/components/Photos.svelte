@@ -35,16 +35,21 @@
   }
 </script>
 
-<section class="photos" aria-label="Robot photos">
-  <h3>Robot photos</h3>
-  <div class="thumbs">
-    {#each thumbs as t (t.id)}
-      <figure>
-        <img src={t.url} alt="Robot photo" />
-        <button type="button" onclick={() => store.removePhoto(t.id)}>Remove</button>
-      </figure>
-    {/each}
+<section class="photos" aria-labelledby="photos-title">
+  <div class="head">
+    <h3 id="photos-title">Robot photos</h3>
+    <span class="hint">{thumbs.length === 0 ? 'No photos yet' : thumbs.length === 1 ? '1 photo' : `${thumbs.length} photos`}</span>
   </div>
+  {#if thumbs.length}
+    <div class="thumbs">
+      {#each thumbs as t, i (t.id)}
+        <figure>
+          <img src={t.url} alt="Robot photo {i + 1}" />
+          <button type="button" class="danger" aria-label="Remove photo {i + 1}" onclick={() => store.removePhoto(t.id)}>Remove</button>
+        </figure>
+      {/each}
+    </div>
+  {/if}
   <label class="camera">
     <span>{busy ? 'Saving photo…' : 'Take photo'}</span>
     <input type="file" accept="image/*" capture="environment" hidden disabled={busy} onchange={picked} />
@@ -53,6 +58,16 @@
 </section>
 
 <style>
+  .photos {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px 20px; margin: 16px 0 24px;
+  }
+  .head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+  .head h3 { margin: 0; }
+  /* Each photo is a tile: the picture cropped to a fixed size, its Remove button the full width underneath. */
+  .thumbs { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
+  figure { margin: 0; width: 200px; display: flex; flex-direction: column; gap: 8px; }
+  img { width: 200px; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  figure button { width: 100%; }
   .camera {
     display: inline-flex; flex-direction: row; align-items: center; justify-content: center;
     min-height: 64px; padding: 0 24px; border: 2px solid var(--line); border-radius: 8px;

@@ -111,8 +111,24 @@ describe('FormScreen', () => {
     await store.addPhoto(new Uint8Array([1]).buffer, 'image/jpeg');
     render(FormScreen, { store });
     await click('Review');
-    expect(screen.getByAltText('Robot photo')).toBeTruthy();
-    await click('Remove');
+    expect(screen.getByAltText('Robot photo 1')).toBeTruthy();
+    await click('Remove photo 1');
     await waitFor(() => expect(store.draft?.rec.photoIds).toEqual([]));
+  });
+
+  it('shows pit photos as tiles with their Remove button underneath, in a card after the warnings', async () => {
+    const { store } = await makeStore();
+    await store.startPit(5098);
+    await store.addPhoto(new Uint8Array([1]).buffer, 'image/jpeg');
+    await store.addPhoto(new Uint8Array([2]).buffer, 'image/jpeg');
+    render(FormScreen, { store });
+    await click('Review');
+    const photos = screen.getByRole('region', { name: 'Robot photos' });
+    expect(within(photos).getByText('2 photos')).toBeTruthy();
+    const tiles = photos.querySelectorAll('figure');
+    expect(tiles).toHaveLength(2);
+    expect(within(tiles[1] as HTMLElement).getByRole('button', { name: 'Remove photo 2' })).toBeTruthy();
+    const warning = screen.getByText(/Not answered yet:/);
+    expect(warning.compareDocumentPosition(photos) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // warning first
   });
 });

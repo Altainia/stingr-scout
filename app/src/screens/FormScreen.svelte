@@ -102,11 +102,11 @@
     </div>
   {:else}
     <section class="review">
-      {#if rec.kind === 'pit'}<Photos {store} />{/if}
       {#if unanswered.length}
         <p class="banner warn">Not answered yet: {#each unanswered as key, i (key)}{#if i}, {/if}<button type="button" class="link jump" onclick={() => goTo(key)}>{label(key)}</button>{/each}</p>
       {/if}
       {#if rec.missed.length}<p>Marked as missed: {rec.missed.map(label).join(', ')}</p>{/if}
+      {#if rec.kind === 'pit'}<Photos {store} />{/if}
       <section class="summary" aria-label="Your answers">
         {#each sections as s (s.id)}
           <h3>{s.title}</h3>
