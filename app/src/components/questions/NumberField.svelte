@@ -23,6 +23,8 @@
   max={question.max}
   value={n ?? ''}
   oninput={e => { const t = e.currentTarget.value; onchange(t === '' ? null : Number(t)); }}
+  enterkeyhint="done"
+  onkeydown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
 />
 {#if outOfRange}
   <p class="hint warn">Expected {question.integer ? 'a whole number' : 'a number'}{range}</p>

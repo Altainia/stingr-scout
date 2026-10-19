@@ -33,13 +33,33 @@ describe('FormScreen', () => {
   it('asks before submitting with unanswered required questions', async () => {
     const { store } = await openMatchForm();
     await click('Review');
-    expect(screen.getByText('Not answered yet: Climb')).toBeTruthy();
+    expect(screen.getByText(/Not answered yet:/).textContent).toBe('Not answered yet: Climb');
     await click('Submit');
     const dialog = screen.getByRole('dialog', { name: 'Submit with missing answers?' });
-    expect(within(dialog).getByText("You didn't answer: Climb.")).toBeTruthy();
+    expect(within(dialog).getByText(/You didn't answer:/).textContent).toBe("You didn't answer: Climb.");
     await fireEvent.click(within(dialog).getByRole('button', { name: 'Submit and mark as missed' }));
     await waitFor(() => expect(store.screen).toEqual({ name: 'home' }));
     expect(store.records[0]).toMatchObject({ sync: 'pending', rec: { missed: ['climb'] } });
+  });
+
+  it('jumps from the Review page to an unanswered question', async () => {
+    await openMatchForm();
+    await click('Review');
+    await fireEvent.click(within(screen.getByText(/Not answered yet:/)).getByRole('button', { name: 'Climb' }));
+    expect(screen.getByRole('button', { name: 'Endgame' }).getAttribute('aria-pressed')).toBe('true');
+    const climb = screen.getByRole('region', { name: 'Climb' });
+    expect(climb.classList.contains('flash')).toBe(true);
+    expect(document.activeElement).toBe(climb);
+  });
+
+  it('jumps from the missing-answers dialog to an unanswered question', async () => {
+    await openMatchForm();
+    await click('Review');
+    await click('Submit');
+    const dialog = screen.getByRole('dialog', { name: 'Submit with missing answers?' });
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Climb' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Climb' })).toBeTruthy();
   });
 
   it('submits straight away when everything required is answered', async () => {

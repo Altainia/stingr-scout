@@ -21,7 +21,7 @@
   } = $props();
 </script>
 
-<section class="question" class:missed aria-label={question.label}>
+<section class="question" class:missed aria-label={question.label} id="q-{question.key}" tabindex="-1">
   <header>
     <h3>{question.label}{#if question.required}<span class="req" title="Required"> *</span>{/if}</h3>
     {#if missed}

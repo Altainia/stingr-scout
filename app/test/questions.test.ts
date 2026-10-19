@@ -207,6 +207,31 @@ describe('button groups', () => {
   });
 });
 
+describe('the keyboard Done key', () => {
+  it('closes the keyboard from a number or one-line text box, keeping the answer', async () => {
+    for (const [component, question, typed] of [[NumberField, number, '12'], [TextField, { ...text, multiline: false }, 'fast']] as const) {
+      const onchange = vi.fn();
+      const { unmount } = render(component as typeof NumberField, { question: question as never, value: null, onchange });
+      const box = screen.getByLabelText(question.label) as HTMLInputElement;
+      expect(box.getAttribute('enterkeyhint')).toBe('done');
+      box.focus();
+      await fireEvent.input(box, { target: { value: typed } });
+      await fireEvent.keyDown(box, { key: 'Enter' });
+      expect(document.activeElement).not.toBe(box); // keyboard goes away with the focus
+      expect(onchange).toHaveBeenLastCalledWith(question.type === 'number' ? 12 : 'fast');
+      unmount();
+    }
+  });
+
+  it('keeps Enter as a new line in a several-line text box', async () => {
+    render(TextField, { question: text, value: null, onchange: vi.fn() }); // multiline
+    const box = screen.getByLabelText(text.label);
+    box.focus();
+    await fireEvent.keyDown(box, { key: 'Enter' });
+    expect(document.activeElement).toBe(box);
+  });
+});
+
 describe('Timer', () => {
   afterEach(() => vi.useRealTimers());
 

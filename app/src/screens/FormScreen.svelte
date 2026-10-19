@@ -1,6 +1,6 @@
 <script lang="ts">
   import { type AnswerValue, describeAnswer, findQuestion, markMissed, setAnswer, unansweredRequired, unmarkMissed } from '@stingr/shared';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import Photos from '../components/Photos.svelte';
   import QuestionCard from '../components/QuestionCard.svelte';
@@ -27,6 +27,21 @@
   function show(i: number) {
     tab = i;
     document.documentElement.scrollTop = 0;
+  }
+
+  /** Show the section holding this question, scroll to it and highlight it for a moment. */
+  async function goTo(key: string) {
+    confirming = null;
+    const i = sections.findIndex(s => s.questions.some(q => q.key === key));
+    if (i < 0) return;
+    show(i);
+    await tick();
+    const card = document.getElementById(`q-${key}`);
+    if (!card) return;
+    card.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    card.focus({ preventScroll: true });
+    card.classList.add('flash');
+    setTimeout(() => card.classList.remove('flash'), 1600);
   }
 
   function change(key: string, v: AnswerValue) {
@@ -88,7 +103,9 @@
   {:else}
     <section class="review">
       {#if rec.kind === 'pit'}<Photos {store} />{/if}
-      {#if unanswered.length}<p class="banner warn">Not answered yet: {unanswered.map(label).join(', ')}</p>{/if}
+      {#if unanswered.length}
+        <p class="banner warn">Not answered yet: {#each unanswered as key, i (key)}{#if i}, {/if}<button type="button" class="link jump" onclick={() => goTo(key)}>{label(key)}</button>{/each}</p>
+      {/if}
       {#if rec.missed.length}<p>Marked as missed: {rec.missed.map(label).join(', ')}</p>{/if}
       <section class="summary" aria-label="Your answers">
         {#each sections as s (s.id)}
@@ -113,11 +130,12 @@
   <ConfirmDialog
     title="Submit with missing answers?"
     confirmLabel="Submit and mark as missed"
-    cancelLabel="Go back"
+    cancelLabel="Back to review"
     onconfirm={submit}
     oncancel={() => (confirming = null)}
   >
-    <p>You didn't answer: {unanswered.map(label).join(', ')}.</p>
+    <p>You didn't answer: {#each unanswered as key, i (key)}{#if i}, {/if}<button type="button" class="link jump" onclick={() => goTo(key)}>{label(key)}</button>{/each}.</p>
+    <p class="hint">Tap a question to go and answer it.</p>
     <p>It's fine to say you missed something. That's better than guessing.</p>
   </ConfirmDialog>
 {/if}

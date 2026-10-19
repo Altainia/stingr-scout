@@ -136,3 +136,8 @@ button.wide { width: 100%; margin-top: 16px; }
 .topbar .bar-button { min-height: 36px; padding: 0 14px; background: transparent; color: var(--bar-text); border-color: var(--bar-text); }
 .home-grid .card > button.link { padding: 0; min-height: 32px; }
 button.danger { color: var(--red); border-color: var(--red); } /* removes or deletes something */
+/* A question name that jumps to the question (Review page, missing-answers dialog). */
+button.link.jump { display: inline; min-height: 0; min-width: 0; padding: 0; color: var(--link); font: inherit; font-weight: 600; }
+.question.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 4px var(--accent); } to { box-shadow: 0 0 0 4px transparent; } }
+.question:focus { outline: none; }
