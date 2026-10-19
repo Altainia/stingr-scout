@@ -141,3 +141,9 @@ button.link.jump { display: inline; min-height: 0; min-width: 0; padding: 0; col
 .question.flash { animation: flash 1.6s ease-out; }
 @keyframes flash { from { box-shadow: 0 0 0 4px var(--accent); } to { box-shadow: 0 0 0 4px transparent; } }
 .question:focus { outline: none; }
+/* Pit list: find, sort and filter. */
+.pit-tools { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin: 12px 0; }
+.pit-tools .find { flex: 1; min-width: 16em; max-width: 28em; }
+.pit-chips { margin: 0 0 12px; }
+.list li .team-no { min-width: 4ch; }
+.list li .team-name { min-width: 14em; }

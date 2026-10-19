@@ -1,9 +1,7 @@
 import { markNoShow, type ScheduleMatch } from '@stingr/shared';
 import { describe, expect, it } from 'vitest';
 import { matchForm, pitForm, record } from '../../shared/test/fixtures';
-import {
-  formVersion, latestForm, nextMatchKey, parseTeamInput, pitStatus, pitTeams, recordTitle, slotLabel, teamFor,
-} from '../src/lib/session';
+import { arrangePitTeams, formVersion, latestForm, nextMatchKey, parseTeamInput, pitStatus, pitTeams, recordTitle, slotLabel, teamFor } from '../src/lib/session';
 
 const schedule: ScheduleMatch[] = [
   { matchKey: 'qm2', red: [7, 8, 9], blue: [10, 11, 12] },
@@ -78,5 +76,30 @@ describe('recordTitle', () => {
   it('describes match and pit records', () => {
     expect(recordTitle(record(matchForm()))).toBe('Qual 1 · Red 1 · Team 5098');
     expect(recordTitle(record(pitForm()))).toBe('Pit · Team 5098');
+  });
+});
+
+describe('arrangePitTeams', () => {
+  const rows = [
+    { team: 5098, status: 'done' as const },
+    { team: 118, status: 'none' as const },
+    { team: 254, status: 'noshow' as const },
+    { team: 9, status: 'none' as const },
+  ];
+  const names = { 5098: 'Stingr', 118: 'Robonauts', 254: 'The Cheesy Poofs' };
+  const teams = (view: Parameters<typeof arrangePitTeams>[2]) => arrangePitTeams(rows, names, view).map(r => r.team);
+
+  it('sorts by team number, by name (unnamed teams last), or by status (still to do first)', () => {
+    expect(teams({ search: '', show: 'all', sort: 'number' })).toEqual([9, 118, 254, 5098]);
+    expect(teams({ search: '', show: 'all', sort: 'name' })).toEqual([118, 5098, 254, 9]);
+    expect(teams({ search: '', show: 'all', sort: 'status' })).toEqual([9, 118, 254, 5098]);
+  });
+
+  it('filters by status and by a search on number or name', () => {
+    expect(teams({ search: '', show: 'none', sort: 'number' })).toEqual([9, 118]);
+    expect(teams({ search: '', show: 'done', sort: 'number' })).toEqual([5098]);
+    expect(teams({ search: 'cheesy', show: 'all', sort: 'number' })).toEqual([254]);
+    expect(teams({ search: '50', show: 'all', sort: 'number' })).toEqual([5098]);
+    expect(teams({ search: ' frc118 ', show: 'all', sort: 'number' })).toEqual([118]);
   });
 });

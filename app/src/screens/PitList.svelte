@@ -1,12 +1,16 @@
 <script lang="ts">
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
-  import { parseTeamInput, pitStatus, pitTeams } from '../lib/session';
+  import { arrangePitTeams, parseTeamInput, type PitView, pitStatus, pitTeams } from '../lib/session';
   import type { AppStore } from '../lib/store.svelte';
 
   let { store }: { store: AppStore } = $props();
 
   const LABELS = { none: 'Not scouted', done: 'Done ✓', noshow: 'Team not present' } as const;
-  let teams = $derived(pitTeams(store.config?.teams ?? [], store.extraTeams, store.eventRecords));
+  let names = $derived(store.config?.teamNames ?? {});
+  let rows = $derived(pitTeams(store.config?.teams ?? [], store.extraTeams, store.eventRecords).map(team => ({ team, status: pitStatus(store.eventRecords, team) })));
+  let shown = $derived(arrangePitTeams(rows, names, store.pitView));
+  const count = (show: PitView['show']) => (show === 'all' ? rows.length : rows.filter(r => r.status === show).length);
+  const CHIPS: [PitView['show'], string][] = [['all', 'All'], ['none', 'Not scouted'], ['done', 'Done'], ['noshow', 'Not present']];
   let pitForm = $derived(store.form('pit'));
   let canScout = $derived(!!pitForm && !!store.event && store.settings.scout.trim() !== '');
   let addText = $state('');
@@ -43,11 +47,30 @@
     <p class="banner warn">Enter your name on the home screen first.</p>
   {/if}
 
+  <div class="pit-tools">
+    <label class="find">Find a team
+      <input type="search" aria-label="Find a team" placeholder="Number or name" enterkeyhint="done" value={store.pitView.search}
+        oninput={e => (store.pitView.search = e.currentTarget.value)}
+        onkeydown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+    </label>
+    <label class="sort">Sort
+      <select aria-label="Sort" value={store.pitView.sort} onchange={e => (store.pitView.sort = e.currentTarget.value as PitView['sort'])}>
+        <option value="number">Team number</option><option value="name">Name</option><option value="status">Still to do first</option>
+      </select>
+    </label>
+  </div>
+  <div class="choices segmented pit-chips" role="group" aria-label="Show">
+    {#each CHIPS as [show, label] (show)}
+      <button type="button" aria-pressed={store.pitView.show === show} onclick={() => (store.pitView.show = show)}>{label} {count(show)}</button>
+    {/each}
+  </div>
+
+  {#if shown.length === 0}<p class="hint">No teams match.</p>{/if}
   <ul class="list">
-    {#each teams as t (t)}
-      {@const status = pitStatus(store.eventRecords, t)}
+    {#each shown as { team: t, status } (t)}
       <li aria-label="Team {t}">
-        <strong>{t}</strong>
+        <strong class="team-no">{t}</strong>
+        <span class="team-name" class:muted={!names[t]}>{names[t] ?? '—'}</span>
         <span class="grow status {status}">{LABELS[status]}</span>
         {#if status === 'none'}
           <button type="button" class="primary" disabled={!canScout} onclick={() => store.startPit(t)}>Scout</button>

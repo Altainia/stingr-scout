@@ -3,7 +3,7 @@ import {
   reviseRecord, type ScoutRecord, type Side, type Slot, undoNoShow,
 } from '@stingr/shared';
 import type { Draft, LocalPhoto, LocalRecord, Settings, StingrDb, SyncState } from './db';
-import { formVersion, latestForm } from './session';
+import { formVersion, latestForm, type PitView } from './session';
 
 export type Screen =
   | { name: 'setup' }
@@ -21,6 +21,8 @@ export class AppStore {
   settings = $state<Settings>({ deviceId: '', deviceName: '', defaultSlot: 'red1', scout: '' });
   config = $state<HubConfig | null>(null);
   records = $state<LocalRecord[]>([]);
+  /** How the pit list is filtered and sorted; kept while the scout goes between the list and a form. */
+  pitView = $state<PitView>({ search: '', show: 'all', sort: 'number' });
   photos = $state<LocalPhoto[]>([]);
   draft = $state<Draft | null>(null);
   extraTeams = $state<number[]>([]);

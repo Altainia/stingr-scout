@@ -86,3 +86,4 @@ input.narrow { width: 6em; }
 .info-pop dd { margin: 0 0 6px; color: var(--muted); }
 table.grid.teams { width: auto; }
 table.grid.teams td input { width: 22em; }
+table.grid.teams td { vertical-align: middle; }
