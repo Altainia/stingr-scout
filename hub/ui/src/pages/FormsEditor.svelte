@@ -282,7 +282,7 @@
     onconfirm={() => { const next = incoming.form; pendingImport = null; edit(next); selected = { si: 0, qi: null }; }}
     oncancel={() => (pendingImport = null)}
   >
-    <p>The form you are editing is replaced by the one in the file. Published versions are not changed until you publish.</p>
+    <p>The form you are editing will be replaced by the one in the file. Published versions don't change until you publish.</p>
   </ConfirmDialog>
 {/if}
 
@@ -294,6 +294,6 @@
     onconfirm={discard}
     oncancel={() => (confirmDiscard = false)}
   >
-    <p>The form goes back to {latest ? `published version ${latest.version}` : 'empty'}.</p>
+    <p>The form will go back to {latest ? `published version ${latest.version}` : 'empty'}.</p>
   </ConfirmDialog>
 {/if}

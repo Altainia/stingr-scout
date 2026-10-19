@@ -146,7 +146,7 @@
     onconfirm={confirmDeleteEvent}
     oncancel={() => (eventPreview = null)}
   >
-    <p>This removes {eventPreview.matches} matches, {eventPreview.teams} teams, {eventPreview.records} records and {eventPreview.photos} photos.</p>
+    <p>This will remove {eventPreview.matches} matches, {eventPreview.teams} teams, {eventPreview.records} records and {eventPreview.photos} photos.</p>
     <label>Type {deleting.key} to confirm <input aria-label="Type {deleting.key} to confirm" autocomplete="off" value={typed} oninput={e => (typed = e.currentTarget.value)} /></label>
   </ConfirmDialog>
 {/if}
@@ -160,7 +160,7 @@
     onconfirm={confirmNewSeason}
     oncancel={() => (seasonPreview = null)}
   >
-    <p>This removes {seasonPreview.events} events, {seasonPreview.records} records, {seasonPreview.photos} photos, {seasonPreview.forms} published forms, {seasonPreview.drafts} drafts and the list of {seasonPreview.devices} tablets. Hub settings are kept.</p>
+    <p>This will remove {seasonPreview.events} events, {seasonPreview.records} records, {seasonPreview.photos} photos, {seasonPreview.forms} published forms, {seasonPreview.drafts} drafts and the list of {seasonPreview.devices} tablets. Hub settings are kept.</p>
     <label>Type NEW SEASON to confirm <input aria-label="Type NEW SEASON to confirm" autocomplete="off" value={typed} oninput={e => (typed = e.currentTarget.value)} /></label>
   </ConfirmDialog>
 {/if}
@@ -173,6 +173,6 @@
     onconfirm={restore}
     oncancel={() => (confirming = false)}
   >
-    <p>Everything on this hub is replaced by “{file.name}”.</p>
+    <p>Everything on this hub will be replaced by “{file.name}”.</p>
   </ConfirmDialog>
 {/if}

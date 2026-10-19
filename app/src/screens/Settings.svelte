@@ -86,9 +86,9 @@
 {#if resetStep === 'confirm'}
   <ConfirmDialog title="Reset this tablet?" confirmLabel="Reset" cancelLabel="Cancel"
     onconfirm={() => (unsynced > 0 ? (resetStep = 'lose') : reset())} oncancel={() => (resetStep = null)}>
-    <p>This removes {records(store.records.length)}, their photos and the loaded event and forms. The tablet's name and slot are kept, and the next sync loads the hub's event and forms again.</p>
+    <p>This will remove {records(store.records.length)}, their photos and the loaded event and forms. The tablet's name and slot are kept, and the next sync will load the hub's event and forms again.</p>
     {#if unsynced > 0}<p class="banner warn">{records(unsynced)} {unsynced === 1 ? 'has' : 'have'} not been synced and will be lost.</p>{/if}
-    {#if store.draft}<p>The unfinished form is also lost.</p>{/if}
+    {#if store.draft}<p>The unfinished form will also be lost.</p>{/if}
   </ConfirmDialog>
 {/if}
 

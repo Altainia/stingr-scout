@@ -138,7 +138,7 @@
     onconfirm={() => { const { si, qi } = target; confirmQuestion = null; remove(si, qi); }}
     oncancel={() => (confirmQuestion = null)}
   >
-    <p>It is removed from the draft. Answers already collected with published versions are kept.</p>
+    <p>It will be removed from the draft. Answers already collected with published versions are kept.</p>
   </ConfirmDialog>
 {/if}
 
@@ -151,6 +151,6 @@
     onconfirm={() => deleteSection(confirmSection ?? 0)}
     oncancel={() => (confirmSection = null)}
   >
-    <p>Its {doomed?.questions.length} questions are removed from the draft. Data already collected with published versions is kept.</p>
+    <p>Its {doomed?.questions.length} questions will be removed from the draft. Data already collected with published versions is kept.</p>
   </ConfirmDialog>
 {/if}

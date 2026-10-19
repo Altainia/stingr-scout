@@ -163,6 +163,6 @@
     onconfirm={() => { const go = run; pendingReplace = null; void go(); }}
     oncancel={() => (pendingReplace = null)}
   >
-    <p>You've edited the schedule table without saving. This replaces the table with the new schedule.</p>
+    <p>You've edited the schedule table without saving. This will replace the table with the new schedule.</p>
   </ConfirmDialog>
 {/if}
