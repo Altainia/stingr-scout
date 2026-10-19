@@ -113,7 +113,22 @@ describe('FormScreen', () => {
     await click('Review');
     expect(screen.getByAltText('Robot photo 1')).toBeTruthy();
     await click('Remove photo 1');
+    const dialog = screen.getByRole('dialog', { name: 'Remove this photo?' });
+    expect(within(dialog).getByRole('img', { name: 'Robot photo 1' })).toBeTruthy(); // shows which one
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
     await waitFor(() => expect(store.draft?.rec.photoIds).toEqual([]));
+  });
+
+  it('keeps a photo when its removal is cancelled', async () => {
+    const { store } = await makeStore();
+    await store.startPit(5098);
+    await store.addPhoto(new Uint8Array([1]).buffer, 'image/jpeg');
+    render(FormScreen, { store });
+    await click('Review');
+    await click('Remove photo 1');
+    await fireEvent.click(within(screen.getByRole('dialog', { name: 'Remove this photo?' })).getByRole('button', { name: 'Keep it' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(store.draft?.rec.photoIds).toHaveLength(1);
   });
 
   it('shows pit photos as tiles with their Remove button underneath, in a card after the warnings', async () => {

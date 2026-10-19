@@ -1,10 +1,12 @@
 <script lang="ts">
   import { resizeImage } from '../lib/photos';
+  import ConfirmDialog from './ConfirmDialog.svelte';
   import type { AppStore } from '../lib/store.svelte';
 
   let { store }: { store: AppStore } = $props();
   let busy = $derived(store.savingPhotos > 0);
   let error = $state<string | null>(null);
+  let removing = $state<{ id: string; url: string; n: number } | null>(null); // the photo the scout is asked about
 
   let thumbs = $derived(
     (store.draft?.rec.photoIds ?? []).flatMap(id => {
@@ -45,7 +47,7 @@
       {#each thumbs as t, i (t.id)}
         <figure>
           <img src={t.url} alt="Robot photo {i + 1}" />
-          <button type="button" class="danger" aria-label="Remove photo {i + 1}" onclick={() => store.removePhoto(t.id)}>Remove</button>
+          <button type="button" class="danger" aria-label="Remove photo {i + 1}" onclick={() => (removing = { id: t.id, url: t.url, n: i + 1 })}>Remove</button>
         </figure>
       {/each}
     </div>
@@ -57,6 +59,19 @@
   {#if error}<p class="error">{error}</p>{/if}
 </section>
 
+{#if removing}
+  {@const photo = removing}
+  <ConfirmDialog
+    title="Remove this photo?"
+    confirmLabel="Remove"
+    cancelLabel="Keep it"
+    onconfirm={() => { const id = photo.id; removing = null; void store.removePhoto(id); }}
+    oncancel={() => (removing = null)}
+  >
+    <img class="confirm-photo" src={photo.url} alt="Robot photo {photo.n}" />
+  </ConfirmDialog>
+{/if}
+
 <style>
   .photos {
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px 20px; margin: 16px 0 24px;
@@ -66,8 +81,9 @@
   /* Each photo is a tile: the picture cropped to a fixed size, its Remove button the full width underneath. */
   .thumbs { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
   figure { margin: 0; width: 200px; display: flex; flex-direction: column; gap: 8px; }
-  img { width: 200px; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+  figure img { width: 200px; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
   figure button { width: 100%; }
+  .confirm-photo { width: auto; max-width: 100%; height: auto; max-height: 50vh; margin-left: auto; margin-right: auto; object-fit: contain; border-radius: 8px; margin-bottom: 12px; display: block; }
   .camera {
     display: inline-flex; flex-direction: row; align-items: center; justify-content: center;
     min-height: 64px; padding: 0 24px; border: 2px solid var(--line); border-radius: 8px;
