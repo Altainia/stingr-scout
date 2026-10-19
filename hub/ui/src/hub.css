@@ -84,3 +84,5 @@ input.narrow { width: 6em; }
 .info-pop dl { margin: 0 0 8px; }
 .info-pop dt { font-weight: 600; }
 .info-pop dd { margin: 0 0 6px; color: var(--muted); }
+table.grid.teams { width: auto; }
+table.grid.teams td input { width: 22em; }

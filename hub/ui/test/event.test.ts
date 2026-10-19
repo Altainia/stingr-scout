@@ -7,7 +7,10 @@ import { fakeApi } from './helpers';
 const HEART: EventInfo = { key: '2027mokc', name: 'Heartland', redSide: 'left' };
 const BUCK: EventInfo = { key: '2027ohcl', name: 'Buckeye', redSide: 'left' };
 const view = (current: EventInfo | null, events: EventInfo[] = current ? [current] : []) => ({ events, current });
-const panels = { schedule: async () => [], settings: async () => ({ tbaKeySet: false }), teams: async () => [] as number[] };
+const panels = {
+  schedule: async () => [], settings: async () => ({ tbaKeySet: false }), teams: async () => [] as number[],
+  teamNames: async () => ({}) as Record<number, string>,
+};
 
 describe('EventSetup', () => {
   it('creates an event', async () => {
@@ -88,5 +91,16 @@ describe('EventSetup', () => {
     expect(await screen.findByText('Teams (2)')).toBeTruthy();
     await fireEvent.click(screen.getByRole('button', { name: 'Remove team 254' }));
     expect(removeTeam).toHaveBeenCalledWith(254);
+  });
+
+  it("shows each team's name and saves a typed one", async () => {
+    const setTeamName = vi.fn(async () => ({ 254: 'The Cheesy Poofs', 5098: 'Stingr' }));
+    render(EventSetup, { api: fakeApi({ ...panels, teams: async () => [254, 5098], teamNames: async () => ({ 254: 'The Cheesy Poofs' }), events: async () => view(HEART), setTeamName }) });
+    const poofs = (await screen.findByLabelText('Name of team 254')) as HTMLInputElement;
+    expect(poofs.value).toBe('The Cheesy Poofs');
+    const stingr = screen.getByLabelText('Name of team 5098') as HTMLInputElement;
+    expect(stingr.value).toBe('');
+    await fireEvent.change(stingr, { target: { value: 'Stingr' } });
+    expect(setTeamName).toHaveBeenCalledWith(5098, 'Stingr');
   });
 });

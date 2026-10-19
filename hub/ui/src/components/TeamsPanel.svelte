@@ -7,6 +7,7 @@
 
   let { api }: { api: Api } = $props();
   let teams = $state<number[]>([]);
+  let names = $state<Record<number, string>>({});
   let text = $state('');
   let error = $state<unknown>(null);
   let schedule = $state<ScheduleMatch[]>([]);
@@ -32,8 +33,18 @@
 
   onMount(() => {
     void run(api.teams());
+    api.teamNames().then(n => { names = n; }, e => { error = e; });
     api.schedule().then(s => { schedule = s; }, e => { error = e; });
   });
+
+  async function rename(team: number, name: string) {
+    error = null;
+    try {
+      names = await api.setTeamName(team, name);
+    } catch (e) {
+      error = e;
+    }
+  }
 
   async function add() {
     if (await run(api.addTeam(Number(text.trim().replace(/^frc/i, ''))))) text = '';
@@ -42,12 +53,23 @@
 
 <section class="card">
   <h2>Teams ({teams.length})</h2>
-  <p class="hint">Teams come from the schedule. Add any others you want to pit-scout.</p>
-  <ul class="chips">
-    {#each teams as t (t)}
-      <li>{t} <button type="button" class="small danger" aria-label="Remove team {t}" onclick={() => askRemove(t)}>✕</button></li>
-    {/each}
-  </ul>
+  <p class="hint">Teams come from the schedule. Add any others you want to pit-scout. Names come from The Blue Alliance; type one to add or correct it.</p>
+  {#if teams.length}
+    <div class="scroll-x">
+      <table class="grid teams">
+        <thead><tr><th>Team</th><th>Name</th><th></th></tr></thead>
+        <tbody>
+          {#each teams as t (t)}
+            <tr>
+              <td><strong>{t}</strong></td>
+              <td><input aria-label="Name of team {t}" placeholder="No name" value={names[t] ?? ''} onchange={e => rename(t, e.currentTarget.value)} /></td>
+              <td class="row-actions"><button type="button" class="small danger" aria-label="Remove team {t}" onclick={() => askRemove(t)}>✕</button></td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
   <div class="row">
     <label>Add team <input aria-label="Add team" value={text} inputmode="numeric" oninput={e => (text = e.currentTarget.value)} /></label>
     <button type="button" disabled={!text.trim()} onclick={add}>Add</button>

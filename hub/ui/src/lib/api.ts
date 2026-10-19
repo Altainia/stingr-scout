@@ -71,6 +71,8 @@ export function createApi(http: Http = (input, init) => fetch(input, init)) {
     teams: () => call<number[]>('GET', '/api/teams'),
     addTeam: (team: number) => call<number[]>('POST', '/api/teams', { team }),
     removeTeam: (team: number) => call<number[]>('DELETE', `/api/teams/${team}`),
+    teamNames: () => call<Record<number, string>>('GET', '/api/team-names'),
+    setTeamName: (team: number, name: string) => call<Record<number, string>>('PUT', `/api/teams/${team}/name`, { name }),
     settings: () => call<{ tbaKeySet: boolean }>('GET', '/api/settings'),
     saveSettings: (s: { tbaKey: string }) => call<{ tbaKeySet: boolean }>('PUT', '/api/settings', s),
     forms: () => call<FormDef[]>('GET', '/api/forms'),
