@@ -10,6 +10,7 @@ import { hubIdentity } from './store/identity';
 import { missingPhotoIds } from './store/photos';
 import { type InsertOutcome, insertRecord } from './store/records';
 import { listSchedule, listTeams } from './store/schedule';
+import { teamNames } from './store/teamNames';
 
 export function buildConfig(db: Db, appBuild: string): HubConfig {
   const event = currentEvent(db);
@@ -21,6 +22,7 @@ export function buildConfig(db: Db, appBuild: string): HubConfig {
     forms: listForms(db),
     schedule: event ? listSchedule(db, event.key) : [],
     teams: event ? listTeams(db, event.key) : [],
+    teamNames: event ? teamNames(db, listTeams(db, event.key)) : {},
     appBuild,
   };
 }

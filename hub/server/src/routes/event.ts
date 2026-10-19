@@ -5,6 +5,7 @@ import { bodyObject, HttpError, requireEvent } from '../http';
 import { currentEvent, listEvents, setCurrentEvent, upsertEvent } from '../store/events';
 import { addTeam, listSchedule, listTeams, removeTeam } from '../store/schedule';
 import { getSetting, setSetting } from '../store/settings';
+import { setTeamName, teamNames } from '../store/teamNames';
 
 const EVENT_KEY_RE = /^[a-z0-9][a-z0-9_-]{1,31}$/;
 
@@ -52,6 +53,15 @@ export function eventRoutes(app: FastifyInstance, ctx: HubContext): void {
     const ev = requireEvent(ctx.db);
     addTeam(ctx.db, ev.key, parseTeam(bodyObject(req.body).team));
     return listTeams(ctx.db, ev.key);
+  });
+
+  app.get('/api/team-names', async () => teamNames(ctx.db));
+
+  app.put('/api/teams/:team/name', async req => {
+    const team = parseTeam((req.params as { team: string }).team);
+    const name = bodyObject(req.body).name;
+    setTeamName(ctx.db, team, typeof name === 'string' ? name : '');
+    return teamNames(ctx.db);
   });
 
   app.delete('/api/teams/:team', async req => {

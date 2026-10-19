@@ -32,6 +32,8 @@ const MIGRATIONS: string[] = [
   // Each time an event is set up it gets a new instance id, so records of a deleted event can't join a new one with the same key.
   `ALTER TABLE events ADD COLUMN instance TEXT NOT NULL DEFAULT '';
    UPDATE events SET instance = lower(hex(randomblob(16))) WHERE instance = '';`,
+  // Team names belong to the team, not an event, so they carry over between events and seasons.
+  `CREATE TABLE team_names (team INTEGER PRIMARY KEY, name TEXT NOT NULL);`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

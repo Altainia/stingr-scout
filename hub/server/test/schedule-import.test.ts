@@ -51,7 +51,11 @@ const TBA_DATA: Record<string, unknown> = {
     { key: '2027test_qm10', alliances: alliance([7, 8, 9], [10, 11, 12]) },
     { key: '2027test_qm2', alliances: alliance([1, 2, 3], [4, 5, 6]) },
   ],
-  '/event/2027test/teams/keys': ['frc12', 'frc1', 'frc5098'],
+  '/event/2027test/teams/simple': [
+    { key: 'frc12', team_number: 12, nickname: 'Twelve' },
+    { key: 'frc1', team_number: 1, nickname: 'The Juggernauts' },
+    { key: 'frc5098', team_number: 5098, nickname: 'Stingr' },
+  ],
 };
 
 function fakeFetch(data: Record<string, unknown>): typeof fetch {
@@ -74,6 +78,7 @@ describe('fetchTbaEvent', () => {
         { matchKey: 'sf1m1', red: [1, 2, 3], blue: [4, 5, 6] },
       ],
       teams: [1, 12, 5098],
+      names: { 1: 'The Juggernauts', 12: 'Twelve', 5098: 'Stingr' },
     });
   });
   it('explains failures', async () => {
@@ -114,6 +119,7 @@ describe('schedule import routes', () => {
     expect(res.json()).toEqual({ matches: 3, teams: 3, scheduleReplaced: true });
     expect((await app.inject({ url: '/api/events' })).json().current).toEqual({ key: '2027test', name: 'Test Regional', redSide: 'left' });
     expect((await app.inject({ url: '/api/teams' })).json()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 5098]);
+    expect((await app.inject({ url: '/api/team-names' })).json()).toEqual({ 1: 'The Juggernauts', 12: 'Twelve', 5098: 'Stingr' });
   });
 
   it('keeps the existing schedule when TBA has no matches yet', async () => {
@@ -134,5 +140,26 @@ describe('schedule import routes', () => {
     const res = await app.inject({ method: 'POST', url: '/api/schedule/tba' });
     expect(res.statusCode).toBe(502);
     expect(res.json().error).toBe('The Blue Alliance rejected the API key');
+  });
+});
+
+describe('team names', () => {
+  it('lets a mentor set, correct and clear a team name; a TBA import keeps typed names it has no better answer for', async () => {
+    const app = await makeApp();
+    await setupEvent(app);
+    const set = await app.inject({ method: 'PUT', url: '/api/teams/6328/name', payload: { name: '  Mechanical Advantage ' } });
+    expect(set.json()).toEqual({ 6328: 'Mechanical Advantage' });
+    expect((await app.inject({ method: 'PUT', url: '/api/teams/6328/name', payload: { name: '' } })).json()).toEqual({});
+    expect((await app.inject({ method: 'PUT', url: '/api/teams/0/name', payload: { name: 'x' } })).statusCode).toBe(400);
+  });
+
+  it('sends the names of the event\'s teams to tablets', async () => {
+    const app = await makeApp();
+    await setupEvent(app);
+    await app.inject({ method: 'POST', url: '/api/teams', payload: { team: 5098 } });
+    await app.inject({ method: 'PUT', url: '/api/teams/5098/name', payload: { name: 'Stingr' } });
+    await app.inject({ method: 'PUT', url: '/api/teams/254/name', payload: { name: 'The Cheesy Poofs' } }); // not at this event
+    const sync = await app.inject({ method: 'POST', url: '/api/sync', payload: { device: { id: 'd', name: 'T' }, records: [] } });
+    expect(sync.json().config.teamNames).toEqual({ 5098: 'Stingr' });
   });
 });

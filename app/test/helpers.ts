@@ -8,6 +8,7 @@ export const CONFIG: HubConfig = {
   seasonId: 'season-1',
   eventKeys: ['2027test'],
   eventInstances: {},
+  teamNames: { 5098: 'Stingr', 254: 'The Cheesy Poofs' },
   event: { key: '2027test', name: 'Test Event' },
   forms: [matchForm(), pitForm()],
   schedule: [

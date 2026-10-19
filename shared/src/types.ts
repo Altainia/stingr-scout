@@ -79,6 +79,8 @@ export interface HubConfig {
   forms: FormDef[];
   schedule: ScheduleMatch[];
   teams: number[];
+  /** Names of the event's teams that have one (team number → name). */
+  teamNames: Record<number, string>;
   appBuild: string;
 }
 export interface SyncRequest {

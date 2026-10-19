@@ -5,6 +5,7 @@ import { checkScheduleMatch, parseScheduleCsv } from '../scheduleIo';
 import { upsertEvent } from '../store/events';
 import { addTeam, listSchedule, replaceSchedule } from '../store/schedule';
 import { getSetting } from '../store/settings';
+import { setTeamName } from '../store/teamNames';
 import { fetchTbaEvent } from '../tba';
 
 export function scheduleImportRoutes(app: FastifyInstance, ctx: HubContext): void {
@@ -41,6 +42,7 @@ export function scheduleImportRoutes(app: FastifyInstance, ctx: HubContext): voi
     }
     if (data.name) upsertEvent(ctx.db, { key: ev.key, name: data.name });
     for (const t of data.teams) addTeam(ctx.db, ev.key, t);
+    for (const [t, name] of Object.entries(data.names)) setTeamName(ctx.db, Number(t), name); // keeps names TBA doesn't have
     // Before the schedule is released TBA returns no matches; never wipe an imported schedule with nothing.
     const scheduleReplaced = data.matches.length > 0;
     if (scheduleReplaced) replaceSchedule(ctx.db, ev.key, data.matches);
