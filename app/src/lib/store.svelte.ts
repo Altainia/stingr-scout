@@ -2,7 +2,7 @@ import {
   type EventInfo, finalizeSubmit, type FormDef, type FormKind, type HubConfig, markNoShow, newRecord,
   reviseRecord, type ScoutRecord, type Side, type Slot, undoNoShow,
 } from '@stingr/shared';
-import type { Draft, LocalPhoto, LocalRecord, Settings, StingrDb, SyncState } from './db';
+import type { Draft, LocalPhoto, LocalRecord, ReturnTo, Settings, StingrDb, SyncState } from './db';
 import { formVersion, latestForm, type PitView } from './session';
 
 export type Screen =
@@ -16,6 +16,11 @@ export type Screen =
 
 export interface StoreDeps { db: StingrDb; now?: () => string; newId?: () => string }
 export interface MatchStart { matchKey: string; slot: Slot; team: number }
+
+/** Where a form goes when it's done: where it was opened from (drafts saved by older versions: by kind). */
+function returnScreen(d: Draft): ReturnTo {
+  return d.returnTo ?? (d.rec.kind === 'pit' ? 'pit' : d.isEdit ? 'records' : 'home');
+}
 
 export class AppStore {
   settings = $state<Settings>({ deviceId: '', deviceName: '', defaultSlot: 'red1', scout: '' });
@@ -139,7 +144,7 @@ export class AppStore {
   }
 
   async startMatch(p: MatchStart): Promise<void> {
-    await this.setDraft({ rec: this.create('match', p.team, p.matchKey, p.slot), isEdit: false });
+    await this.setDraft({ rec: this.create('match', p.team, p.matchKey, p.slot), isEdit: false, returnTo: 'home' });
     this.screen = { name: 'form' };
   }
 
@@ -148,7 +153,7 @@ export class AppStore {
   }
 
   async startPit(team: number): Promise<void> {
-    await this.setDraft({ rec: this.create('pit', team), isEdit: false });
+    await this.setDraft({ rec: this.create('pit', team), isEdit: false, returnTo: 'pit' });
     this.screen = { name: 'form' };
   }
 
@@ -185,7 +190,7 @@ export class AppStore {
     const keep = new Set(submitted.photoIds);
     for (const p of this.photos) if (p.recordId === submitted.id && !keep.has(p.id)) await this.db.deletePhoto(p.id);
     this.photos = await this.db.listPhotos();
-    this.screen = { name: rec.kind === 'pit' ? 'pit' : 'home' };
+    this.screen = { name: returnScreen(d) };
     await this.setDraft(null);
   }
 
@@ -195,23 +200,24 @@ export class AppStore {
     if (!d) return;
     const kept = new Set(this.records.find(r => r.id === d.rec.id)?.rec.photoIds ?? []);
     for (const id of d.rec.photoIds) if (!kept.has(id)) await this.db.deletePhoto(id);
-    this.screen = { name: d.rec.kind === 'pit' ? 'pit' : d.isEdit ? 'records' : 'home' };
+    this.screen = { name: returnScreen(d) };
     await this.setDraft(null);
     this.photos = await this.db.listPhotos();
   }
 
-  async editRecord(id: string): Promise<void> {
+  /** Edit a saved record; `from` is the screen to go back to afterwards. */
+  async editRecord(id: string, from: ReturnTo = 'records'): Promise<void> {
     const r = this.records.find(x => x.id === id);
     if (!r) return;
-    await this.setDraft({ rec: reviseRecord($state.snapshot(r.rec) as ScoutRecord, this.now()), isEdit: true });
+    await this.setDraft({ rec: reviseRecord($state.snapshot(r.rec) as ScoutRecord, this.now()), isEdit: true, returnTo: from });
     this.screen = { name: 'form' };
   }
 
-  async undoNoShow(id: string): Promise<void> {
+  async undoNoShow(id: string, from: ReturnTo = 'records'): Promise<void> {
     const r = this.records.find(x => x.id === id);
     const form = r ? this.form(r.rec.kind) : null;
     if (!r || !form) return;
-    await this.setDraft({ rec: undoNoShow(form, $state.snapshot(r.rec) as ScoutRecord, this.now()), isEdit: true });
+    await this.setDraft({ rec: undoNoShow(form, $state.snapshot(r.rec) as ScoutRecord, this.now()), isEdit: true, returnTo: from });
     this.screen = { name: 'form' };
   }
 

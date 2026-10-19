@@ -14,7 +14,9 @@ export interface LocalRecord {
 }
 export interface LocalPhoto { id: string; recordId: string; mime: string; data: ArrayBuffer; uploaded: boolean; createdAt: string }
 export interface Settings { deviceId: string; deviceName: string; defaultSlot: Slot; scout: string; redSideOverride?: 'event' | Side }
-export interface Draft { rec: ScoutRecord; isEdit: boolean }
+/** The screen a form goes back to when it is submitted or cancelled. */
+export type ReturnTo = 'home' | 'pit' | 'records';
+export interface Draft { rec: ScoutRecord; isEdit: boolean; returnTo?: ReturnTo }
 export interface KvMap { settings: Settings; config: HubConfig; draft: Draft; extraTeams: number[]; lastSyncAt: string }
 
 interface Schema extends DBSchema {

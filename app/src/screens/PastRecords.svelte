@@ -34,9 +34,9 @@
         </span>
         <span class={r.sync}>{status(r)}</span>
         {#if r.rec.noShow}
-          <button type="button" onclick={() => store.undoNoShow(r.id)}>Undo / scout anyway</button>
+          <button type="button" onclick={() => store.undoNoShow(r.id, 'records')}>Undo / scout anyway</button>
         {:else}
-          <button type="button" onclick={() => store.editRecord(r.id)}>Edit</button>
+          <button type="button" onclick={() => store.editRecord(r.id, 'records')}>Edit</button>
         {/if}
         <button type="button" onclick={() => store.go({ name: 'qr', id: r.id })}>Show QR</button>
       </li>

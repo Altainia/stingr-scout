@@ -76,9 +76,9 @@
           <button type="button" class="primary" disabled={!canScout} onclick={() => store.startPit(t)}>Scout</button>
           <button type="button" disabled={!canScout} onclick={() => (confirmTeam = t)}>Not present</button>
         {:else if status === 'noshow'}
-          <button type="button" disabled={!canScout} onclick={() => { const r = latestPit(t, true); if (r) void store.undoNoShow(r.id); }}>Undo / scout anyway</button>
+          <button type="button" disabled={!canScout} onclick={() => { const r = latestPit(t, true); if (r) void store.undoNoShow(r.id, 'pit'); }}>Undo / scout anyway</button>
         {:else}
-          <button type="button" onclick={() => { const r = latestPit(t, false); if (r) void store.editRecord(r.id); }}>Edit</button>
+          <button type="button" onclick={() => { const r = latestPit(t, false); if (r) void store.editRecord(r.id, 'pit'); }}>Edit</button>
         {/if}
       </li>
     {/each}

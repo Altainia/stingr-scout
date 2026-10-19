@@ -219,3 +219,61 @@ describe('event instances', () => {
     expect((await db.listRecords())[0].eventInstance).toBe('instance-1');
   });
 });
+
+describe('where a form returns to', () => {
+  async function withRecords() {
+    const ctx = await makeStore();
+    await ctx.store.startMatch(match);
+    await ctx.store.submitDraft();
+    await ctx.store.startPit(5098);
+    await ctx.store.submitDraft();
+    const id = (kind: 'match' | 'pit') => ctx.store.records.find(r => r.rec.kind === kind)!.id;
+    return { ...ctx, id };
+  }
+
+  it('goes back to Past records after editing a match or pit record from there, whether cancelled or submitted', async () => {
+    const { store, id } = await withRecords();
+    for (const kind of ['match', 'pit'] as const) {
+      for (const finish of ['discardDraft', 'submitDraft'] as const) {
+        await store.editRecord(id(kind), 'records');
+        await store[finish]();
+        expect(store.screen, `${kind} ${finish}`).toEqual({ name: 'records' });
+      }
+    }
+  });
+
+  it('goes back to the pit list after editing from there', async () => {
+    const { store, id } = await withRecords();
+    await store.editRecord(id('pit'), 'pit');
+    await store.submitDraft();
+    expect(store.screen).toEqual({ name: 'pit' });
+  });
+
+  it('goes back where a not-present record was undone from', async () => {
+    const { store } = await makeStore();
+    await store.pitNoShow(5098);
+    const noShow = store.records[0].id;
+    await store.undoNoShow(noShow, 'records');
+    await store.discardDraft();
+    expect(store.screen).toEqual({ name: 'records' });
+  });
+
+  it('goes to the main page after a new match, and to the pit list after a new pit form', async () => {
+    const { store } = await makeStore();
+    await store.startMatch(match);
+    await store.discardDraft();
+    expect(store.screen).toEqual({ name: 'home' });
+    await store.startPit(5098);
+    await store.discardDraft();
+    expect(store.screen).toEqual({ name: 'pit' });
+  });
+
+  it('remembers where to go back to after the app restarts mid-edit', async () => {
+    const { store, db, id } = await withRecords();
+    await store.editRecord(id('match'), 'records');
+    const again = new AppStore({ db, now: () => '2027-03-01T10:00:00.000Z', newId: () => 'x' });
+    await again.load();
+    await again.submitDraft();
+    expect(again.screen).toEqual({ name: 'records' });
+  });
+});
