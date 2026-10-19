@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import DataPage from '../src/pages/DataPage.svelte';
 import { fakeApi } from './helpers';
@@ -44,6 +44,7 @@ describe('DataPage', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Delete Demo (2027demo)?' });
     expect(dialog.textContent).toContain('12 matches, 24 teams, 48 records and 3 photos');
+    await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByLabelText('Type 2027demo to confirm'))); // ready to type
     const go = within(dialog).getByRole('button', { name: 'Delete event' }) as HTMLButtonElement;
     expect(go.disabled).toBe(true);
     await fireEvent.input(within(dialog).getByLabelText('Type 2027demo to confirm'), { target: { value: '2027demo' } });

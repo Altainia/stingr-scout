@@ -371,4 +371,42 @@ describe('ConfirmDialog', () => {
     expect(oncancel).toHaveBeenCalledTimes(1);
     expect(onconfirm).toHaveBeenCalledTimes(1);
   });
+
+  const open = () => {
+    const onconfirm = vi.fn();
+    const oncancel = vi.fn();
+    render(ConfirmDialog, { title: 'Delete?', confirmLabel: 'Delete', cancelLabel: 'Keep it', onconfirm, oncancel });
+    return { onconfirm, oncancel, dialog: screen.getByRole('dialog', { name: 'Delete?' }) };
+  };
+
+  it('cancels on Escape', async () => {
+    const { oncancel, onconfirm } = open();
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    expect(oncancel).toHaveBeenCalledTimes(1);
+    expect(onconfirm).not.toHaveBeenCalled();
+  });
+
+  it('cancels on a click outside the dialog, but not on one inside or a drag that ends outside', async () => {
+    const { oncancel, dialog } = open();
+    const backdrop = dialog.parentElement!;
+    await fireEvent.pointerDown(dialog);
+    await fireEvent.click(backdrop); // a drag from inside to outside
+    await fireEvent.pointerDown(dialog);
+    await fireEvent.click(dialog);
+    expect(oncancel).not.toHaveBeenCalled();
+    await fireEvent.pointerDown(backdrop);
+    await fireEvent.click(backdrop);
+    expect(oncancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts on the safe button, and Enter never confirms', async () => {
+    const { onconfirm } = open();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep it' }));
+    const confirm = screen.getByRole('button', { name: 'Delete' });
+    confirm.focus();
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    confirm.dispatchEvent(enter);
+    expect(enter.defaultPrevented).toBe(true); // the browser won't turn it into a click
+    expect(onconfirm).not.toHaveBeenCalled();
+  });
 });

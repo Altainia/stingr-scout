@@ -300,3 +300,31 @@ test('deletes an event from Export & backup after typing its key', async ({ page
   const { events } = await (await api.get('/api/events')).json();
   expect(events.map((e: { key: string }) => e.key)).not.toContain('2027gone');
 });
+
+test('a delete dialog closes on Escape or a click outside, and Enter never deletes', async ({ page }) => {
+  await page.goto('/hub/#/forms/match');
+  const question = page.locator('.outline').getByRole('button', { name: /^Coral scored ·/ });
+  await expect(question).toBeVisible();
+  const dialog = page.getByRole('dialog', { name: /^Delete “Coral scored”\?/ });
+
+  await page.getByRole('button', { name: 'Delete Coral scored' }).click();
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole('button', { name: 'Delete Coral scored' }).click();
+  await page.mouse.click(5, 5); // the dimmed area
+  await expect(dialog).toBeHidden();
+
+  await page.getByRole('button', { name: 'Delete Coral scored' }).click();
+  await page.keyboard.press('Enter'); // the focus starts on "Keep it": Enter cancels
+  await expect(dialog).toBeHidden();
+  await expect(question).toBeVisible();
+
+  await page.getByRole('button', { name: 'Delete Coral scored' }).click();
+  await dialog.getByRole('button', { name: 'Delete' }).focus();
+  await page.keyboard.press('Enter'); // even on the Delete button, Enter does nothing
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(question).toBeVisible(); // still there
+});
