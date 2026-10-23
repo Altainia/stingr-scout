@@ -105,6 +105,24 @@ describe('Dashboard', () => {
   });
 });
 
+describe('Dashboard: tablets with the same USB serial', () => {
+  it('lists both, with their model, and keeps the synced list showing', async () => {
+    const twin = { serial: '0123456789ABCDEF', state: 'device', model: 'P00C', reversed: true };
+    const api = fakeApi({
+      events: async () => ({ events: [], current: null }),
+      devices: async () => ({
+        adb: { available: true, devices: [{ ...twin, transportId: '7' }, { ...twin, transportId: '9' }] },
+        devices: [{ id: 'd1', name: 'Tablet 1', lastSyncAt: new Date().toISOString() }],
+      }),
+    });
+    render(Dashboard, { api });
+    expect(await screen.findByText('Tablet 1')).toBeTruthy();
+    const plugged = screen.getByRole('heading', { name: 'Plugged-in tablets' }).closest('section')!;
+    expect(within(plugged).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(plugged).getAllByText(/P00C/)).toHaveLength(2);
+  });
+});
+
 describe('Dashboard: refreshing', () => {
   it("refreshes when the hub's data changes, not on a timer", async () => {
     vi.useFakeTimers();

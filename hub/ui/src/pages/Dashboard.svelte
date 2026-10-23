@@ -83,8 +83,9 @@
     <p class="muted">No tablets plugged in.</p>
   {:else if devices}
     <ul class="list">
-      {#each devices.adb.devices as d (d.serial)}
-        <li><strong>{d.serial}</strong><span class="grow">{usbState(d.state, d.reversed, d.error)}</span></li>
+      <!-- Keyed by USB connection: some tablets all report the same serial. -->
+      {#each devices.adb.devices as d, i (d.transportId ?? `${d.serial}#${i}`)}
+        <li><strong>{d.serial}</strong>{#if d.model}<span class="muted">{d.model}</span>{/if}<span class="grow">{usbState(d.state, d.reversed, d.error)}</span></li>
       {/each}
     </ul>
   {/if}

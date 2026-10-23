@@ -1,22 +1,33 @@
 import { execFile } from 'node:child_process';
 
 export type AdbExec = (args: string[]) => Promise<string>;
-export type AdbDevice = { serial: string; state: string; reversed: boolean; error?: string };
+/** transportId: adb's number for the USB connection. Some tablets all report the same serial, so this is how each is addressed. */
+export type AdbListing = { serial: string; state: string; model?: string; transportId?: string };
+export type AdbDevice = AdbListing & { reversed: boolean; error?: string };
 export type AdbStatus = { available: boolean; devices: AdbDevice[]; error?: string };
 
 /** System prompts some tablets show on every plug-in, covering the app. The watcher dismisses only these. */
 export const USB_PROMPTS = ['com.android.settings.usb.USBChangeConfigDialog', 'UsbModeChooserActivity'];
 
-export function parseAdbDevices(output: string): { serial: string; state: string }[] {
+/** Reads `adb devices -l` (or plain `adb devices`). */
+export function parseAdbDevices(output: string): AdbListing[] {
   return output
     .split('\n')
     .map(l => l.trim())
     .filter(l => l !== '' && !l.startsWith('List of devices') && !l.startsWith('*'))
     .map(l => {
-      const [serial, state] = l.split(/\s+/);
-      return { serial, state: state ?? 'unknown' };
+      const [serial, state, ...rest] = l.split(/\s+/);
+      const info = Object.fromEntries(rest.flatMap(p => { const i = p.indexOf(':'); return i > 0 ? [[p.slice(0, i), p.slice(i + 1)]] : []; }));
+      return {
+        serial, state: state ?? 'unknown',
+        ...(info.model ? { model: info.model } : {}),
+        ...(info.transport_id ? { transportId: info.transport_id } : {}),
+      };
     });
 }
+
+/** The adb arguments that pick out one tablet: its USB connection when known (serials can repeat), else its serial. */
+const target = (d: AdbListing): string[] => (d.transportId ? ['-t', d.transportId] : ['-s', d.serial]);
 
 function adbErrorMessage(e: unknown): string {
   const err = e as NodeJS.ErrnoException | undefined;
@@ -43,7 +54,7 @@ export class AdbWatcher {
     try {
       let out: string;
       try {
-        out = await this.exec(['devices']);
+        out = await this.exec(['devices', '-l']);
       } catch (e) {
         this.status = { available: false, devices: [], error: adbErrorMessage(e) };
         return this.status;
@@ -55,9 +66,9 @@ export class AdbWatcher {
           continue;
         }
         try {
-          await this.exec(['-s', d.serial, 'reverse', `tcp:${this.port}`, `tcp:${this.port}`]);
+          await this.exec([...target(d), 'reverse', `tcp:${this.port}`, `tcp:${this.port}`]);
           devices.push({ ...d, reversed: true });
-          await this.dismissUsbPrompt(d.serial);
+          await this.dismissUsbPrompt(target(d));
         } catch (e) {
           devices.push({ ...d, reversed: false, error: adbErrorMessage(e) });
         }
@@ -69,15 +80,15 @@ export class AdbWatcher {
     }
   }
 
-  private async dismissUsbPrompt(serial: string): Promise<void> {
+  private async dismissUsbPrompt(device: string[]): Promise<void> {
     try {
       const promptShowing = async () => {
-        const focus = await this.exec(['-s', serial, 'shell', 'dumpsys window | grep mCurrentFocus']);
+        const focus = await this.exec([...device, 'shell', 'dumpsys window | grep mCurrentFocus']);
         return USB_PROMPTS.some(p => focus.includes(p));
       };
       // Check twice so Back is never sent to the app if the scout closed the prompt in the meantime.
       if ((await promptShowing()) && (await promptShowing())) {
-        await this.exec(['-s', serial, 'shell', 'input', 'keyevent', 'KEYCODE_BACK']);
+        await this.exec([...device, 'shell', 'input', 'keyevent', 'KEYCODE_BACK']);
       }
     } catch {
       // The tablet may be mid-unplug, or grep found nothing; try again on the next poll.
