@@ -274,3 +274,22 @@ describe('Preview', () => {
     expect(within(preview).getByRole('region', { name: 'Climb' })).toBeTruthy();
   });
 });
+
+describe('QuestionProps: dimensions', () => {
+  it('asks for length, width and height to start with, and any of them can be left out', async () => {
+    const f = addQuestion(emptyForm('pit'), 0, 'dimensions', 'Frame size');
+    expect(f.sections[0].questions[0]).toMatchObject({ type: 'dimensions', parts: ['length', 'width', 'height'] });
+    const { q } = setup(f, 0, 0);
+    const group = screen.getByRole('group', { name: 'Measurements' });
+    await fireEvent.click(within(group).getByLabelText('Width'));
+    expect(q()).toMatchObject({ parts: ['length', 'height'] });
+  });
+
+  it('keeps the measurements in length, width, height order', async () => {
+    const f = addQuestion(emptyForm('pit'), 0, 'dimensions', 'Height');
+    f.sections[0].questions[0] = { ...f.sections[0].questions[0], parts: ['height'] } as never;
+    const { q } = setup(f, 0, 0);
+    await fireEvent.click(screen.getByLabelText('Length'));
+    expect(q()).toMatchObject({ parts: ['length', 'height'] });
+  });
+});

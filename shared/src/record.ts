@@ -1,13 +1,20 @@
 import { allQuestions, findQuestion, initialAnswers, initialValue } from './form';
 import { normalizeMatchKey } from './matchKey';
-import type { AnswerValue, FormDef, ScoutRecord, Slot } from './types';
+import type { AnswerValue, FormDef, Question, ScoutRecord, Slot } from './types';
 import { SLOTS } from './types';
 
 export function isAnswered(v: AnswerValue | undefined): boolean {
   if (v === null || v === undefined) return false;
   if (typeof v === 'string') return v.trim() !== '';
   if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'object') return Object.keys(v).length > 0; // dimensions: any measurement in
   return true;
+}
+
+/** Whether a question has its whole answer: a dimensions question needs every measurement it asks for. */
+export function isComplete(q: Question, v: AnswerValue | undefined): boolean {
+  if (q.type === 'dimensions') return typeof v === 'object' && v !== null && !Array.isArray(v) && q.parts.every(p => typeof (v as Record<string, unknown>)[p] === 'number');
+  return isAnswered(v);
 }
 
 export interface NewRecordParams {
@@ -66,7 +73,7 @@ export function unmarkMissed(form: FormDef, rec: ScoutRecord, key: string): Scou
 
 export function unansweredRequired(form: FormDef, rec: ScoutRecord): string[] {
   return allQuestions(form)
-    .filter(q => q.required && !rec.missed.includes(q.key) && !isAnswered(rec.answers[q.key]))
+    .filter(q => q.required && !rec.missed.includes(q.key) && !isComplete(q, rec.answers[q.key]))
     .map(q => q.key);
 }
 

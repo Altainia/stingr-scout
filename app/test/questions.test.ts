@@ -1,5 +1,5 @@
 import type {
-  ChoiceQuestion, CounterQuestion, FieldMapQuestion, MultiQuestion, NumberQuestion, RatingQuestion,
+  ChoiceQuestion, CounterQuestion, DimensionsQuestion, FieldMapQuestion, MultiQuestion, NumberQuestion, RatingQuestion,
   TextQuestion, TimerQuestion, ToggleQuestion,
 } from '@stingr/shared';
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
@@ -8,6 +8,7 @@ import ConfirmDialog from '../src/components/ConfirmDialog.svelte';
 import QuestionCard from '../src/components/QuestionCard.svelte';
 import Choice from '../src/components/questions/Choice.svelte';
 import Counter from '../src/components/questions/Counter.svelte';
+import Dimensions from '../src/components/questions/Dimensions.svelte';
 import FieldMap from '../src/components/questions/FieldMap.svelte';
 import Multi from '../src/components/questions/Multi.svelte';
 import NumberField from '../src/components/questions/NumberField.svelte';
@@ -432,5 +433,60 @@ describe('ConfirmDialog', () => {
     confirm.dispatchEvent(enter);
     expect(enter.defaultPrevented).toBe(true); // the browser won't turn it into a click
     expect(onconfirm).not.toHaveBeenCalled();
+  });
+});
+
+describe('Dimensions', () => {
+  const size: DimensionsQuestion = { key: 'frame', label: 'Frame size', type: 'dimensions', required: false, parts: ['length', 'height'] };
+  const box = (name: string) => screen.getByLabelText(name) as HTMLInputElement;
+
+  it('asks for feet and inches for each measurement, and saves inches', async () => {
+    const onchange = vi.fn();
+    render(Dimensions, { question: size, value: null, onchange });
+    expect(screen.queryByLabelText('Width feet')).toBeNull();
+    await fireEvent.input(box('Length feet'), { target: { value: '2' } });
+    expect(onchange).toHaveBeenLastCalledWith({ length: 24 });
+    await fireEvent.input(box('Length inches'), { target: { value: '6.5' } });
+    expect(onchange).toHaveBeenLastCalledWith({ length: 30.5 });
+  });
+
+  it('shows a saved answer in feet and inches', () => {
+    render(Dimensions, { question: size, value: { length: 30.5, height: 40 }, onchange: vi.fn() });
+    expect([box('Length feet').value, box('Length inches').value, box('Height feet').value, box('Height inches').value]).toEqual(['2', '6.5', '3', '4']);
+  });
+
+  it('tidies inches past a foot into feet when the scout leaves the box', async () => {
+    const onchange = vi.fn();
+    const { rerender } = render(Dimensions, { question: size, value: null, onchange });
+    await fireEvent.input(box('Length inches'), { target: { value: '30' } });
+    expect(onchange).toHaveBeenLastCalledWith({ length: 30 });
+    await rerender({ question: size, value: { length: 30 }, onchange });
+    expect(box('Length inches').value).toBe('30'); // left alone while typing
+    await fireEvent.change(box('Length inches'));
+    expect([box('Length feet').value, box('Length inches').value]).toEqual(['2', '6']);
+  });
+
+  it('forgets a measurement when both its boxes are emptied, and the answer when all are', async () => {
+    const onchange = vi.fn();
+    render(Dimensions, { question: size, value: { length: 30, height: 40 }, onchange });
+    await fireEvent.input(box('Height feet'), { target: { value: '' } });
+    await fireEvent.input(box('Height inches'), { target: { value: '' } });
+    expect(onchange).toHaveBeenLastCalledWith({ length: 30 });
+  });
+
+  it('follows the answer when it is cleared from outside', async () => {
+    const { rerender } = render(Dimensions, { question: size, value: { length: 30 }, onchange: vi.fn() });
+    await rerender({ question: size, value: null, onchange: vi.fn() });
+    expect(box('Length feet').value).toBe('');
+  });
+
+  it('warns about a negative measurement', async () => {
+    render(Dimensions, { question: size, value: { length: -6 }, onchange: vi.fn() });
+    expect(screen.getByText('Measurements can’t be negative')).toBeTruthy();
+  });
+
+  it('is offered by the question card', () => {
+    render(QuestionCard, { question: size, value: null, missed: false, onchange: vi.fn(), onmissed: vi.fn(), venueRedSide: 'left', assets: {} });
+    expect(screen.getByLabelText('Height inches')).toBeTruthy();
   });
 });

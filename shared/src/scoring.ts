@@ -1,6 +1,7 @@
+import { isDimensions } from './dimensions';
 import { summaryKind } from './form';
 import { isAnswered } from './record';
-import type { AnswerValue, FormDef, Point, Question, ScoutRecord } from './types';
+import type { AnswerValue, DimPart, FormDef, Point, Question, ScoutRecord } from './types';
 
 export type QuestionStat =
   | { kind: 'avg'; n: number; avg: number | null; max: number | null }
@@ -8,6 +9,8 @@ export type QuestionStat =
   | { kind: 'distribution'; n: number; counts: Record<string, number> }
   | { kind: 'list'; values: string[] }
   | { kind: 'scatter'; points: Point[] }
+  /** each measurement's average, in inches */
+  | { kind: 'size'; n: number; parts: Partial<Record<DimPart, number | null>> }
   | { kind: 'none' };
 
 function valueMatchesType(q: Question, v: AnswerValue): boolean {
@@ -22,6 +25,8 @@ function valueMatchesType(q: Question, v: AnswerValue): boolean {
       return Array.isArray(v) && v.every(x => typeof x === 'string');
     case 'fieldmap':
       return Array.isArray(v) && v.every(p => typeof p === 'object' && p !== null && typeof (p as Point).x === 'number' && typeof (p as Point).y === 'number');
+    case 'dimensions':
+      return isDimensions(v);
   }
 }
 
@@ -61,6 +66,11 @@ export function questionStat(q: Question, records: ScoutRecord[]): QuestionStat 
       return { kind, values: vals.map(v => String(v)) };
     case 'scatter':
       return { kind, points: vals.flatMap(v => (Array.isArray(v) ? (v as Point[]) : [])) };
+    case 'size': {
+      const sizes = vals.filter(isDimensions);
+      const parts = q.type === 'dimensions' ? q.parts : [];
+      return { kind, n: sizes.length, parts: Object.fromEntries(parts.map(p => [p, mean(sizes.flatMap(s => (s[p] === undefined ? [] : [s[p]])))])) };
+    }
     case 'none':
       return { kind };
   }

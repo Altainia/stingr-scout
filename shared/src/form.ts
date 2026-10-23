@@ -1,3 +1,4 @@
+import { DIM_PARTS } from './dimensions';
 import type { AnswerValue, Answers, CounterQuestion, FormDef, Question, SummaryKind } from './types';
 
 const KEY_RE = /^[a-z][a-z0-9_]*$/;
@@ -36,7 +37,7 @@ export function counterJumps(q: CounterQuestion): number[] {
 /** What each summary is called in the hub. */
 export const SUMMARY_NAMES: Record<SummaryKind, string> = {
   avg: 'Average and max', pct: 'Percent yes', distribution: 'How often each option', list: 'List of answers',
-  scatter: 'Field map plot', none: "Don't summarize",
+  scatter: 'Field map plot', size: 'Each measurement', none: "Don't summarize",
 };
 
 /** The summaries that give a meaningful result for a type of question, its default first. */
@@ -47,6 +48,7 @@ export function summaryOptions(type: Question['type']): SummaryKind[] {
     case 'choice': case 'multi': return ['distribution', 'none'];
     case 'text': return ['list', 'none'];
     case 'fieldmap': return ['scatter', 'none'];
+    case 'dimensions': return ['size', 'none'];
   }
 }
 
@@ -57,6 +59,7 @@ function defaultSummary(q: Question): SummaryKind {
     case 'choice': case 'multi': return 'distribution';
     case 'text': return 'list';
     case 'fieldmap': return 'scatter';
+    case 'dimensions': return 'size';
   }
 }
 
@@ -114,6 +117,11 @@ function typeErrors(q: Question, form: FormDef): string[] {
       if (!(q.assetId in form.assets)) e.push('Choose a field image');
       if (!(Number.isInteger(q.maxPoints) && q.maxPoints >= 1)) e.push('Points to mark must be at least 1');
       if (q.redSide !== 'left' && q.redSide !== 'right') e.push('Red side must be left or right');
+      break;
+    case 'dimensions':
+      if (!Array.isArray(q.parts) || q.parts.length === 0) e.push('Tick at least one of length, width and height');
+      else if (!q.parts.every(p => DIM_PARTS.includes(p))) e.push('Measurements must be length, width or height');
+      else if (new Set(q.parts).size !== q.parts.length) e.push('Each measurement can only be asked once');
       break;
     case 'text':
     case 'timer':

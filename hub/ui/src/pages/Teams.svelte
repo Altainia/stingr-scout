@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { allQuestions, type ChoiceQuestion, type FormDef, summaryKind } from '@stingr/shared';
+  import { allQuestions, type ChoiceQuestion, DIM_PART_LABELS, type DimensionsQuestion, feetInches, type FormDef, summaryKind } from '@stingr/shared';
   import { onMount } from 'svelte';
   import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
@@ -11,7 +11,7 @@
   let { api }: { api: Api } = $props();
   type Col = { id: string; label: string; get: (s: TeamSummary) => number | string | null; show: (s: TeamSummary) => string };
 
-  let data = $state<{ form: FormDef | null; summaries: TeamSummary[]; scoreShares?: Record<number, number | null> } | null>(null);
+  let data = $state<{ form: FormDef | null; pitForm?: FormDef | null; summaries: TeamSummary[]; scoreShares?: Record<number, number | null> } | null>(null);
   let error = $state<unknown>(null);
   let names = $state<Record<number, string>>({});
   let sortId = $state('est');
@@ -81,6 +81,17 @@
             show: s => { const t = topOption(s, q); return t ? `${t.label} ${pct(t.share)}` : '—'; },
           });
         }
+      }
+    }
+    // A robot's measurements (pit dimensions questions), in feet and inches; named by the question too when there are several.
+    const sizes = data?.pitForm ? allQuestions(data.pitForm).filter((q): q is DimensionsQuestion => q.type === 'dimensions' && summaryKind(q) === 'size') : [];
+    for (const q of sizes) {
+      for (const p of q.parts) {
+        const get = (s: TeamSummary) => { const st = s.pitStats?.[q.key]; return st?.kind === 'size' ? st.parts[p] ?? null : null; };
+        list.push({
+          id: `pit_${q.key}_${p}`, label: sizes.length > 1 ? `${q.label} ${DIM_PART_LABELS[p].toLowerCase()}` : DIM_PART_LABELS[p],
+          get, show: s => { const v = get(s); return v === null ? '—' : feetInches(v); },
+        });
       }
     }
     list.push({ id: 'pit', label: 'Pit', get: s => s.pit, show: s => PIT[s.pit] });

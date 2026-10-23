@@ -60,8 +60,10 @@ if (existing.summaries.some(s => s.matchRecords > 0)) {
 }
 const match = matchForm();
 match.assets.field = fieldPng(600, 300);
+const pit = pitForm();
+pit.sections[0].questions.push({ key: 'frame', label: 'Frame size', type: 'dimensions', required: false, parts: ['length', 'width', 'height'] });
 const published = (await call('GET', '/api/forms')) as { kind: string; version: number }[];
-for (const form of [match, pitForm()]) {
+for (const form of [match, pit]) {
   if (published.some(f => f.kind === form.kind)) continue; // already there
   await call('PUT', `/api/forms/${form.kind}/draft`, form);
   await call('POST', `/api/forms/${form.kind}/publish`);
@@ -125,10 +127,10 @@ for (let i = 0; i < records.length; i += 25) {
 }
 
 // Pit scouting for most teams.
-const pit = pitForm();
 const pits = teams.slice(0, 9).map((team, i) => {
   let r = record(pit, { eventKey: '2027demo', team, scout: scouts[i % scouts.length], formVersion: versionOf('pit'), id: `demo-pit-${team}`, matchKey: undefined, slot: undefined });
   r = setAnswer(r, 'drivetrain', i % 3 ? 'swerve' : 'tank');
+  r = setAnswer(r, 'frame', { length: 26 + ((i * 5) % 9) + (i % 2) / 2, width: 24 + ((i * 7) % 8), height: 34 + ((i * 11) % 14) + (i % 4) / 4 });
   return setAnswer(r, 'weight_lb', 95 + ((i * 13) % 30));
 });
 await call('POST', '/api/sync', { device: { id: 'demo-tablet', name: 'Demo tablet' }, records: pits });

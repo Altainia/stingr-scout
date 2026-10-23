@@ -1,4 +1,5 @@
 import { allQuestions } from './form';
+import { isDimensions } from './dimensions';
 import { checkRecord } from './record';
 import type { AnswerValue, FormDef, FormKind, Point, Question, ScoutRecord, Slot } from './types';
 
@@ -55,12 +56,14 @@ const round3 = (n: number) => Math.round(n * 1000) / 1000;
 function packValue(q: Question, v: AnswerValue | undefined): unknown {
   if (v === undefined || v === null) return null;
   if (q.type === 'fieldmap' && Array.isArray(v)) return (v as Point[]).map(p => [round3(p.x), round3(p.y)]);
+  if (q.type === 'dimensions' && isDimensions(v)) return q.parts.map(p => v[p] ?? null); // in the question's order
   return v;
 }
 
 function unpackValue(q: Question, v: unknown): AnswerValue {
   if (v === null || v === undefined) return null;
   if (q.type === 'fieldmap') return (v as [number, number][]).map(([x, y]) => ({ x, y }));
+  if (q.type === 'dimensions' && Array.isArray(v)) return Object.fromEntries(q.parts.flatMap((p, i) => (typeof v[i] === 'number' ? [[p, v[i]]] : [])));
   return v as AnswerValue;
 }
 

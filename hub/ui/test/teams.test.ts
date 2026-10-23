@@ -2,7 +2,7 @@ import { markNoShow, setAnswer } from '@stingr/shared';
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { buildTeamSummaries } from '../../server/src/summaries';
-import { matchForm, record } from '../../../shared/test/fixtures';
+import { matchForm, pitForm, record } from '../../../shared/test/fixtures';
 import Teams from '../src/pages/Teams.svelte';
 import { fakeApi, fakeChanges } from './helpers';
 
@@ -85,5 +85,23 @@ describe('Teams: names', () => {
     const link = await screen.findByRole('link', { name: '254' });
     await vi.waitFor(() => expect(link.closest('td')!.textContent).toContain('The Cheesy Poofs'));
     expect(screen.getByRole('link', { name: '118' }).closest('td')!.textContent).toBe('118');
+  });
+});
+
+describe('Teams: robot size', () => {
+  it('adds a column for each measurement a pit dimensions question asks, sortable by size', async () => {
+    const pf = pitForm();
+    pf.sections[0].questions.push({ key: 'frame', label: 'Frame size', type: 'dimensions', required: false, parts: ['length', 'height'] });
+    const pits = [
+      setAnswer(record(pf, { team: 254 }), 'frame', { length: 30.5, height: 40 }),
+      setAnswer(record(pf, { team: 5098 }), 'frame', { length: 28, height: 44 }),
+    ];
+    const withPits = buildTeamSummaries([118, 254, 5098], f, records, pits, pf);
+    render(Teams, { api: fakeApi({ summaries: async () => ({ form: f, pitForm: pf, summaries: withPits }) }) });
+    await fireEvent.click(await screen.findByRole('button', { name: /^Length/ }));
+    expect(teamOrder()).toEqual(['254', '5098', '118']); // biggest first, unmeasured last
+    const row = screen.getByRole('link', { name: '254' }).closest('tr')!;
+    expect(row.textContent).toContain('2′ 6½″');
+    expect(row.textContent).toContain('3′ 4″');
   });
 });

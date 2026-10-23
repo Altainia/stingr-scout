@@ -1,3 +1,4 @@
+import { DIM_PARTS, feetInches, isDimensions } from './dimensions';
 import { isAnswered } from './record';
 import type { AnswerValue, Point, Question } from './types';
 
@@ -22,6 +23,8 @@ export function describeAnswer(q: Question, v: AnswerValue | undefined): string 
       const n = (v as Point[]).length;
       return `${n} point${n === 1 ? '' : 's'}`;
     }
+    case 'dimensions':
+      return isDimensions(v) ? q.parts.filter(p => DIM_PARTS.includes(p)).map(p => (v[p] === undefined ? '—' : feetInches(v[p]))).join(' × ') : plain();
     default:
       return plain();
   }

@@ -209,3 +209,14 @@ describe('TeamPage: team names', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
+
+describe('TeamPage: robot size', () => {
+  it('shows a dimensions answer in feet and inches in the pit section', async () => {
+    const pf = pitForm();
+    pf.sections[0].questions.push({ key: 'frame', label: 'Frame size', type: 'dimensions', required: false, parts: ['length', 'width', 'height'] });
+    const sized = setAnswer(record(pf, { team: 5098 }), 'frame', { length: 30, width: 28.5, height: 40 });
+    render(TeamPage, { api: fakeApi({ team: async () => ({ ...detail, pitForm: pf, pitRecords: [sized] }) }), team: 5098 });
+    const dt = await screen.findByText('Frame size', { selector: 'dt' });
+    expect(dt.nextElementSibling!.textContent).toBe('2′ 6″ × 2′ 4½″ × 3′ 4″');
+  });
+});

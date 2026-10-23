@@ -107,7 +107,7 @@ export function createApi(http: Http = (input, init) => fetch(input, init)) {
     missed: () => call<MissedReport>('GET', '/api/missed'),
     ackMissed: (id: string) => call<MissedReport>('POST', `/api/missed/${encodeURIComponent(id)}/ack`),
     unackMissed: (id: string) => call<MissedReport>('DELETE', `/api/missed/${encodeURIComponent(id)}/ack`),
-    summaries: () => call<{ form: FormDef | null; summaries: TeamSummary[]; scoreShares?: Record<number, number | null> }>('GET', '/api/summaries'),
+    summaries: () => call<{ form: FormDef | null; pitForm?: FormDef | null; summaries: TeamSummary[]; scoreShares?: Record<number, number | null> }>('GET', '/api/summaries'),
     alliance: () => call<AllianceView>('GET', '/api/alliance'),
     setAllianceValue: (match: string, side: AllianceSide, item: string, value: number | null) =>
       call<{ ok: true }>('PUT', `/api/alliance/${encodeURIComponent(match)}/${side}/${encodeURIComponent(item)}`, { value }),

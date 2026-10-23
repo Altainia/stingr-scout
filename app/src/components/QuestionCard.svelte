@@ -2,6 +2,7 @@
   import { type AnswerValue, isRotated, type Question, type Side } from '@stingr/shared';
   import Choice from './questions/Choice.svelte';
   import Counter from './questions/Counter.svelte';
+  import Dimensions from './questions/Dimensions.svelte';
   import FieldMap from './questions/FieldMap.svelte';
   import Multi from './questions/Multi.svelte';
   import NumberField from './questions/NumberField.svelte';
@@ -51,5 +52,7 @@
     <Timer {question} {value} {onchange} />
   {:else if question.type === 'fieldmap'}
     <FieldMap {question} {value} {onchange} rotated={isRotated(question.redSide ?? 'left', venueRedSide)} image={assets[question.assetId]} />
+  {:else if question.type === 'dimensions'}
+    <Dimensions {question} {value} {onchange} />
   {/if}
 </section>

@@ -1,6 +1,6 @@
 import {
   type AllianceField, type AllianceMatch,
-  allQuestions, type AnswerValue, compareMatchKeys, type FormDef, type Point, recordPoints,
+  allQuestions, type Answers, type AnswerValue, compareMatchKeys, type FormDef, isDimensions, type Point, recordPoints,
   type ScoutRecord, type Slot, SLOTS, summaryKind,
 } from '@stingr/shared';
 import type { TeamSummary } from './summaries';
@@ -25,6 +25,7 @@ export function formatAnswer(v: AnswerValue | undefined): string | number | bool
   if (v === null || v === undefined) return null;
   if (typeof v === 'string') return v;
   if (Array.isArray(v)) return v.map(x => (typeof x === 'string' ? x : `${(x as Point).x},${(x as Point).y}`)).join(';');
+  if (typeof v === 'object') return JSON.stringify(v); // dimensions kept under a key that is no longer a dimensions question
   return v;
 }
 
@@ -33,42 +34,44 @@ const pct = (f: number | null): number | null => (f === null ? null : Math.round
 const newest = (forms: FormDef[]): FormDef | undefined =>
   forms.reduce<FormDef | undefined>((best, f) => (!best || f.version > best.version ? f : best), undefined);
 
-export function questionKeyColumns(forms: FormDef[]): string[] {
-  const keys: string[] = [];
+/** A column per question, newest form first; a dimensions question gets a column per measurement, in inches. */
+export function questionColumns(forms: FormDef[]): { name: string; get: (a: Answers) => Cell }[] {
+  const cols: { name: string; get: (a: Answers) => Cell }[] = [];
   const seen = new Set<string>();
   for (const f of [...forms].sort((a, b) => b.version - a.version)) {
     for (const q of allQuestions(f)) {
-      if (!seen.has(q.key)) {
-        seen.add(q.key);
-        keys.push(q.key);
-      }
+      if (seen.has(q.key)) continue;
+      seen.add(q.key);
+      if (q.type === 'dimensions') {
+        for (const p of q.parts) cols.push({ name: `${q.key}_${p}_in`, get: a => { const v = a[q.key]; return isDimensions(v) ? v[p] ?? null : null; } });
+      } else cols.push({ name: q.key, get: a => formatAnswer(a[q.key]) });
     }
   }
-  return keys;
+  return cols;
 }
 
 export function matchesCsv(eventKey: string, forms: FormDef[], records: ScoutRecord[]): string {
   const latest = newest(forms);
-  const keys = questionKeyColumns(forms);
-  const header = ['event', 'match', 'slot', 'team', 'scout', 'device', 'no_show', 'est_points', 'missed', 'revision', 'updated_at', ...keys];
+  const cols = questionColumns(forms);
+  const header = ['event', 'match', 'slot', 'team', 'scout', 'device', 'no_show', 'est_points', 'missed', 'revision', 'updated_at', ...cols.map(c => c.name)];
   const sorted = [...records].sort((a, b) =>
     compareMatchKeys(a.matchKey ?? '', b.matchKey ?? '') || SLOTS.indexOf(a.slot as Slot) - SLOTS.indexOf(b.slot as Slot));
   const rows = sorted.map(r => [
     eventKey, r.matchKey, r.slot, r.team, r.scout, r.deviceId, r.noShow,
     latest ? round2(recordPoints(latest, r)) : null,
     r.missed.join(';'), r.revision, r.updatedAt,
-    ...keys.map(k => formatAnswer(r.answers[k])),
+    ...cols.map(c => c.get(r.answers)),
   ]);
   return toCsv(header, rows);
 }
 
 export function pitCsv(eventKey: string, forms: FormDef[], records: ScoutRecord[]): string {
-  const keys = questionKeyColumns(forms);
-  const header = ['event', 'team', 'scout', 'device', 'no_show', 'photos', 'missed', 'revision', 'updated_at', ...keys];
+  const cols = questionColumns(forms);
+  const header = ['event', 'team', 'scout', 'device', 'no_show', 'photos', 'missed', 'revision', 'updated_at', ...cols.map(c => c.name)];
   const sorted = [...records].sort((a, b) => a.team - b.team || a.updatedAt.localeCompare(b.updatedAt));
   const rows = sorted.map(r => [
     eventKey, r.team, r.scout, r.deviceId, r.noShow, r.photoIds.length, r.missed.join(';'), r.revision, r.updatedAt,
-    ...keys.map(k => formatAnswer(r.answers[k])),
+    ...cols.map(c => c.get(r.answers)),
   ]);
   return toCsv(header, rows);
 }

@@ -2,7 +2,10 @@ export type FormKind = 'match' | 'pit';
 export type Slot = 'red1' | 'red2' | 'red3' | 'blue1' | 'blue2' | 'blue3';
 export const SLOTS: Slot[] = ['red1', 'red2', 'red3', 'blue1', 'blue2', 'blue3'];
 export type Side = 'left' | 'right';
-export type SummaryKind = 'avg' | 'pct' | 'distribution' | 'list' | 'scatter' | 'none';
+export type SummaryKind = 'avg' | 'pct' | 'distribution' | 'list' | 'scatter' | 'size' | 'none';
+export type DimPart = 'length' | 'width' | 'height';
+/** Measurements in inches; a part not measured (yet) is left out. */
+export type Dimensions = Partial<Record<DimPart, number>>;
 
 interface QuestionBase {
   key: string;
@@ -23,10 +26,12 @@ export interface TextQuestion extends QuestionBase { type: 'text'; multiline: bo
 export interface RatingQuestion extends QuestionBase { type: 'rating'; max: number; default?: number }
 export interface TimerQuestion extends QuestionBase { type: 'timer' }
 export interface FieldMapQuestion extends QuestionBase { type: 'fieldmap'; assetId: string; maxPoints: number; redSide: Side }
+/** A robot's size, entered in feet and inches: the measurements asked, in the order length, width, height. */
+export interface DimensionsQuestion extends QuestionBase { type: 'dimensions'; parts: DimPart[] }
 
 export type Question =
   | CounterQuestion | ToggleQuestion | ChoiceQuestion | MultiQuestion | NumberQuestion
-  | TextQuestion | RatingQuestion | TimerQuestion | FieldMapQuestion;
+  | TextQuestion | RatingQuestion | TimerQuestion | FieldMapQuestion | DimensionsQuestion;
 export type QuestionType = Question['type'];
 
 export interface Section { id: string; title: string; questions: Question[] }
@@ -40,7 +45,7 @@ export interface FormDef {
 
 export interface Point { x: number; y: number }
 /** counter/number/rating/timer → number; toggle → boolean; choice/text → string; multi → string[]; fieldmap → Point[] */
-export type AnswerValue = number | boolean | string | string[] | Point[] | null;
+export type AnswerValue = number | boolean | string | string[] | Point[] | Dimensions | null;
 export type Answers = Record<string, AnswerValue>;
 
 export interface ScoutRecord {

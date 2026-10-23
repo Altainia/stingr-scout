@@ -77,3 +77,25 @@ describe('export route', () => {
     expect((await app.inject({ url: '/api/export/secrets.csv' })).statusCode).toBe(404);
   });
 });
+
+describe('dimensions in exports', () => {
+  it('gives each measurement its own column, in inches', () => {
+    const f = pitForm();
+    f.sections[0].questions.push({ key: 'frame', label: 'Frame size', type: 'dimensions', required: false, parts: ['length', 'height'] });
+    const p = setAnswer(record(f, { team: 5098 }), 'frame', { length: 30.5, height: 40 });
+    const lines = pitCsv('2027test', [f], [p]).split('\r\n');
+    expect(lines[0]).toBe('event,team,scout,device,no_show,photos,missed,revision,updated_at,drivetrain,weight_lb,frame_length_in,frame_height_in');
+    expect(lines[1].endsWith(',,,30.5,40')).toBe(true);
+  });
+});
+
+describe('dimensions in team summaries', () => {
+  it("gives each team's measurements from its newest pit record", () => {
+    const f = pitForm();
+    f.sections[0].questions.push({ key: 'frame', label: 'Frame size', type: 'dimensions', required: false, parts: ['length', 'width'] });
+    const old = setAnswer(record(f, { team: 5098, updatedAt: '2027-03-01T09:00:00.000Z' }), 'frame', { length: 20, width: 20 });
+    const now = setAnswer(record(f, { team: 5098, updatedAt: '2027-03-01T11:00:00.000Z' }), 'frame', { length: 30, width: 28 });
+    const [s] = buildTeamSummaries([5098], matchForm(), [], [now, old], f);
+    expect(s.pitStats.frame).toEqual({ kind: 'size', n: 1, parts: { length: 30, width: 28 } });
+  });
+});

@@ -58,7 +58,7 @@ describe('buildTeamSummaries', () => {
 
   it('works before any match form is published', () => {
     expect(buildTeamSummaries([1], null, [], [])).toEqual([
-      { team: 1, matchRecords: 0, noShows: 0, noShowPct: null, estPoints: null, estPointsBySection: {}, stats: {}, pit: 'none' },
+      { team: 1, matchRecords: 0, noShows: 0, noShowPct: null, estPoints: null, estPointsBySection: {}, stats: {}, pitStats: {}, pit: 'none' },
     ]);
   });
 });

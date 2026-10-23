@@ -155,3 +155,9 @@ button.link.jump { display: inline; min-height: 0; min-width: 0; padding: 0; col
 .team-field { display: flex; flex-direction: column; gap: 2px; }
 .team-name-hint { color: var(--muted); font-size: 0.9rem; min-height: 1.3em; max-width: 12em; } /* kept even when empty, so nothing below jumps */
 .row:has(.team-field) { align-items: flex-start; }
+/* Dimensions: a row per measurement, feet and inches side by side */
+.dimensions { display: flex; flex-direction: column; gap: 10px; }
+.dimension { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dimension .part { min-width: 4.5em; font-weight: 600; }
+.dimension label.unit { flex-direction: row; align-items: center; gap: 6px; font-weight: 400; }
+.dimension input { width: 5.5em; }

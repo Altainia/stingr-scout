@@ -105,6 +105,7 @@ type Question = QuestionBase & (
   | { type: 'rating';   max: number }                 // 1..max, default max 5
   | { type: 'timer' }                                 // value: seconds, 0.1 s precision
   | { type: 'fieldmap'; assetId: string; maxPoints: number; redSide: 'left' | 'right' } // where Red is in the image
+  | { type: 'dimensions'; parts: ('length' | 'width' | 'height')[] } // value: { length?, width?, height? } in inches
 );
 ```
 
@@ -113,6 +114,8 @@ Question keys must be unique within a form kind across all versions, with the sa
 **Initial values:**
 - **Counters and toggles** start at their `default`, which counts as an answer.
 - **All other types** start empty (`null`).
+
+**Dimensions:** a robot's size. The form designer ticks which of length, width and height the question asks. Scouts enter each in feet and inches (decimals allowed); inches past a foot are tidied into feet when they leave the box. The answer keeps each measurement in inches. A required dimensions question needs every measurement it asks; otherwise some can be left blank. Measurements show as feet and inches (2′ 6½″; quarters as fractions), several as length × width × height. Summary "Each measurement": the average of each, and on Teams a column per measurement of a pit dimensions question, from the team's newest pit record, sortable by size. The CSV exports have a column per measurement in inches (`<key>_length_in`).
 
 **Field map:** points are stored as `{x, y}` normalized 0..1 in the image's own coordinate frame. Each field map question records which side of its image Red is on (`redSide`). Each venue has a "Red is on our left/right, seen from the stands" setting (§6.3), which a tablet can override (§5.1). When the venue side differs from the image's side, every scout (Red or Blue) sees the image rotated 180°, so the field looks as it does from their seat. Taps are converted back to the image's frame before saving, so stored points mean the same thing at every venue.
 

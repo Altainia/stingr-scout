@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    type ChoiceOption, type ChoiceQuestion, type FormDef, type Question, type QuestionType, SUMMARY_NAMES, summaryKind, summaryOptions,
+    type ChoiceOption, type ChoiceQuestion, DIM_PART_LABELS, DIM_PARTS, type FormDef, type Question, type QuestionType, SUMMARY_NAMES, summaryKind, summaryOptions,
     type SummaryKind,
   } from '@stingr/shared';
   import InfoTip from './InfoTip.svelte';
@@ -36,6 +36,7 @@
     distribution: 'The share of matches each option was chosen.',
     list: "Every answer, listed on the team's page.",
     scatter: 'Every marked spot, drawn on the field image.',
+    size: 'Each measurement in feet and inches (on Teams, from the newest pit record).',
     none: 'Answers are kept and exported, but not summarized.',
   };
 
@@ -213,6 +214,15 @@
           </select>
         </label>
       </div>
+    {:else if q.type === 'dimensions'}
+      {@const parts = q.parts}
+      <div class="choices" role="group" aria-label="Measurements">
+        {#each DIM_PARTS as p (p)}
+          <label class="inline"><input type="checkbox" aria-label={DIM_PART_LABELS[p]} checked={parts.includes(p)}
+            onchange={e => set({ parts: DIM_PARTS.filter(x => (x === p ? e.currentTarget.checked : parts.includes(x))) })} /> {DIM_PART_LABELS[p]}</label>
+        {/each}
+      </div>
+      <p class="hint">Scouts enter each one in feet and inches; it's saved in inches.</p>
     {:else if q.type === 'timer'}
       <p class="hint">Scouts start and stop a stopwatch; the total time is saved in seconds.</p>
     {:else if q.type === 'fieldmap'}

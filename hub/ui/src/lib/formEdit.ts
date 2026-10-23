@@ -13,6 +13,7 @@ export const QUESTION_TYPES: { type: QuestionType; label: string }[] = [
   { type: 'rating', label: 'Rating' },
   { type: 'timer', label: 'Timer' },
   { type: 'fieldmap', label: 'Field map' },
+  { type: 'dimensions', label: 'Dimensions' },
 ];
 
 export const typeLabel = (t: QuestionType): string => QUESTION_TYPES.find(x => x.type === t)?.label ?? t;
@@ -60,6 +61,7 @@ export function newQuestion(type: QuestionType, label: string, taken: Iterable<s
     case 'rating': return { ...base, type, max: 5 };
     case 'timer': return { ...base, type };
     case 'fieldmap': return { ...base, type, assetId: '', maxPoints: 1, redSide: 'left' };
+    case 'dimensions': return { ...base, type, parts: ['length', 'width', 'height'] };
   }
 }
 

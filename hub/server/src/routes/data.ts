@@ -63,9 +63,11 @@ export function dataRoutes(app: FastifyInstance, ctx: HubContext): void {
   app.get('/api/summaries', async () => {
     const ev = requireEvent(ctx.db);
     const form = latestForm(ctx.db, 'match') ?? null;
+    const pitForm = latestForm(ctx.db, 'pit') ?? null;
     return {
       form,
-      summaries: buildTeamSummaries(listTeams(ctx.db, ev.key), form, currentRecords(ctx.db, ev.key, 'match'), currentRecords(ctx.db, ev.key, 'pit')),
+      pitForm,
+      summaries: buildTeamSummaries(listTeams(ctx.db, ev.key), form, currentRecords(ctx.db, ev.key, 'match'), currentRecords(ctx.db, ev.key, 'pit'), pitForm),
       scoreShares: allianceShares(allianceMatches(ctx.db, ev.key), [])['score'], // each team's estimated share of the alliance score
     };
   });

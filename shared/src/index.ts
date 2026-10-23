@@ -9,3 +9,4 @@ export * from './describe';
 export * from './theme';
 export * from './contribution';
 export * from './teamName';
+export * from './dimensions';

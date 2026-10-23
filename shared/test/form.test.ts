@@ -125,7 +125,7 @@ describe('summaryOptions', () => {
   it('names every summary for people', () => {
     expect(SUMMARY_NAMES).toEqual({
       avg: 'Average and max', pct: 'Percent yes', distribution: 'How often each option', list: 'List of answers',
-      scatter: 'Field map plot', none: "Don't summarize",
+      scatter: 'Field map plot', size: 'Each measurement', none: "Don't summarize",
     });
   });
 });
