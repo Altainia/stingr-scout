@@ -67,3 +67,59 @@ describe('alliance results', () => {
     expect((await app.inject({ method: 'GET', url: '/api/alliance-fields' })).json()).toEqual([]);
   });
 });
+
+describe('fetching alliance results from The Blue Alliance', () => {
+  const tbaMatch = (key: string, red: number, blue: number, rb: Record<string, unknown> | null, bb: Record<string, unknown> | null) => ({
+    key: `2027test_${key}`,
+    alliances: { red: { score: red, team_keys: ['frc5098', 'frc254', 'frc118'] }, blue: { score: blue, team_keys: ['frc148', 'frc971', 'frc1323'] } },
+    score_breakdown: rb && bb ? { red: rb, blue: bb } : null,
+  });
+  const MATCHES = [
+    tbaMatch('qm1', 87, 64, { hubFuelCount: 31, endgame: { climbed: true }, totalPoints: 87 }, { hubFuelCount: 20, endgame: { climbed: false }, totalPoints: 64 }),
+    tbaMatch('qm2', -1, -1, null, null), // not played yet
+  ];
+  const fakeTba = (matches: unknown) => (async (input: string | URL | Request) => {
+    const path = String(input).replace('https://www.thebluealliance.com/api/v3', '');
+    if (path === '/event/2027test/matches') return new Response(JSON.stringify(matches), { status: 200 });
+    return new Response('null', { status: 404 });
+  }) as typeof fetch;
+
+  async function tbaHub(matches: unknown = MATCHES) {
+    const app = await makeApp({ fetch: fakeTba(matches) });
+    await setupEvent(app);
+    await app.inject({ method: 'POST', url: '/api/schedule/csv', headers: { 'content-type': 'text/csv' }, payload: '1,5098,254,118,148,971,1323\n2,5098,148,971,254,118,1323' });
+    await app.inject({ method: 'PUT', url: '/api/settings', payload: { tbaKey: 'k' } });
+    return app;
+  }
+
+  it('fills scores and linked fields of played matches, and lists the items TBA reports', async () => {
+    const app = await tbaHub();
+    await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper', tba: 'hubFuelCount' }, { key: 'climbed', label: 'Climbed', tba: 'endgame.climbed' }] });
+    const res = await app.inject({ method: 'POST', url: '/api/alliance/tba' });
+    expect(res.json()).toEqual({ played: 1, filled: 6 });
+    const { matches, tbaItems } = (await app.inject({ url: '/api/alliance' })).json();
+    expect(matches[0].red.values).toEqual({ score: { value: 87, source: 'tba' }, hopper: { value: 31, source: 'tba' }, climbed: { value: 1, source: 'tba' } });
+    expect(matches[0].blue.values.climbed).toEqual({ value: 0, source: 'tba' });
+    expect(matches[1].red.values).toEqual({}); // not played
+    expect(tbaItems).toEqual(['endgame.climbed', 'hubFuelCount', 'totalPoints']);
+  });
+
+  it('never overwrites a typed value, but updates its own', async () => {
+    const app = await tbaHub();
+    await app.inject({ method: 'PUT', url: '/api/alliance/qm1/red/score', payload: { value: 90 } });
+    await app.inject({ method: 'POST', url: '/api/alliance/tba' });
+    const { matches } = (await app.inject({ url: '/api/alliance' })).json();
+    expect(matches[0].red.values.score).toEqual({ value: 90, source: 'manual' });
+    expect(matches[0].blue.values.score).toEqual({ value: 64, source: 'tba' });
+  });
+
+  it('explains when The Blue Alliance cannot be reached or no key is set', async () => {
+    const offline = await makeApp({ fetch: (async () => { throw new TypeError('fetch failed'); }) as typeof fetch });
+    await setupEvent(offline);
+    expect((await offline.inject({ method: 'POST', url: '/api/alliance/tba' })).json().error).toBe('Enter a TBA API key in Settings first');
+    await offline.inject({ method: 'PUT', url: '/api/settings', payload: { tbaKey: 'k' } });
+    const res = await offline.inject({ method: 'POST', url: '/api/alliance/tba' });
+    expect(res.statusCode).toBe(502);
+    expect(res.json().error).toContain("Couldn't reach The Blue Alliance");
+  });
+});

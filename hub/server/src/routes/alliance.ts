@@ -1,11 +1,12 @@
 import { type AllianceField, type AllianceMatch, type AllianceSide, compareMatchKeys, estimateShares } from '@stingr/shared';
 import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
-import type { Db } from '../db';
+import { type Db, tx } from '../db';
 import { bodyObject, HttpError, requireEvent } from '../http';
 import { ALLIANCE_FIELD_KEY, allianceFields, allianceValues, setAllianceFields, setAllianceValue } from '../store/alliance';
 import { listSchedule } from '../store/schedule';
-import { getSetting } from '../store/settings';
+import { getSetting, setSetting } from '../store/settings';
+import { fetchTbaResults } from '../tba';
 
 const SIDES: AllianceSide[] = ['red', 'blue'];
 
@@ -65,6 +66,37 @@ export function allianceRoutes(app: FastifyInstance, ctx: HubContext): void {
     if (value !== null && (typeof value !== 'number' || !Number.isFinite(value))) throw new HttpError(400, 'The value must be a number, or null to clear it');
     setAllianceValue(ctx.db, ev.key, match, alliance, item, value, 'manual', ctx.now());
     return { ok: true };
+  });
+
+  app.post('/api/alliance/tba', async () => {
+    const ev = requireEvent(ctx.db);
+    const apiKey = getSetting(ctx.db, 'tba_key');
+    if (!apiKey) throw new HttpError(400, 'Enter a TBA API key in Settings first');
+    let data: Awaited<ReturnType<typeof fetchTbaResults>>;
+    try {
+      data = await fetchTbaResults(ev.key, apiKey, ctx.fetch);
+    } catch (e) {
+      throw new HttpError(502, (e as Error).message);
+    }
+    const fields = allianceFields(ctx.db);
+    const existing = allianceValues(ctx.db, ev.key);
+    let filled = 0;
+    tx(ctx.db, () => {
+      for (const m of data.played) {
+        for (const side of SIDES) {
+          const typed = (item: string) => existing.get(m.matchKey)?.[side][item]?.source === 'manual'; // a typed value wins
+          const put = (item: string, value: number | undefined) => {
+            if (value === undefined || typed(item)) return;
+            setAllianceValue(ctx.db, ev.key, m.matchKey, side, item, value, 'tba', ctx.now());
+            filled++;
+          };
+          put('score', m[side].score);
+          for (const f of fields) if (f.tba) put(f.key, m[side].breakdown[f.tba]);
+        }
+      }
+      setSetting(ctx.db, 'tba_breakdown_items', data.items.length ? JSON.stringify(data.items) : null);
+    });
+    return { played: data.played.length, filled };
   });
 
   app.get('/api/alliance-fields', async () => allianceFields(ctx.db));
