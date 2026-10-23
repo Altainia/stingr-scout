@@ -68,6 +68,21 @@ describe('alliance results', () => {
   });
 });
 
+describe('alliance exports', () => {
+  it('exports one row per match and alliance, and adds estimated shares to the teams export', async () => {
+    const { app, put } = await hub();
+    await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper' }] });
+    await put('qm1', 'red', 'score', 87);
+    await put('qm1', 'red', 'hopper', 31);
+    const csv = (await app.inject({ url: '/api/export/alliance.csv' })).body.replace(/^\uFEFF/, '').split('\r\n');
+    expect(csv[0]).toBe('event,match,alliance,teams,score,hopper,source');
+    expect(csv[1]).toBe('2027test,qm1,red,5098;254;118,87,31,manual');
+    expect(csv[2]).toBe('2027test,qm1,blue,148;971;1323,,,');
+    const teams = (await app.inject({ url: '/api/export/teams.csv' })).body.replace(/^\uFEFF/, '').split('\r\n')[0];
+    expect(teams.endsWith(',share_score,share_hopper')).toBe(true);
+  });
+});
+
 describe('fetching alliance results from The Blue Alliance', () => {
   const tbaMatch = (key: string, red: number, blue: number, rb: Record<string, unknown> | null, bb: Record<string, unknown> | null) => ({
     key: `2027test_${key}`,

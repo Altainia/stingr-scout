@@ -1,4 +1,5 @@
 import {
+  type AllianceField, type AllianceMatch,
   allQuestions, type AnswerValue, compareMatchKeys, type FormDef, type Point, recordPoints,
   type ScoutRecord, type Slot, SLOTS, summaryKind,
 } from '@stingr/shared';
@@ -74,7 +75,10 @@ export function pitCsv(eventKey: string, forms: FormDef[], records: ScoutRecord[
 
 type Column = { name: string; get: (s: TeamSummary) => Cell };
 
-export function teamsCsv(summaries: TeamSummary[], form: FormDef | null): string {
+/** Estimated shares per item ('score' and each alliance field), for the teams export. */
+export type ShareColumns = { items: string[]; byItem: Record<string, Record<number, number | null>> };
+
+export function teamsCsv(summaries: TeamSummary[], form: FormDef | null, shares?: ShareColumns): string {
   const cols: Column[] = [
     { name: 'team', get: s => s.team },
     { name: 'match_records', get: s => s.matchRecords },
@@ -102,5 +106,17 @@ export function teamsCsv(summaries: TeamSummary[], form: FormDef | null): string
       }
     }
   }
+  for (const item of shares?.items ?? []) cols.push({ name: `share_${item}`, get: s => round2(shares?.byItem[item]?.[s.team] ?? null) });
   return toCsv(cols.map(c => c.name), summaries.map(s => cols.map(c => c.get(s))));
+}
+
+/** One row per match and alliance: its teams, score, each alliance field, and where the values came from. */
+export function allianceCsv(eventKey: string, matches: AllianceMatch[], fields: AllianceField[]): string {
+  const items = ['score', ...fields.map(f => f.key)];
+  const rows = matches.flatMap(m => (['red', 'blue'] as const).map(side => {
+    const v = m[side].values;
+    const sources = [...new Set(Object.values(v).map(e => e.source))];
+    return [eventKey, m.matchKey, side, m[side].teams.join(';'), ...items.map(i => v[i]?.value ?? null), sources.length > 1 ? 'mixed' : sources[0] ?? null];
+  }));
+  return toCsv(['event', 'match', 'alliance', 'teams', ...items, 'source'], rows);
 }

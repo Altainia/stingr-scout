@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
-import { matchesCsv, pitCsv, teamsCsv } from '../export';
+import { allianceCsv, matchesCsv, pitCsv, teamsCsv } from '../export';
+import { allianceFields } from '../store/alliance';
+import { allianceMatches, allianceShares } from './alliance';
 import { HttpError, requireEvent } from '../http';
 import { latestForm, listForms } from '../store/forms';
 import { currentRecords } from '../store/records';
@@ -22,9 +24,14 @@ export function exportRoutes(app: FastifyInstance, ctx: HubContext): void {
       case 'teams.csv': {
         const form = latestForm(ctx.db, 'match') ?? null;
         const summaries = buildTeamSummaries(listTeams(ctx.db, ev.key), form, currentRecords(ctx.db, ev.key, 'match'), currentRecords(ctx.db, ev.key, 'pit'));
-        csv = teamsCsv(summaries, form);
+        const fields = allianceFields(ctx.db);
+        const byItem = allianceShares(allianceMatches(ctx.db, ev.key), fields);
+        csv = teamsCsv(summaries, form, { items: ['score', ...fields.map(f => f.key)], byItem });
         break;
       }
+      case 'alliance.csv':
+        csv = allianceCsv(ev.key, allianceMatches(ctx.db, ev.key), allianceFields(ctx.db));
+        break;
       default:
         throw new HttpError(404, `Unknown export "${file}"`);
     }
