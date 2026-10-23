@@ -36,6 +36,17 @@ describe('alliance results', () => {
     expect((await put('qm1', 'red', 'score', 'lots' as unknown as number)).statusCode).toBe(400);
   });
 
+  it('refuses a value too big to be a real result', async () => {
+    const { put, get } = await hub();
+    expect((await put('qm1', 'red', 'score', 9999)).statusCode).toBe(200);
+    expect((await put('qm1', 'blue', 'score', -9999)).statusCode).toBe(200);
+    const res = await put('qm1', 'red', 'score', 10000);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toContain('between -9999 and 9999');
+    expect((await put('qm1', 'red', 'score', 1e300)).statusCode).toBe(400);
+    expect((await get()).matches[0].red.values.score.value).toBe(9999);
+  });
+
   it('defines alliance fields with checked keys; removing one removes its values', async () => {
     const { app, put, get } = await hub();
     const bad = await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'score', label: 'Score' }] });
@@ -60,6 +71,10 @@ describe('alliance results', () => {
     const { app, put } = await hub();
     await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper' }] });
     await put('qm1', 'red', 'score', 87);
+    await put('qm1', 'blue', 'score', 64);
+    await put('qm1', 'red', 'hopper', 31); // three values, two alliances
+    expect((await app.inject({ url: '/api/events/2027test/clear' })).json()).toMatchObject({ allianceResults: 2 });
+    expect((await app.inject({ url: '/api/season/clear' })).json()).toMatchObject({ allianceResults: 2, allianceFields: 1 });
     await app.inject({ method: 'POST', url: '/api/events/2027test/delete', payload: { confirm: '2027test' } });
     await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027test', name: 'Again' } });
     expect((await app.inject({ url: '/api/alliance' })).json()).toMatchObject({ matches: [], fields: [{ key: 'hopper' }] }); // fields stay
@@ -118,6 +133,27 @@ describe('fetching alliance results from The Blue Alliance', () => {
     expect(matches[0].blue.values.climbed).toEqual({ value: 0, source: 'tba' });
     expect(matches[1].red.values).toEqual({}); // not played
     expect(tbaItems).toEqual(['endgame.climbed', 'hubFuelCount', 'totalPoints']);
+  });
+
+  it('keeps the list of TBA items when a later fetch finds no played matches', async () => {
+    let answer: unknown = MATCHES;
+    const app = await makeApp({ fetch: (async (input: string | URL | Request) =>
+      String(input).endsWith('/event/2027test/matches') ? new Response(JSON.stringify(answer), { status: 200 }) : new Response('null', { status: 404 })) as typeof fetch });
+    await setupEvent(app);
+    await app.inject({ method: 'PUT', url: '/api/settings', payload: { tbaKey: 'k' } });
+    await app.inject({ method: 'POST', url: '/api/alliance/tba' });
+    answer = [];
+    expect((await app.inject({ method: 'POST', url: '/api/alliance/tba' })).json()).toEqual({ played: 0, filled: 0 });
+    expect((await app.inject({ url: '/api/alliance' })).json().tbaItems).toEqual(['endgame.climbed', 'hubFuelCount', 'totalPoints']);
+  });
+
+  it('leaves out a value from TBA too big to be a real result', async () => {
+    const app = await tbaHub([tbaMatch('qm1', 87, 64, { hubFuelCount: 1e9 }, { hubFuelCount: 20 })]);
+    await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper', tba: 'hubFuelCount' }] });
+    await app.inject({ method: 'POST', url: '/api/alliance/tba' });
+    const { matches } = (await app.inject({ url: '/api/alliance' })).json();
+    expect(matches[0].red.values).toEqual({ score: { value: 87, source: 'tba' } });
+    expect(matches[0].blue.values.hopper).toEqual({ value: 20, source: 'tba' });
   });
 
   it('never overwrites a typed value, but updates its own', async () => {

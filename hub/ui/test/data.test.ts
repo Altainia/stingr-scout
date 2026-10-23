@@ -39,12 +39,12 @@ describe('DataPage', () => {
   });
 
   it('deletes an event only after its key is typed, and names the backup', async () => {
-    const deleteEvent = vi.fn(async () => ({ ok: true as const, backup: 'stingr-1.db', removed: { matches: 12, teams: 24, records: 48, photos: 3 } }));
-    render(DataPage, { api: fakeApi({ events: twoEvents, eventClearPreview: async () => ({ matches: 12, teams: 24, records: 48, photos: 3 }), deleteEvent }) });
+    const deleteEvent = vi.fn(async () => ({ ok: true as const, backup: 'stingr-1.db', removed: { matches: 12, teams: 24, records: 48, photos: 3, allianceResults: 18 } }));
+    render(DataPage, { api: fakeApi({ events: twoEvents, eventClearPreview: async () => ({ matches: 12, teams: 24, records: 48, photos: 3, allianceResults: 18 }), deleteEvent }) });
     await fireEvent.change(await screen.findByLabelText('Event to delete'), { target: { value: '2027demo' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Delete event…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Delete Demo (2027demo)?' });
-    expect(dialog.textContent).toContain('12 matches, 24 teams, 48 records and 3 photos');
+    expect(dialog.textContent).toContain('12 matches, 24 teams, 48 records, 3 photos and 18 alliance results');
     await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByLabelText('Type 2027demo to confirm'))); // ready to type
     const go = within(dialog).getByRole('button', { name: 'Delete event' }) as HTMLButtonElement;
     expect(go.disabled).toBe(true);
@@ -55,12 +55,19 @@ describe('DataPage', () => {
     expect(await screen.findByText(/Deleted 2027demo\. A backup was saved first: backups\/stingr-1\.db/)).toBeTruthy();
   });
 
-  it('starts a new season only after NEW SEASON is typed', async () => {
-    const newSeason = vi.fn(async () => ({ ok: true as const, backup: null, removed: { events: 2, records: 48, photos: 3, forms: 2, drafts: 0, devices: 4 } }));
-    render(DataPage, { api: fakeApi({ events: twoEvents, seasonClearPreview: async () => ({ events: 2, records: 48, photos: 3, forms: 2, drafts: 0, devices: 4 }), newSeason }) });
+  it('counts alliance results and fields in what a new season removes', async () => {
+    render(DataPage, { api: fakeApi({ events: twoEvents, seasonClearPreview: async () => ({ events: 2, records: 48, photos: 3, forms: 2, drafts: 0, devices: 4, allianceResults: 18, allianceFields: 1 }) }) });
     await fireEvent.click(await screen.findByRole('button', { name: 'Start a new season…' }));
     const dialog = await screen.findByRole('dialog', { name: 'Start a new season?' });
-    expect(dialog.textContent).toContain('2 events, 48 records, 3 photos, 2 published forms, 0 drafts and the list of 4 tablets');
+    expect(dialog.textContent).toContain('0 drafts, 18 alliance results, 1 alliance field and the list of 4 tablets');
+  });
+
+  it('starts a new season only after NEW SEASON is typed', async () => {
+    const newSeason = vi.fn(async () => ({ ok: true as const, backup: null, removed: { events: 2, records: 48, photos: 3, forms: 2, drafts: 0, devices: 4, allianceResults: 0, allianceFields: 0 } }));
+    render(DataPage, { api: fakeApi({ events: twoEvents, seasonClearPreview: async () => ({ events: 2, records: 48, photos: 3, forms: 2, drafts: 0, devices: 4, allianceResults: 0, allianceFields: 0 }), newSeason }) });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Start a new season…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Start a new season?' });
+    expect(dialog.textContent).toContain('2 events, 48 records, 3 photos, 2 published forms, 0 drafts and the list of 4 tablets'); // no alliance results to mention
     await fireEvent.input(within(dialog).getByLabelText('Type NEW SEASON to confirm'), { target: { value: 'NEW SEASON' } });
     await fireEvent.click(within(dialog).getByRole('button', { name: 'Start new season' }));
     expect(newSeason).toHaveBeenCalledWith('NEW SEASON');

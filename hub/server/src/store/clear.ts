@@ -1,9 +1,13 @@
 import { type Db, tx } from '../db';
 import { newSeasonId } from './identity';
+import { allianceFields } from './alliance';
 import { getSetting, setSetting } from './settings';
 
-export interface EventCounts { matches: number; teams: number; records: number; photos: number }
-export interface SeasonCounts { events: number; records: number; photos: number; forms: number; drafts: number; devices: number }
+/** allianceResults: alliances (a match's red or blue) with any result recorded. */
+export interface EventCounts { matches: number; teams: number; records: number; photos: number; allianceResults: number }
+export interface SeasonCounts { events: number; records: number; photos: number; forms: number; drafts: number; devices: number; allianceResults: number; allianceFields: number }
+
+const ALLIANCES = "SELECT COUNT(*) AS n FROM (SELECT DISTINCT event_key, match_key, alliance FROM alliance_results";
 
 const count = (db: Db, sql: string, ...args: string[]): number => Number((db.prepare(sql).get(...args) as unknown as { n: number }).n);
 
@@ -15,6 +19,7 @@ export function eventCounts(db: Db, key: string): EventCounts | null {
     teams: count(db, 'SELECT COUNT(*) AS n FROM teams WHERE event_key = ?', key),
     records: count(db, 'SELECT COUNT(DISTINCT id) AS n FROM records WHERE event_key = ?', key),
     photos: count(db, 'SELECT COUNT(*) AS n FROM photos WHERE record_id IN (SELECT id FROM records WHERE event_key = ?)', key),
+    allianceResults: count(db, `${ALLIANCES} WHERE event_key = ?)`, key),
   };
 }
 
@@ -39,6 +44,8 @@ export function seasonCounts(db: Db): SeasonCounts {
     forms: count(db, 'SELECT COUNT(*) AS n FROM forms'),
     drafts: count(db, 'SELECT COUNT(*) AS n FROM form_drafts'),
     devices: count(db, 'SELECT COUNT(*) AS n FROM devices'),
+    allianceResults: count(db, `${ALLIANCES})`),
+    allianceFields: allianceFields(db).length,
   };
 }
 

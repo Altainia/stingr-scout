@@ -325,8 +325,8 @@ Drafts survive closing Chrome, rebooting and power loss. When the app opens with
 
 For moving to a new event or a new season (new game, new forms), and for clearing out tests and demos. Both actions are under **Export & backup → Clear data**.
 
-- **Delete an event** removes that event and everything belonging to it: its schedule, team list, records (match and pit, every revision) and their photos. If it was the current event, no event is current afterwards. Forms are kept.
-- **Start a new season** removes every event (with all of the above), every form (published versions and drafts) and the list of tablets that have synced. Hub settings (the TBA key) are kept.
+- **Delete an event** removes that event and everything belonging to it: its schedule, team list, records (match and pit, every revision), their photos and its alliance results. If it was the current event, no event is current afterwards. Forms are kept.
+- **Start a new season** removes every event (with all of the above), every form (published versions and drafts), the alliance fields and the list of tablets that have synced. The confirmation counts alliance results (and, for a new season, alliance fields) when there are any. Hub settings (the TBA key) are kept.
 
 Safety:
 - **Confirmation:** a dialog states exactly what will be removed, for example "2027demo: 12 matches, 48 records, 3 photos". The button only works once the event key (or `NEW SEASON`) is typed in.
@@ -375,7 +375,7 @@ Alliance fields belong to the season: they are kept across events and removed by
 - each alliance's score;
 - each field linked to a score-breakdown item (numbers only; `true`/`false` become 1/0).
 
-Values typed on the hub are never overwritten by a fetch; clearing a typed value lets the next fetch fill it again. A value from TBA is replaced by a newer fetch, and is removed when its field's TBA link is changed or removed. The page lists the score-breakdown items TBA reported, so a field can be linked to one. Without internet the fetch fails with a clear message and nothing changes.
+Values typed on the hub are never overwritten by a fetch; clearing a typed value lets the next fetch fill it again. A value from TBA is replaced by a newer fetch, and is removed when its field's TBA link is changed or removed. The page lists the score-breakdown items TBA reported, so a field can be linked to one; a fetch that finds no played matches keeps the list from the last one. Values are kept only between -9999 and 9999: a bigger typed value is refused with a message, and a bigger value from TBA is left out. Without internet the fetch fails with a clear message and nothing changes.
 
 **Estimated share (OPR):** for the score and for each field, the hub estimates each team's contribution: the per-team values `x` that best explain every alliance result (least squares: each alliance's value ≈ the sum of its three teams' `x`).
 - Only qualification matches count, as in The Blue Alliance's own OPR (playoff alliances aren't drawn at random), and only alliances with three different known teams.

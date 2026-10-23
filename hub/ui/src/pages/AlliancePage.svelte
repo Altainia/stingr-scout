@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { type AllianceField, type AllianceSide, matchLabel, teamLabel } from '@stingr/shared';
+  import { ALLIANCE_VALUE_LIMIT, type AllianceField, type AllianceSide, allianceValueOk, matchLabel, teamLabel } from '@stingr/shared';
   import { onMount } from 'svelte';
   import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
   import ErrorNote from '../components/ErrorNote.svelte';
@@ -44,6 +44,11 @@
     const restore = () => { input.value = stored === undefined ? '' : String(stored); };
     if (input.validity?.badInput || (value !== null && !Number.isFinite(value))) {
       error = new Error(`"${text || 'That'}" isn't a number this page can save.`);
+      restore();
+      return;
+    }
+    if (value !== null && !allianceValueOk(value)) {
+      error = new Error(`${text} is too big to be a real result. Values must be between -${ALLIANCE_VALUE_LIMIT} and ${ALLIANCE_VALUE_LIMIT}.`);
       restore();
       return;
     }
@@ -162,7 +167,7 @@
                     {@const v = a.values[it.key]}
                     <td>
                       <span class="with-source">
-                        <input type="number" class="narrow" aria-label="{matchLabel(m.matchKey)} {side} {it.label}" value={v?.value ?? ''}
+                        <input type="number" class="narrow" min={-ALLIANCE_VALUE_LIMIT} max={ALLIANCE_VALUE_LIMIT} aria-label="{matchLabel(m.matchKey)} {side} {it.label}" value={v?.value ?? ''}
                           onchange={e => save(m.matchKey, side, it.key, e.currentTarget, v?.value)} />
                         {#if v?.source === 'tba'}<span class="tag tba" title="From The Blue Alliance">TBA</span>{/if}
                       </span>

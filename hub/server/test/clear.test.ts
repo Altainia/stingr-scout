@@ -40,9 +40,9 @@ function twoEvents() {
 describe('deleting an event', () => {
   it('counts what would go, then removes the event with its schedule, teams, records and photos', () => {
     const db = twoEvents();
-    expect(eventCounts(db, '2027aaa')).toEqual({ matches: 1, teams: 6, records: 1, photos: 1 });
+    expect(eventCounts(db, '2027aaa')).toEqual({ matches: 1, teams: 6, records: 1, photos: 1, allianceResults: 0 });
     expect(eventCounts(db, '2027zzz')).toBeNull();
-    expect(deleteEvent(db, '2027aaa')).toEqual({ matches: 1, teams: 6, records: 1, photos: 1 });
+    expect(deleteEvent(db, '2027aaa')).toEqual({ matches: 1, teams: 6, records: 1, photos: 1, allianceResults: 0 });
     expect(listEvents(db).map(e => e.key)).toEqual(['2027bbb']);
     expect(listSchedule(db, '2027aaa')).toEqual([]);
     expect(listTeams(db, '2027aaa')).toEqual([]);
@@ -63,9 +63,9 @@ describe('starting a new season', () => {
     const db = twoEvents();
     saveDraft(db, matchForm(), NOW);
     const before = hubIdentity(db);
-    expect(seasonCounts(db)).toEqual({ events: 2, records: 2, photos: 1, forms: 2, drafts: 1, devices: 1 });
-    expect(startNewSeason(db)).toEqual({ events: 2, records: 2, photos: 1, forms: 2, drafts: 1, devices: 1 });
-    expect(seasonCounts(db)).toEqual({ events: 0, records: 0, photos: 0, forms: 0, drafts: 0, devices: 0 });
+    expect(seasonCounts(db)).toEqual({ events: 2, records: 2, photos: 1, forms: 2, drafts: 1, devices: 1, allianceResults: 0, allianceFields: 0 });
+    expect(startNewSeason(db)).toEqual({ events: 2, records: 2, photos: 1, forms: 2, drafts: 1, devices: 1, allianceResults: 0, allianceFields: 0 });
+    expect(seasonCounts(db)).toEqual({ events: 0, records: 0, photos: 0, forms: 0, drafts: 0, devices: 0, allianceResults: 0, allianceFields: 0 });
     expect(getDraft(db, 'match')).toBeNull();
     expect(listDevices(db)).toEqual([]);
     expect(currentEvent(db)).toBeNull();
@@ -90,12 +90,12 @@ describe('clearing routes', () => {
   it('previews, refuses without the typed confirmation, then deletes an event after saving a backup', async () => {
     const { dir, app } = await fileApp();
     await setupEvent(app);
-    expect((await app.inject({ url: '/api/events/2027test/clear' })).json()).toEqual({ matches: 0, teams: 0, records: 0, photos: 0 });
+    expect((await app.inject({ url: '/api/events/2027test/clear' })).json()).toEqual({ matches: 0, teams: 0, records: 0, photos: 0, allianceResults: 0 });
     const wrong = await app.inject({ method: 'POST', url: '/api/events/2027test/delete', payload: { confirm: '2027tes' } });
     expect(wrong.statusCode).toBe(400);
     expect(wrong.json().error).toBe('Type the event key to confirm');
     const res = await app.inject({ method: 'POST', url: '/api/events/2027test/delete', payload: { confirm: '2027test' } });
-    expect(res.json()).toEqual({ ok: true, backup: 'stingr-2027-03-01T12-00-00-000Z.db', removed: { matches: 0, teams: 0, records: 0, photos: 0 } });
+    expect(res.json()).toEqual({ ok: true, backup: 'stingr-2027-03-01T12-00-00-000Z.db', removed: { matches: 0, teams: 0, records: 0, photos: 0, allianceResults: 0 } });
     expect(existsSync(join(dir, 'backups', 'stingr-2027-03-01T12-00-00-000Z.db'))).toBe(true);
     expect((await app.inject({ url: '/api/events' })).json().events).toEqual([]);
     expect((await app.inject({ url: '/api/events/2027test/clear' })).statusCode).toBe(404);

@@ -1,6 +1,11 @@
 /** An alliance's result for one quantity (its score, or an alliance field), and the teams on it. */
 export interface AllianceValue { teams: number[]; value: number | null }
 
+/** The largest alliance value (either way) the hub keeps: anything bigger is a typing slip or bad data, and would swamp the estimates. */
+export const ALLIANCE_VALUE_LIMIT = 9999;
+/** Whether a value is one the hub keeps as an alliance result. */
+export const allianceValueOk = (v: number): boolean => Number.isFinite(v) && Math.abs(v) <= ALLIANCE_VALUE_LIMIT;
+
 /** A team's estimate is shown only once this many of its alliances have a result. */
 export const MIN_ALLIANCE_RESULTS = 3;
 /** Keeps the estimate defined while there are still fewer results than teams. Small enough not to bend real data. */

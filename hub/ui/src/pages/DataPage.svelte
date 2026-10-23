@@ -22,6 +22,9 @@
   // Clearing: the dialog shows what will go and needs the event key (or NEW SEASON) typed before it works.
   let toDelete = $state('');
   let eventPreview = $state<EventCounts | null>(null);
+  // "a, b and c"; alliance data is only mentioned when there is some.
+  const listed = (parts: string[]) => (parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts.join(''));
+  const counted = (n: number, what: string) => (n ? [`${n} ${what}${n === 1 ? '' : 's'}`] : []);
   let seasonPreview = $state<SeasonCounts | null>(null);
   let typed = $state('');
   let cleared = $state<string | null>(null);
@@ -132,9 +135,9 @@
     </label>
     <button type="button" class="danger" disabled={!toDelete} onclick={askDeleteEvent}>Delete event…</button>
   </div>
-  <p class="muted">Removes the event's schedule, teams, records and photos. Forms are kept.</p>
+  <p class="muted">Removes the event's schedule, teams, records, photos and alliance results. Forms are kept.</p>
   <button type="button" class="danger" onclick={askNewSeason}>Start a new season…</button>
-  <p class="muted">Removes every event, record, photo and form, and the list of tablets. Tablets drop their synced copies on their next sync.</p>
+  <p class="muted">Removes every event, record, photo and form, the alliance results and fields, and the list of tablets. Tablets drop their synced copies on their next sync.</p>
   {#if cleared}<p class="banner ok" role="status">{cleared}</p>{/if}
 </section>
 
@@ -147,7 +150,7 @@
     onconfirm={confirmDeleteEvent}
     oncancel={() => (eventPreview = null)}
   >
-    <p>This will remove {eventPreview.matches} matches, {eventPreview.teams} teams, {eventPreview.records} records and {eventPreview.photos} photos.</p>
+    <p>This will remove {listed([`${eventPreview.matches} matches`, `${eventPreview.teams} teams`, `${eventPreview.records} records`, `${eventPreview.photos} photos`, ...counted(eventPreview.allianceResults, 'alliance result')])}.</p>
     <label>Type {deleting.key} to confirm <input aria-label="Type {deleting.key} to confirm" autocomplete="off" value={typed} oninput={e => (typed = e.currentTarget.value)} /></label>
   </ConfirmDialog>
 {/if}
@@ -161,7 +164,8 @@
     onconfirm={confirmNewSeason}
     oncancel={() => (seasonPreview = null)}
   >
-    <p>This will remove {seasonPreview.events} events, {seasonPreview.records} records, {seasonPreview.photos} photos, {seasonPreview.forms} published forms, {seasonPreview.drafts} drafts and the list of {seasonPreview.devices} tablets. Hub settings are kept.</p>
+    <p>This will remove {listed([`${seasonPreview.events} events`, `${seasonPreview.records} records`, `${seasonPreview.photos} photos`, `${seasonPreview.forms} published forms`, `${seasonPreview.drafts} drafts`,
+      ...counted(seasonPreview.allianceResults, 'alliance result'), ...counted(seasonPreview.allianceFields, 'alliance field'), `the list of ${seasonPreview.devices} tablets`])}. Hub settings are kept.</p>
     <label>Type NEW SEASON to confirm <input aria-label="Type NEW SEASON to confirm" autocomplete="off" value={typed} oninput={e => (typed = e.currentTarget.value)} /></label>
   </ConfirmDialog>
 {/if}

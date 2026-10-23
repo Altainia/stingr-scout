@@ -1,4 +1,4 @@
-import { type AllianceField, type AllianceMatch, type AllianceSide, compareMatchKeys, estimateShares, normalizeMatchKey } from '@stingr/shared';
+import { ALLIANCE_VALUE_LIMIT, type AllianceField, type AllianceMatch, type AllianceSide, allianceValueOk, compareMatchKeys, estimateShares, normalizeMatchKey } from '@stingr/shared';
 import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
 import { type Db, tx } from '../db';
@@ -70,6 +70,7 @@ export function allianceRoutes(app: FastifyInstance, ctx: HubContext): void {
     if (item !== 'score' && !allianceFields(ctx.db).some(f => f.key === item)) throw new HttpError(400, `There is no alliance field "${item}"`);
     const value = bodyObject(req.body).value;
     if (value !== null && (typeof value !== 'number' || !Number.isFinite(value))) throw new HttpError(400, 'The value must be a number, or null to clear it');
+    if (value !== null && !allianceValueOk(value)) throw new HttpError(400, `The value must be between -${ALLIANCE_VALUE_LIMIT} and ${ALLIANCE_VALUE_LIMIT}`);
     setAllianceValue(ctx.db, ev.key, match, alliance, item, value, 'manual', ctx.now());
     return { ok: true };
   });
@@ -92,7 +93,7 @@ export function allianceRoutes(app: FastifyInstance, ctx: HubContext): void {
         for (const side of SIDES) {
           const typed = (item: string) => existing.get(m.matchKey)?.[side][item]?.source === 'manual'; // a typed value wins
           const put = (item: string, value: number | undefined) => {
-            if (value === undefined || typed(item)) return;
+            if (value === undefined || !allianceValueOk(value) || typed(item)) return; // nothing believable to fill in
             setAllianceValue(ctx.db, ev.key, m.matchKey, side, item, value, 'tba', ctx.now());
             filled++;
           };
@@ -100,7 +101,7 @@ export function allianceRoutes(app: FastifyInstance, ctx: HubContext): void {
           for (const f of fields) if (f.tba) put(f.key, m[side].breakdown[f.tba]);
         }
       }
-      setSetting(ctx.db, 'tba_breakdown_items', data.items.length ? JSON.stringify(data.items) : null);
+      if (data.items.length) setSetting(ctx.db, 'tba_breakdown_items', JSON.stringify(data.items)); // a fetch before any match is played keeps the list
     });
     return { played: data.played.length, filled };
   });

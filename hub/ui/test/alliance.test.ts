@@ -67,6 +67,16 @@ describe('AlliancePage', () => {
     await waitFor(() => expect((screen.getByLabelText('New field') as HTMLInputElement).value).toBe('Coral'));
   });
 
+  it("doesn't save, and says so, when a value is too big to be a real result", async () => {
+    const setAllianceValue = vi.fn(async () => ({ ok: true as const }));
+    render(AlliancePage, { api: fakeApi({ alliance: async () => VIEW(), setAllianceValue }) });
+    const cell = (await screen.findByLabelText('Qual 1 red Score')) as HTMLInputElement;
+    await fireEvent.change(cell, { target: { value: '870000' } });
+    expect(setAllianceValue).not.toHaveBeenCalled();
+    expect(screen.getByText(/between -9999 and 9999/)).toBeTruthy();
+    expect(cell.value).toBe('87');
+  });
+
   it("doesn't save, and says so, when a value isn't a number; a failed save puts the stored value back", async () => {
     const setAllianceValue = vi.fn(async () => { throw new Error('Hub unreachable'); });
     render(AlliancePage, { api: fakeApi({ alliance: async () => VIEW(), setAllianceValue }) });
