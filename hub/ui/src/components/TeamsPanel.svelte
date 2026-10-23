@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ScheduleMatch } from '@stingr/shared';
+  import { type ScheduleMatch, teamLabel } from '@stingr/shared';
   import { onMount } from 'svelte';
   import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
   import type { Api } from '../lib/api';
@@ -80,12 +80,12 @@
 {#if confirmTeam !== null}
   {@const n = matchesFor(confirmTeam)}
   <ConfirmDialog
-    title="Remove team {confirmTeam}?"
+    title="Remove team {teamLabel(confirmTeam, names)}?"
     confirmLabel="Remove"
     cancelLabel="Keep it"
     onconfirm={() => { const t = confirmTeam; confirmTeam = null; if (t !== null) void run(api.removeTeam(t)); }}
     oncancel={() => (confirmTeam = null)}
   >
-    <p>Team {confirmTeam} plays in {n} scheduled match{n === 1 ? '' : 'es'}. Removing it only takes it off the pit-scouting list; coverage still shows its matches, and importing the schedule again adds it back.</p>
+    <p>Team {teamLabel(confirmTeam, names)} plays in {n} scheduled match{n === 1 ? '' : 'es'}. Removing it only takes it off the pit-scouting list; coverage still shows its matches, and importing the schedule again adds it back.</p>
   </ConfirmDialog>
 {/if}

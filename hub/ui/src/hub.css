@@ -143,3 +143,35 @@ td.text-cell { min-width: 9em; max-width: 11em; }
 .chart-tip.beside { transform: translate(14px, 0); }
 .chart-tip.beside.flip { transform: translate(-14px, 0); } /* anchored by its right edge, so it never wraps */
 [aria-label='Teams in these charts'] { margin: 4px 0 12px; }
+/* Alliance results */
+.alliance-table tr.first > * { border-top: 2px solid var(--border); }
+.alliance-table td.red { color: var(--red); font-weight: 600; }
+.alliance-table td.blue { color: var(--blue); font-weight: 600; }
+.with-source { display: inline-flex; align-items: center; gap: 6px; }
+.tag.tba { background: var(--chip); color: var(--muted); font-size: 0.7rem; padding: 0 6px; border-radius: 999px; }
+.fields-table { width: auto; }
+.fields-table td input { width: 18em; }
+.alliance-table td, .alliance-table th, .fields-table td { vertical-align: middle; }
+/* The team's alliance behind its points: a faint neutral column (not a series colour), and the match result. */
+.chart .alliance-col { fill: var(--muted); opacity: 0.16; }
+.chart text.result { fill: var(--muted); font-size: 11px; font-weight: 700; }
+.chart-legend .alliance-swatch { background: var(--muted); opacity: 0.3; }
+.line-chart.alliance .line { stroke: var(--chart-7); }
+.line-chart.alliance .dot { fill: var(--chart-7); }
+/* Enlarging a small chart */
+.charts figure { cursor: zoom-in; }
+.charts figcaption { display: flex; align-items: center; gap: 6px; }
+.charts figcaption .enlarge { margin-left: auto; padding: 0 8px; line-height: 1.6; }
+/* The heading, chart and Close stay in view; only the table scrolls. */
+.dialog.chart-dialog { max-width: 960px; width: 94%; max-height: 94vh; display: flex; flex-direction: column; padding: 16px 20px; }
+.chart-dialog > .chart { flex: none; }
+.chart-dialog svg { max-height: 52vh; }
+.chart-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.chart-dialog-head h2 { margin: 0; }
+.chart-dialog .chart { cursor: default; }
+.chart-dialog-table { flex: 1 1 auto; min-height: 80px; overflow: auto; margin-top: 12px; }
+.chart-dialog .actions { margin-top: 12px; }
+/* A team's name beside its number */
+h1 .team-name { font-weight: 400; color: var(--muted); }
+td .team-name { display: block; color: var(--muted); font-size: 0.85rem; max-width: 14em; }
+.nowrap { white-space: nowrap; }

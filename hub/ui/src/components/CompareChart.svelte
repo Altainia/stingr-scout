@@ -5,17 +5,19 @@
   // keeps, beside the event's average. Gaps (missed, robot not there, no answer) break the line and are marked.
   type Match = { label: string; scout: string; state: 'ok' | 'missed' | 'noshow' | 'blank'; value: number | null };
   type Series = { id: string; name: string; slot: number; matches: Match[] };
-  let { title, series, eventAverage, wide = false, legend = true }: {
+  let { title, series, eventAverage, wide = false, legend = true, large = false }: {
     title: string; series: Series[]; eventAverage: number | null; wide?: boolean;
     /** off for small multiples, which share one legend */
     legend?: boolean;
+    /** enlarged (in the chart popup): roomier, with a label on more matches */
+    large?: boolean;
   } = $props();
 
-  let W = $derived(wide ? 640 : 340);
-  const H = 190;
+  let W = $derived(large ? 760 : wide ? 640 : 340);
+  let H = $derived(large ? 320 : 190);
   const M = { top: 12, right: 92, bottom: 24, left: 32 };
   let plotW = $derived(W - M.left - M.right);
-  const plotH = H - M.top - M.bottom;
+  let plotH = $derived(H - M.top - M.bottom);
 
   let count = $derived(Math.max(1, ...series.map(s => s.matches.length)));
   let axis = $derived(niceAxis(Math.max(eventAverage ?? 0, ...series.flatMap(s => s.matches.map(m => m.value ?? 0)))));
@@ -69,7 +71,7 @@
     e.preventDefault();
   }
   let summary = $derived(`${title}, compared: ${series.map(s => `${s.name}: ${s.matches.map(describe).join(', ') || 'no matches'}`).join('; ')}${eventAverage !== null ? `. Event average ${fmt(eventAverage)}` : ''}`);
-  let every = $derived(Math.max(1, Math.ceil(count / (wide ? 12 : 6))));
+  let every = $derived(Math.max(1, Math.ceil(count / (large ? 20 : wide ? 12 : 6))));
 </script>
 
 <div class="chart compare-chart" class:line-chart={!wide}>

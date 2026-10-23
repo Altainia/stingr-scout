@@ -5,7 +5,7 @@ import PastRecords from '../src/screens/PastRecords.svelte';
 import QrView from '../src/screens/QrView.svelte';
 import { CONFIG, makeStore, withMixedRecords } from './helpers';
 
-const TITLE = 'Qual 1 · Red 1 · Team 5098';
+const TITLE = 'Qual 1 · Red 1 · Team 5098 Stingr'; // the hub's name for the team, too
 
 async function withSubmittedMatch() {
   const ctx = await makeStore();

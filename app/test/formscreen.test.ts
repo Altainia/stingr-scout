@@ -14,7 +14,7 @@ const click = (name: string) => fireEvent.click(screen.getByRole('button', { nam
 describe('FormScreen', () => {
   it('shows the first section and saves every change', async () => {
     const { store, db } = await openMatchForm();
-    expect(screen.getByRole('heading', { name: 'Qual 1 · Red 1 · Team 5098' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Qual 1 · Red 1 · Team 5098 Stingr' })).toBeTruthy();
     const coral = screen.getByRole('region', { name: 'Coral scored' });
     await fireEvent.click(within(coral).getByLabelText('plus'));
     expect(store.draft?.rec.answers.auto_coral).toBe(1);

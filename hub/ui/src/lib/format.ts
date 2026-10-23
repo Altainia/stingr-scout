@@ -1,4 +1,4 @@
-import { matchLabel } from '@stingr/shared';
+import { matchLabel, teamLabel } from '@stingr/shared';
 
 export const pct = (f: number | null | undefined): string => (f === null || f === undefined ? '—' : `${Math.round(f * 100)}%`);
 
@@ -18,7 +18,8 @@ export function slotLabel(slot: string | undefined): string {
   return `${slot.startsWith('red') ? 'Red' : 'Blue'} ${slot.slice(-1)}`;
 }
 
-export function recordLabel(r: { kind: string; matchKey?: string; slot?: string; team: number; scout: string }): string {
+export function recordLabel(r: { kind: string; matchKey?: string; slot?: string; team: number; scout: string }, names: Record<number, string> = {}): string {
   const who = r.scout ? ` (${r.scout})` : '';
-  return r.kind === 'pit' ? `Pit · Team ${r.team}${who}` : `${matchLabel(r.matchKey ?? '')} · ${slotLabel(r.slot)} · Team ${r.team}${who}`;
+  const team = `Team ${teamLabel(r.team, names)}`;
+  return r.kind === 'pit' ? `Pit · ${team}${who}` : `${matchLabel(r.matchKey ?? '')} · ${slotLabel(r.slot)} · ${team}${who}`;
 }

@@ -3,6 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
 import { buildCoverage } from '../coverage';
 import { buildMissedReport } from '../missed';
+import { allianceFields } from '../store/alliance';
+import { allianceMatches, allianceShares } from './alliance';
 import { acknowledgeMissed, missedAcks, unacknowledgeMissed } from '../store/missedAcks';
 import { bodyObject, HttpError, requireEvent } from '../http';
 import { getForm, latestForm } from '../store/forms';
@@ -64,6 +66,7 @@ export function dataRoutes(app: FastifyInstance, ctx: HubContext): void {
     return {
       form,
       summaries: buildTeamSummaries(listTeams(ctx.db, ev.key), form, currentRecords(ctx.db, ev.key, 'match'), currentRecords(ctx.db, ev.key, 'pit')),
+      scoreShares: allianceShares(allianceMatches(ctx.db, ev.key), [])['score'], // each team's estimated share of the alliance score
     };
   });
 
@@ -76,6 +79,23 @@ export function dataRoutes(app: FastifyInstance, ctx: HubContext): void {
       .sort((a, b) => compareMatchKeys(a.matchKey ?? '', b.matchKey ?? ''));
     const pitRecords = currentRecords(ctx.db, ev.key, 'pit').filter(r => r.team === team);
     const [summary] = buildTeamSummaries([team], matchForm, matchRecords, pitRecords);
-    return { summary, matchForm, pitForm: latestForm(ctx.db, 'pit') ?? null, matchRecords, pitRecords, eventAverages: eventAverages(matchForm, currentRecords(ctx.db, ev.key, 'match')) };
+    const fields = allianceFields(ctx.db);
+    const alliances = allianceMatches(ctx.db, ev.key);
+    const byItem = allianceShares(alliances, fields);
+    const mine = alliances.flatMap(m => (['red', 'blue'] as const).filter(s => m[s].teams.includes(team)).map(s => m[s].values));
+    const allianceSharesForTeam = [{ key: 'score', label: 'Score' }, ...fields].map(f => ({
+      item: f.key, label: f.label, value: byItem[f.key]?.[team] ?? null, results: mine.filter(v => v[f.key] !== undefined).length,
+    }));
+    return {
+      summary, matchForm, pitForm: latestForm(ctx.db, 'pit') ?? null, matchRecords, pitRecords,
+      eventAverages: eventAverages(matchForm, currentRecords(ctx.db, ev.key, 'match')), allianceShares: allianceSharesForTeam,
+      allianceByMatch: Object.fromEntries(alliances.flatMap(m => (['red', 'blue'] as const).filter(s => m[s].teams.includes(team)).map(side => {
+        const other = side === 'red' ? 'blue' : 'red';
+        return [m.matchKey, {
+          side, score: m[side].values.score?.value ?? null, opponent: m[other].values.score?.value ?? null,
+          fields: Object.fromEntries(fields.map(f => [f.key, m[side].values[f.key]?.value ?? null])),
+        }];
+      }))),
+    };
   });
 }

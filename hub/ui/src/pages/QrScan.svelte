@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import type { Api, QrResult } from '../lib/api';
   import { recordLabel } from '../lib/format';
   import { createRepeatFilter, startScanner } from '../lib/qrScan';
+  import { loadTeamNames } from '../lib/teamNames';
 
   /** scanner: how the camera is opened (tests pass a stand-in). */
   let { api, scanner = startScanner }: { api: Api; scanner?: typeof startScanner } = $props();
@@ -17,11 +18,13 @@
   const isRepeat = createRepeatFilter();
   let nextId = 0;
   let destroyed = false;
+  let names: Record<number, string> = {};
+  onMount(() => { void loadTeamNames(api).then(n => (names = n)); });
 
   function describe(r: QrResult): Omit<Entry, 'id'> {
     switch (r.status) {
-      case 'stored': return { kind: 'ok', text: `Stored: ${recordLabel(r.record)}` };
-      case 'duplicate': return { kind: 'info', text: `Already had: ${recordLabel(r.record)}` };
+      case 'stored': return { kind: 'ok', text: `Stored: ${recordLabel(r.record, names)}` };
+      case 'duplicate': return { kind: 'info', text: `Already had: ${recordLabel(r.record, names)}` };
       case 'partial': return { kind: 'info', text: `Got part ${r.have} of ${r.total}. Keep scanning the other codes.` };
       case 'invalid': return { kind: 'bad', text: `Not stored: ${r.reason}` };
     }

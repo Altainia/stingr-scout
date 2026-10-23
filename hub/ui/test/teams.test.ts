@@ -68,3 +68,22 @@ describe('Teams: refreshing', () => {
     }
   });
 });
+
+describe('Teams: estimated score share', () => {
+  it('adds a sortable column for each team\'s estimated share of the alliance score', async () => {
+    const summaries = buildTeamSummaries([5098, 254], null, [], []);
+    render(Teams, { api: fakeApi({ summaries: async () => ({ form: null, summaries, scoreShares: { 5098: 21.5, 254: null } }) }) });
+    const header = await screen.findByRole('button', { name: 'Score share' });
+    expect(header).toBeTruthy();
+    expect(screen.getByText('21.5')).toBeTruthy();
+  });
+});
+
+describe('Teams: names', () => {
+  it("shows each team's name beside its number", async () => {
+    render(Teams, { api: fakeApi({ summaries: async () => ({ form: f, summaries }), teamNames: async () => ({ 254: 'The Cheesy Poofs' }) }) });
+    const link = await screen.findByRole('link', { name: '254' });
+    await vi.waitFor(() => expect(link.closest('td')!.textContent).toContain('The Cheesy Poofs'));
+    expect(screen.getByRole('link', { name: '118' }).closest('td')!.textContent).toBe('118');
+  });
+});

@@ -28,9 +28,9 @@
   {#if list.length === 0}<p>No records yet.</p>{/if}
   <ul class="list">
     {#each list as r (r.id)}
-      <li aria-label={recordTitle(r.rec)}>
+      <li aria-label={recordTitle(r.rec, store.config?.teamNames)}>
         <span class="grow">
-          {recordTitle(r.rec)}{#if r.rec.noShow} · <em>not present</em>{/if}{#if r.rec.missed.length} · {r.rec.missed.length} missed{/if}
+          {recordTitle(r.rec, store.config?.teamNames)}{#if r.rec.noShow} · <em>not present</em>{/if}{#if r.rec.missed.length} · {r.rec.missed.length} missed{/if}
         </span>
         <span class={r.sync}>{status(r)}</span>
         {#if r.rec.noShow}
@@ -48,8 +48,8 @@
       <h2 id="other-title" class="sub">Other events</h2>
       <ul class="list">
         {#each otherUnsynced as r (r.id)}
-          <li aria-label="{recordTitle(r.rec)} ({r.rec.eventKey})">
-            <span class="grow">{recordTitle(r.rec)} · {r.rec.eventKey}</span>
+          <li aria-label="{recordTitle(r.rec, store.config?.teamNames)} ({r.rec.eventKey})">
+            <span class="grow">{recordTitle(r.rec, store.config?.teamNames)} · {r.rec.eventKey}</span>
             <span class={r.sync}>{status(r)}</span>
           </li>
         {/each}

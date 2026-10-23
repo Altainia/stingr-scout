@@ -11,6 +11,7 @@ describe('DataPage', () => {
     expect((await screen.findByRole('link', { name: /Match data/ })).getAttribute('href')).toBe('/api/export/matches.csv');
     expect(screen.getByRole('link', { name: /Pit data/ }).getAttribute('href')).toBe('/api/export/pit.csv');
     expect(screen.getByRole('link', { name: /Team summaries/ }).getAttribute('href')).toBe('/api/export/teams.csv');
+    expect(screen.getByRole('link', { name: /Alliance results/ }).getAttribute('href')).toBe('/api/export/alliance.csv');
     expect(screen.getByRole('link', { name: 'Download backup' }).getAttribute('href')).toBe('/api/backup');
   });
 

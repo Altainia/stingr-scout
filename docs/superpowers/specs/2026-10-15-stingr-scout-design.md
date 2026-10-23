@@ -356,6 +356,35 @@ A tablet syncing with a different hub (different `hubId`) removes nothing.
   - If anything is unsynced, the dialog says how many records would be lost, and a second confirmation is needed.
   - The next sync loads the hub's current event and forms again.
 
+### 6.11 Alliance results
+
+*Added October 2026. These are the builder's calls, made without a design conversation; review them with the feature.*
+
+Some scoring can't be attributed to one robot: for example, balls thrown into a shared hopper by several robots at once. The hub records **alliance results**, per match and per alliance (red and blue), and estimates each team's share from them.
+
+**What is recorded:** for each match in the current event's schedule (and any match a record mentions), per alliance:
+- the **final score** (a number, or blank);
+- a value for each **alliance field**. Fields are numeric items defined on the hub for this year's game (for example "Balls in hopper"). Each has a label, a key, and optionally the name of a The Blue Alliance score-breakdown item it is filled from.
+- where the values came from: typed on the hub, or The Blue Alliance.
+
+Alliance fields belong to the season: they are kept across events and removed by Start a new season (§6.8). Results belong to their event and are removed with it.
+
+**Entering results:** the hub's **Alliance results** page lists the matches with a red and a blue row each; scores and field values are edited in place and saved as they change. Results are entered on the hub only (tablets don't collect them in this version).
+
+**From The Blue Alliance:** **Fetch from TBA** (the TBA key from Settings) reads the event's matches with their score breakdowns. For every played match it fills:
+- each alliance's score;
+- each field linked to a score-breakdown item (numbers only; `true`/`false` become 1/0).
+
+Values typed on the hub are never overwritten by a fetch; clearing a typed value lets the next fetch fill it again. A value from TBA is replaced by a newer fetch, and is removed when its field's TBA link is changed or removed. The page lists the score-breakdown items TBA reported, so a field can be linked to one. Without internet the fetch fails with a clear message and nothing changes.
+
+**Estimated share (OPR):** for the score and for each field, the hub estimates each team's contribution: the per-team values `x` that best explain every alliance result (least squares: each alliance's value ≈ the sum of its three teams' `x`).
+- Only qualification matches count, as in The Blue Alliance's own OPR (playoff alliances aren't drawn at random), and only alliances with three different known teams.
+- A small ridge term keeps the estimate defined early in an event.
+- A team's estimate is shown only once at least 3 of its alliances have a result; before that it shows "—".
+- It appears on the Teams table (a column for the score's estimate, sortable) and on the team page (the score and each field). The teams CSV export gets a column for each.
+
+**Exports:** a new `alliance.csv` has one row per match and alliance: score, each field, and source.
+
 ## 7. Packaging and installation
 
 **Release build**

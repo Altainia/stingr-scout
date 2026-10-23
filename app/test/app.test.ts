@@ -71,7 +71,7 @@ describe('App', () => {
     const { store } = await makeStore();
     await store.startMatch({ matchKey: 'qm1', slot: 'red1', team: 5098 });
     render(App, { store, sync: fakeSync() });
-    expect(screen.getByRole('heading', { name: 'Qual 1 · Red 1 · Team 5098' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Qual 1 · Red 1 · Team 5098 Stingr' })).toBeTruthy();
   });
 
   it('warns when storage is not protected or nearly full', async () => {

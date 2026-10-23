@@ -61,6 +61,7 @@ describe('format', () => {
     expect(slotLabel('blue2')).toBe('Blue 2');
     expect(recordLabel({ kind: 'match', matchKey: 'qm3', slot: 'red1', team: 5098, scout: 'Ada' })).toBe('Qual 3 · Red 1 · Team 5098 (Ada)');
     expect(recordLabel({ kind: 'pit', team: 254, scout: 'Bo' })).toBe('Pit · Team 254 (Bo)');
+    expect(recordLabel({ kind: 'match', matchKey: 'qm3', slot: 'red1', team: 5098, scout: 'Ada' }, { 5098: 'Stingr' })).toBe('Qual 3 · Red 1 · Team 5098 Stingr (Ada)');
   });
 });
 

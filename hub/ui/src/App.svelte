@@ -3,6 +3,7 @@
   import { type Api, MISSED_CHANGED, needsLook } from './lib/api';
   import { onHubChange } from './lib/changes';
   import { href, parseRoute, type Route } from './lib/router';
+  import AlliancePage from './pages/AlliancePage.svelte';
   import Coverage from './pages/Coverage.svelte';
   import Dashboard from './pages/Dashboard.svelte';
   import DataPage from './pages/DataPage.svelte';
@@ -45,6 +46,7 @@
     { label: 'Match form', route: { page: 'forms', kind: 'match' } },
     { label: 'Pit form', route: { page: 'forms', kind: 'pit' } },
     { label: 'Coverage', route: { page: 'coverage' } },
+    { label: 'Alliance results', route: { page: 'alliance' } },
     { label: 'Teams', route: { page: 'teams' } },
     { label: 'QR scanner', route: { page: 'qr' } },
     { label: 'Export & backup', route: { page: 'data' } },
@@ -74,6 +76,8 @@
       {#key route.kind}<FormsEditor {api} kind={route.kind} />{/key}
     {:else if route.page === 'coverage'}
       <Coverage {api} />
+    {:else if route.page === 'alliance'}
+      <AlliancePage {api} />
     {:else if route.page === 'teams'}
       <Teams {api} />
     {:else if route.page === 'team'}

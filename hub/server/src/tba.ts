@@ -7,8 +7,9 @@ export interface TbaEventData { name: string | null; matches: ScheduleMatch[]; t
 type TbaMatch = { key: string; alliances: { red: { team_keys: string[] }; blue: { team_keys: string[] } } };
 const teamNumber = (key: string): number => Number(key.replace(/^frc/, '')) || 0;
 
-export async function fetchTbaEvent(eventKey: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<TbaEventData> {
-  const get = async (path: string): Promise<unknown> => {
+/** A GET to The Blue Alliance, with errors a mentor can act on. */
+function tbaGetter(eventKey: string, apiKey: string, fetchImpl: typeof fetch) {
+  return async (path: string): Promise<unknown> => {
     let res: Response;
     try {
       res = await fetchImpl(`${TBA_BASE}${path}`, {
@@ -23,6 +24,10 @@ export async function fetchTbaEvent(eventKey: string, apiKey: string, fetchImpl:
     if (!res.ok) throw new Error(`The Blue Alliance returned HTTP ${res.status}`);
     return res.json();
   };
+}
+
+export async function fetchTbaEvent(eventKey: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<TbaEventData> {
+  const get = tbaGetter(eventKey, apiKey, fetchImpl);
 
   const [event, matches, teams] = (await Promise.all([
     get(`/event/${eventKey}/simple`),
@@ -45,4 +50,41 @@ export async function fetchTbaEvent(eventKey: string, apiKey: string, fetchImpl:
       (teams ?? []).filter(t => teamNumber(t.key) > 0 && t.nickname?.trim()).map(t => [teamNumber(t.key), (t.nickname as string).trim()]),
     ),
   };
+}
+
+export interface TbaAllianceResult { score: number; breakdown: Record<string, number> }
+export interface TbaResults { played: { matchKey: string; red: TbaAllianceResult; blue: TbaAllianceResult }[]; items: string[] }
+
+/** Score-breakdown values as numbers: nested items get dotted names, true/false become 1/0, anything else is left out. */
+function flatten(obj: unknown, prefix = '', out: Record<string, number> = {}): Record<string, number> {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return out;
+  for (const [k, v] of Object.entries(obj)) {
+    const name = prefix ? `${prefix}.${k}` : k;
+    if (typeof v === 'number' && Number.isFinite(v)) out[name] = v;
+    else if (typeof v === 'boolean') out[name] = v ? 1 : 0;
+    else if (typeof v === 'object') flatten(v, name, out);
+  }
+  return out;
+}
+
+/** Each played match's alliance scores and score breakdowns (an unplayed match has a score of -1). */
+export async function fetchTbaResults(eventKey: string, apiKey: string, fetchImpl: typeof fetch = fetch): Promise<TbaResults> {
+  type Full = { key: string; alliances: Record<'red' | 'blue', { score: number }>; score_breakdown: Record<'red' | 'blue', unknown> | null };
+  const answer = (await tbaGetter(eventKey, apiKey, fetchImpl)(`/event/${eventKey}/matches`)) ?? [];
+  if (!Array.isArray(answer)) throw new Error("The Blue Alliance's answer wasn't a list of matches");
+  const matches = answer as Full[];
+  const items = new Set<string>();
+  const results: TbaResults['played'] = [];
+  for (const m of matches) {
+    const matchKey = normalizeMatchKey(m.key.slice(m.key.indexOf('_') + 1));
+    const played = (s: 'red' | 'blue') => typeof m.alliances?.[s]?.score === 'number' && m.alliances[s].score >= 0; // -1 or blank: not played yet
+    if (!matchKey || !played('red') || !played('blue')) continue;
+    const side = (s: 'red' | 'blue'): TbaAllianceResult => {
+      const breakdown = flatten(m.score_breakdown?.[s]);
+      for (const k of Object.keys(breakdown)) items.add(k);
+      return { score: m.alliances[s].score, breakdown };
+    };
+    results.push({ matchKey, red: side('red'), blue: side('blue') });
+  }
+  return { played: results, items: [...items].sort() };
 }

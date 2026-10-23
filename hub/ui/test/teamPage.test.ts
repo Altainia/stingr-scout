@@ -16,6 +16,12 @@ const detail = {
   summary: buildTeamSummaries([5098], f, [r1, r2, r3], [pit])[0],
   matchForm: f, pitForm: pitForm(), matchRecords: [r1, r2, r3], pitRecords: [pit],
   eventAverages: eventAverages(f, [r1, r2, r3]),
+  allianceShares: [{ item: 'score', label: 'Score', value: 41.25, results: 4 }, { item: 'hopper', label: 'Balls in hopper', value: 5.8, results: 4 }],
+  allianceByMatch: {
+    qm1: { side: 'red' as const, score: 87, opponent: 64, fields: { hopper: 31 } },
+    qm2: { side: 'red' as const, score: 50, opponent: 71, fields: { hopper: null } },
+    qm3: { side: 'red' as const, score: null, opponent: null, fields: { hopper: null } },
+  },
 };
 
 describe('TeamPage', () => {
@@ -114,5 +120,92 @@ describe('TeamPage: comparing teams', () => {
     render(TeamPage, { api: api(), team: 5098, vs: [{ team: 118, slot: 2 }, { team: 254, slot: 3 }, { team: 6328, slot: 4 }] });
     expect(await screen.findByText(/up to 3 teams/)).toBeTruthy();
     expect(screen.queryByLabelText('Compare with')).toBeNull();
+  });
+});
+
+describe('TeamPage: alliance estimates', () => {
+  it("shows the team's estimated share of the alliance score and each field, or what it still needs", async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    const card = await screen.findByRole('region', { name: 'Estimated from alliance results' });
+    expect(within(card).getByText('41.3')).toBeTruthy();
+    expect(within(card).getByText('Score').closest('div')!.textContent).toContain('4 alliances');
+    expect(within(card).getByText('Balls in hopper').closest('div')!.textContent).toContain('4 alliances');
+  });
+});
+
+describe('TeamPage: alliance results in the charts', () => {
+  it('charts each alliance field for the whole alliance, against the team\'s estimated share', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    const chart = await screen.findByRole('img', { name: /^Balls in hopper — whole alliance by match/ });
+    expect(within(chart).getByText('Est. share 5.8')).toBeTruthy();
+    expect(chart.closest('figure')!.textContent).toContain('Alliance avg 31 over 1 match'); // not "Team avg"
+    expect(screen.getByText(/On whole-alliance charts it is the team's estimated share/)).toBeTruthy();
+  });
+
+  it('puts the alliance score and the result behind the points per match', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    const chart = await screen.findByRole('img', { name: /^Points per match/ });
+    expect(chart.querySelectorAll('.alliance-col')).toHaveLength(2);
+    expect(within(chart).getByText('W')).toBeTruthy();
+    expect(within(chart).getByText('L')).toBeTruthy();
+  });
+
+  it('adds the estimated shares to the side-by-side table when comparing', async () => {
+    const other = { ...detail, allianceShares: [{ item: 'score', label: 'Score', value: 20, results: 5 }, { item: 'hopper', label: 'Balls in hopper', value: 3, results: 5 }] };
+    render(TeamPage, { api: fakeApi({ team: async (t: number) => (t === 5098 ? detail : other), teams: async () => [254, 5098], teamNames: async () => ({}) }), team: 5098, vs: [{ team: 254, slot: 2 }] });
+    const table = await screen.findByRole('table', { name: 'Teams side by side' });
+    const header = within(table).getAllByRole('columnheader').map(h => h.textContent);
+    expect(header).toContain('Score share');
+    expect(header).toContain('Balls in hopper share');
+    expect(within(table).getByText('41.3')).toBeTruthy();
+  });
+});
+
+describe('TeamPage: enlarging a chart', () => {
+  it('opens a chart bigger, with its values as a table, and steps through the others', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Enlarge Coral scored' }));
+    const dialog = screen.getByRole('dialog', { name: 'Coral scored' });
+    expect(within(dialog).getByRole('img', { name: /^Coral scored by match/ })).toBeTruthy();
+    const rows = within(within(dialog).getByRole('table')).getAllByRole('row').map(r => r.textContent ?? '');
+    expect(rows.some(r => r.includes('Qual 1') && r.includes('2'))).toBe(true);
+    expect(rows.some(r => r.includes('Qual 3') && r.includes('robot not there'))).toBe(true);
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Next chart' }));
+    expect(screen.getByRole('dialog', { name: 'Climb time' })).toBeTruthy();
+    await fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft' });
+    expect(screen.getByRole('dialog', { name: 'Coral scored' })).toBeTruthy();
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('enlarges a whole-alliance chart too, and opens a chart by clicking it', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    await fireEvent.click(await screen.findByRole('img', { name: /^Balls in hopper — whole alliance by match/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Balls in hopper — whole alliance' });
+    expect(within(dialog).getByText('Est. share 5.8')).toBeTruthy();
+  });
+
+  it('shows every compared team in an enlarged chart', async () => {
+    const other = { ...detail, allianceShares: [] };
+    render(TeamPage, { api: fakeApi({ team: async (t: number) => (t === 5098 ? detail : other), teams: async () => [254, 5098], teamNames: async () => ({}) }), team: 5098, vs: [{ team: 254, slot: 2 }] });
+    await screen.findByRole('img', { name: /^Coral scored, compared/ });
+    await fireEvent.click(screen.getByRole('button', { name: 'Enlarge Coral scored' }));
+    const dialog = screen.getByRole('dialog', { name: 'Coral scored' });
+    expect(within(dialog).getByRole('img', { name: /^Coral scored, compared/ })).toBeTruthy();
+    const header = within(within(dialog).getByRole('table')).getAllByRole('columnheader').map(h => h.textContent);
+    expect(header).toEqual(['Match', '5098', '254']);
+  });
+});
+
+describe('TeamPage: team names', () => {
+  it("shows the team's name beside its number at the top", async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail, teams: async () => [5098], teamNames: async () => ({ 5098: 'Stingr' }) }), team: 5098 });
+    expect(await screen.findByRole('heading', { name: 'Team 5098 Stingr' })).toBeTruthy();
+  });
+
+  it('still shows the page when names cannot be loaded', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail, teams: async () => [5098] }), team: 5098 });
+    expect(await screen.findByRole('heading', { name: 'Team 5098' })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

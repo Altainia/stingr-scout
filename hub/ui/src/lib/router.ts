@@ -5,6 +5,7 @@ export type Route =
   | { page: 'event' }
   | { page: 'forms'; kind: FormKind }
   | { page: 'coverage' }
+  | { page: 'alliance' }
   | { page: 'teams' }
   | { page: 'team'; team: number; vs?: Compared[] }
   | { page: 'qr' }
@@ -41,6 +42,7 @@ export function parseRoute(hash: string): Route {
       if (second === undefined || second === 'match') return { page: 'forms', kind: 'match' };
       return second === 'pit' ? { page: 'forms', kind: 'pit' } : { page: 'notfound' };
     case 'coverage': return { page: 'coverage' };
+    case 'alliance': return second ? { page: 'notfound' } : { page: 'alliance' };
     case 'teams':
       if (second === undefined) return { page: 'teams' };
       if (!/^\d{1,5}$/.test(second)) return { page: 'notfound' };

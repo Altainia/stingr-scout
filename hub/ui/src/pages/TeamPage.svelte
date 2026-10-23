@@ -1,23 +1,25 @@
 <script lang="ts">
   import TextDialog from '../components/TextDialog.svelte';
-  import { allQuestions, describeAnswer, estimatedPoints, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind } from '@stingr/shared';
+  import { allQuestions, describeAnswer, estimatedPoints, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind, teamLabel } from '@stingr/shared';
   import { onMount } from 'svelte';
   import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import FieldScatter from '../components/FieldScatter.svelte';
+  import ChartDialog, { type ChartSpec } from '../components/ChartDialog.svelte';
   import CompareChart from '../components/CompareChart.svelte';
   import MatchLineChart from '../components/MatchLineChart.svelte';
   import PointsChart from '../components/PointsChart.svelte';
   import type { Api, TeamDetail } from '../lib/api';
   import { num, slotLabel } from '../lib/format';
   import { type Compared, href, MAX_COMPARED } from '../lib/router';
+  import { loadTeamNames } from '../lib/teamNames';
 
   let { api, team, vs = [] }: { api: Api; team: number; vs?: Compared[] } = $props();
   // Teams compared with this one (from the address), their details, and names for labels.
   let others = $state<Record<number, TeamDetail>>({});
   let eventTeams = $state<number[]>([]);
   let names = $state<Record<number, string>>({});
-  const nameOf = (t: number) => (names[t] ? `${t} ${names[t]}` : String(t));
+  const nameOf = (t: number) => teamLabel(t, names);
   let detail = $state<TeamDetail | null>(null);
   let error = $state<unknown>(null);
   let history = $state<Record<string, ScoutRecord[]>>({});
@@ -42,8 +44,9 @@
   }
 
   async function loadTeams() {
+    names = await loadTeamNames(api);
     try {
-      [eventTeams, names] = await Promise.all([api.teams(), api.teamNames()]);
+      eventTeams = await api.teams();
     } catch {
       // the picker just stays empty
     }
@@ -52,7 +55,7 @@
   onMount(() => {
     void load();
     void loadTeams();
-    return onHubChange(() => { void load(); void loadOthers(); }); // new records synced: refresh
+    return onHubChange(() => { void load(); void loadOthers(); void loadTeams(); }); // new records synced (or names changed): refresh
   });
   $effect(() => { void vs.map(c => c.team).join(); void loadOthers(); }); // whenever the comparison changes
 
@@ -126,10 +129,32 @@
     const nums = records.flatMap(r => (!r.noShow && !r.missed.includes(key) && typeof r.answers[key] === 'number' ? [r.answers[key] as number] : []));
     return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
   };
+  // Each alliance field with any value in this team's matches, as the whole alliance's value by match.
+  let allianceFieldCharts = $derived((detail?.allianceShares ?? []).filter(a => a.item !== 'score').flatMap(a => {
+    const matches = (detail?.matchRecords ?? []).map(r => {
+      const v = detail?.allianceByMatch?.[r.matchKey ?? '']?.fields[a.item] ?? null;
+      return { label: matchLabel(r.matchKey ?? ''), scout: r.scout, state: v === null ? 'blank' as const : 'ok' as const, value: v };
+    });
+    return matches.some(m => m.value !== null) ? [{ key: a.item, label: a.label, share: a.value, matches }] : [];
+  }));
+  // The small charts, in page order, for the enlarge popup to step through.
+  let smallCharts = $derived<ChartSpec[]>(!detail ? [] : comparing
+    ? numericQs.map(q => ({ kind: 'compare', title: q.label, series: questionSeries(q.key), eventAverage: detail?.eventAverages?.questions[q.key] ?? null }))
+    : [
+        ...numericQs.map(q => ({ kind: 'line' as const, title: q.label, matches: byMatch(q.key), eventAverage: detail?.eventAverages?.questions[q.key] ?? null })),
+        ...allianceFieldCharts.map(c => ({ kind: 'line' as const, title: `${c.label} — whole alliance`, matches: c.matches, eventAverage: c.share, refLabel: 'Est. share', alliance: true })),
+      ]);
+  let enlarged = $state<number | null>(null);
+  let shareItems = $derived((detail?.allianceShares ?? []).filter(a => teamsShown.some(t => t.d.allianceShares?.find(x => x.item === a.item)?.value != null)));
+  const shareOf = (d: TeamDetail, item: string) => d.allianceShares?.find(x => x.item === item)?.value ?? null;
 </script>
 
+{#snippet enlarge(label: string, i: number)}
+  <button type="button" class="small enlarge" aria-label="Enlarge {label}" title="Enlarge" onclick={e => { e.stopPropagation(); enlarged = i; }}>⤢</button>
+{/snippet}
+
 <p><a href="#/teams">‹ All teams</a></p>
-<h1>Team {team}</h1>
+<h1>Team {team}{#if names[team]}{' '}<span class="team-name">{names[team]}</span>{/if}</h1>
 <ErrorNote {error} />
 
 {#if detail}
@@ -140,6 +165,24 @@
     <div><strong>{s.noShows}</strong><div class="muted">no-shows</div></div>
     <div><strong>{PIT[s.pit]}</strong><div class="muted">pit scouting</div></div>
   </section>
+
+  {#if detail.allianceShares?.some(a => a.results > 0)}
+    <section class="card" aria-labelledby="estimates-title">
+      <h2 id="estimates-title">Estimated from alliance results</h2>
+      <p class="hint">This team's share of each alliance total, worked out from every alliance it was on (OPR).</p>
+      <div class="figures">
+        {#each detail.allianceShares as a (a.item)}
+          <div>
+            {#if a.value !== null}
+              <strong>{num(a.value)}</strong><div class="muted">{a.label} <span class="hint">· {a.results} alliances</span></div>
+            {:else}
+              <strong>—</strong><div class="muted">{a.label} <span class="hint">· needs 3 alliance results, has {a.results}</span></div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
 
   <section class="card compare">
     <h2>Compare</h2>
@@ -162,18 +205,19 @@
     {#if comparing && form}
       <div class="scroll-x">
         <table class="grid" aria-label="Teams side by side">
-          <thead><tr><th>Team</th><th>Matches</th><th>Est. points</th>{#each numericQs as q (q.key)}<th>{q.label}</th>{/each}</tr></thead>
+          <thead><tr><th>Team</th><th>Matches</th><th>Est. points</th>{#each shareItems as a (a.item)}<th>{a.label} share</th>{/each}{#each numericQs as q (q.key)}<th>{q.label}</th>{/each}</tr></thead>
           <tbody>
             {#each teamsShown as t (t.team)}
               <tr>
                 <td><span class="line-key" style:background="var(--chart-{t.slot})"></span> {nameOf(t.team)}</td>
                 <td>{t.d.summary.matchRecords}</td>
                 <td>{num(t.d.summary.estPoints)}</td>
+                {#each shareItems as a (a.item)}<td>{num(shareOf(t.d, a.item))}</td>{/each}
                 {#each numericQs as q (q.key)}<td>{num(avgOf(q.key, t.d.matchRecords))}</td>{/each}
               </tr>
             {/each}
             <tr class="muted">
-              <td>Event average</td><td></td><td>{num(detail.eventAverages?.points.total ?? null)}</td>
+              <td>Event average</td><td></td><td>{num(detail.eventAverages?.points.total ?? null)}</td>{#each shareItems as a (a.item)}<td></td>{/each}
               {#each numericQs as q (q.key)}<td>{num(detail.eventAverages?.questions[q.key] ?? null)}</td>{/each}
             </tr>
           </tbody>
@@ -198,9 +242,10 @@
           <li><span class="ref-key"></span>Event average</li>
         </ul>
         <div class="charts">
-          {#each numericQs as q (q.key)}
-            <figure>
-              <figcaption>{q.label}</figcaption>
+          {#each numericQs as q, i (q.key)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+            <figure onclick={() => (enlarged = i)}>
+              <figcaption>{q.label}{@render enlarge(q.label, i)}</figcaption>
               <CompareChart title={q.label} legend={false} series={questionSeries(q.key)} eventAverage={detail.eventAverages?.questions[q.key] ?? null} />
             </figure>
           {/each}
@@ -211,18 +256,31 @@
     {#if scores}
       <section class="card points-chart">
         <h2>Points per match</h2>
-        <PointsChart matches={pointsData} sections={form.sections.map(s => ({ id: s.id, title: s.title }))} eventAverage={detail.eventAverages?.points.total ?? null} />
+        <PointsChart matches={pointsData} sections={form.sections.map(s => ({ id: s.id, title: s.title }))} eventAverage={detail.eventAverages?.points.total ?? null}
+          alliance={detail.matchRecords.map(r => ({ score: detail?.allianceByMatch?.[r.matchKey ?? '']?.score ?? null, opponent: detail?.allianceByMatch?.[r.matchKey ?? '']?.opponent ?? null }))} />
       </section>
     {/if}
-    {#if numericQs.length}
+    {#if numericQs.length || allianceFieldCharts.length}
       <section class="card">
         <h2>By match</h2>
-        <p class="hint">The dashed line is the average across every team at this event. ⚠ missed · ✗ robot not there · – no answer</p>
+        <p class="hint">
+          The dashed line is the average across every team at this event{#if allianceFieldCharts.length}. On whole-alliance charts it is the team's estimated share{/if}.
+          ⚠ missed · ✗ robot not there · – no answer
+        </p>
         <div class="charts">
-          {#each numericQs as q (q.key)}
-            <figure>
-              <figcaption>{q.label}</figcaption>
+          {#each numericQs as q, i (q.key)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+            <figure onclick={() => (enlarged = i)}>
+              <figcaption>{q.label}{@render enlarge(q.label, i)}</figcaption>
               <MatchLineChart title={q.label} matches={byMatch(q.key)} eventAverage={detail.eventAverages?.questions[q.key] ?? null} />
+            </figure>
+          {/each}
+          <!-- Alliance fields: the whole alliance's value in each of this team's matches, against the team's estimated share. -->
+          {#each allianceFieldCharts as c, i (c.key)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+            <figure onclick={() => (enlarged = numericQs.length + i)}>
+              <figcaption><span>{c.label} <span class="hint">— whole alliance</span></span>{@render enlarge(`${c.label} — whole alliance`, numericQs.length + i)}</figcaption>
+              <MatchLineChart title="{c.label} — whole alliance" alliance matches={c.matches} eventAverage={c.share} refLabel="Est. share" />
             </figure>
           {/each}
         </div>
@@ -314,7 +372,7 @@
       {#if pit.photoIds.length}
         <div class="photos">
           {#each pit.photoIds as id (id)}
-            <a href="/api/photos/{id}" target="_blank" rel="noopener"><img src="/api/photos/{id}" alt="Team {team} robot" loading="lazy" /></a>
+            <a href="/api/photos/{id}" target="_blank" rel="noopener"><img src="/api/photos/{id}" alt="Team {nameOf(team)} robot" loading="lazy" /></a>
           {/each}
         </div>
       {/if}
@@ -328,4 +386,7 @@
 
 {#if reading}
   <TextDialog title={reading.title} text={reading.text} onclose={() => (reading = null)} />
+{/if}
+{#if enlarged !== null && smallCharts[enlarged]}
+  <ChartDialog charts={smallCharts} index={enlarged} onclose={() => (enlarged = null)} />
 {/if}

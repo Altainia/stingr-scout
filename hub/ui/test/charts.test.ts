@@ -44,6 +44,29 @@ describe('PointsChart', () => {
   });
 });
 
+describe('PointsChart with alliance results', () => {
+  const ALLIANCE = [
+    { score: 87, opponent: 64 }, { score: 50, opponent: 71 }, { score: null, opponent: null }, { score: 40, opponent: 40 },
+  ];
+
+  it('draws the alliance score as a faint column behind each match, with W, L or T', () => {
+    render(PointsChart, { matches: MATCHES, sections: SECTIONS, eventAverage: 14, alliance: ALLIANCE });
+    const chart = screen.getByRole('img', { name: /^Points per match/ });
+    expect(chart.querySelectorAll('.alliance-col')).toHaveLength(3);
+    expect([...chart.querySelectorAll('text.result')].map(t => t.textContent)).toEqual(['W', 'L', 'T']);
+    const legend = screen.getByRole('list', { name: 'Sections' });
+    expect(within(legend).getByText('Alliance score')).toBeTruthy();
+  });
+
+  it('gives the alliance and opponents in the tooltip and the table', async () => {
+    render(PointsChart, { matches: MATCHES, sections: SECTIONS, eventAverage: 14, alliance: ALLIANCE });
+    await fireEvent.focus(screen.getByRole('button', { name: /Qual 1/ }));
+    expect(screen.getByRole('tooltip').textContent).toMatch(/Alliance 87 · opponents 64 \(won\)/);
+    const table = screen.getByRole('table', { name: 'Points by section' });
+    expect(within(table).getAllByRole('columnheader').map(h => h.textContent)).toContain('Alliance');
+  });
+});
+
 describe('MatchLineChart', () => {
   const values = [
     { label: 'Qual 1', scout: 'Ada', state: 'ok' as const, value: 2 },

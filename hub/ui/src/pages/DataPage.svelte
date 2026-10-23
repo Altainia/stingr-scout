@@ -97,6 +97,7 @@
       <li><a href="/api/export/matches.csv" download>Match data</a> <span class="muted">one row per robot per match</span></li>
       <li><a href="/api/export/pit.csv" download>Pit data</a> <span class="muted">one row per pit interview</span></li>
       <li><a href="/api/export/teams.csv" download>Team summaries</a> <span class="muted">one row per team</span></li>
+      <li><a href="/api/export/alliance.csv" download>Alliance results</a> <span class="muted">one row per alliance per match</span></li>
     </ul>
   {:else if view}
     <p><a href="#/event">Choose an event first</a>.</p>

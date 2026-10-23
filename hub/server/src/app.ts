@@ -6,6 +6,7 @@ import type { AdbWatcher } from './adb';
 import type { Db } from './db';
 import { HttpError } from './http';
 import { adminRoutes } from './routes/admin';
+import { allianceRoutes } from './routes/alliance';
 import { changesRoutes } from './routes/changes';
 import { clearRoutes } from './routes/clear';
 import { dataRoutes } from './routes/data';
@@ -71,6 +72,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
   exportRoutes(app, ctx);
   adminRoutes(app, ctx);
   clearRoutes(app, ctx);
+  allianceRoutes(app, ctx);
 
   await registerStatic(app, opts.staticRoots ?? {});
   return app;

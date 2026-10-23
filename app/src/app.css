@@ -151,3 +151,7 @@ button.link.jump { display: inline; min-height: 0; min-width: 0; padding: 0; col
 .pit-chips { margin: 0 0 12px; }
 .list li .team-no { min-width: 4ch; }
 .list li .team-name { min-width: 14em; }
+/* The chosen team's name beside its number, so the scout can check it's the right robot */
+.team-field { display: flex; flex-direction: column; gap: 2px; }
+.team-name-hint { color: var(--muted); font-size: 0.9rem; min-height: 1.3em; max-width: 12em; } /* kept even when empty, so nothing below jumps */
+.row:has(.team-field) { align-items: flex-start; }
