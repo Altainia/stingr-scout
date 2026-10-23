@@ -1,4 +1,5 @@
 <script lang="ts">
+  import TextDialog from '../components/TextDialog.svelte';
   import { allQuestions, describeAnswer, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind } from '@stingr/shared';
   import { onMount } from 'svelte';
   import ErrorNote from '../components/ErrorNote.svelte';
@@ -25,7 +26,16 @@
   let questions = $derived(form ? allQuestions(form) : []);
   let played = $derived((detail?.matchRecords ?? []).filter(r => !r.noShow));
   let trends = $derived(questions.filter(q => summaryKind(q) === 'avg'));
-  let texts = $derived(questions.filter(q => q.type === 'text'));
+  let texts = $derived(questions.filter(q => q.type === 'text' && summaryKind(q) === 'list')); // "Don't summarize" leaves them out of Comments
+  // Long text answers are shortened in the match table; the full text opens in a popup.
+  const PREVIEW = 24;
+  let reading = $state<{ title: string; text: string } | null>(null);
+  function preview(text: string): string | null {
+    if (text.length <= PREVIEW) return null;
+    const cut = text.slice(0, PREVIEW);
+    const space = cut.lastIndexOf(' ');
+    return `${(space > PREVIEW / 2 ? cut.slice(0, space) : cut).replace(/[\s,.;:]+$/, '')}…`;
+  }
   let maps = $derived(questions.flatMap(q => (q.type === 'fieldmap' ? [q] : [])));
   let comments = $derived(texts.flatMap(q => played.flatMap(r => {
     const v = r.answers[q.key];
@@ -84,7 +94,16 @@
                   <td colspan={questions.length + 1}><em>Robot not present</em></td>
                 {:else}
                   <td>{form ? num(recordPoints(form, r)) : '—'}</td>
-                  {#each questions as q (q.key)}<td class:muted={r.missed.includes(q.key)}>{cell(r, q)}</td>{/each}
+                  {#each questions as q (q.key)}
+                    {@const text = cell(r, q)}
+                    {@const short = q.type === 'text' && !r.missed.includes(q.key) ? preview(text) : null}
+                    <td class:muted={r.missed.includes(q.key)} class:text-cell={q.type === 'text'}>
+                      {#if short}
+                        <button type="button" class="link peek" title="Show the full text"
+                          onclick={() => (reading = { title: `${q.label} · ${matchLabel(r.matchKey ?? '')} (${r.scout})`, text })}>{short}</button>
+                      {:else}{text}{/if}
+                    </td>
+                  {/each}
                 {/if}
                 <td>
                   {#if r.revision > 1}
@@ -160,4 +179,8 @@
       <p class="muted">Not pit-scouted yet.</p>
     {/if}
   </section>
+{/if}
+
+{#if reading}
+  <TextDialog title={reading.title} text={reading.text} onclose={() => (reading = null)} />
 {/if}

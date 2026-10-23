@@ -87,3 +87,7 @@ input.narrow { width: 6em; }
 table.grid.teams { width: auto; }
 table.grid.teams td input { width: 22em; }
 table.grid.teams td { vertical-align: middle; }
+/* A shortened text answer: click it to read all of it. */
+button.link.peek { min-height: 0; min-width: 0; padding: 0; text-align: left; color: var(--link); font: inherit; }
+td.text-cell { min-width: 9em; max-width: 11em; }
+.text-dialog .full-text { white-space: pre-wrap; line-height: 1.5; max-height: 60vh; overflow-y: auto; }

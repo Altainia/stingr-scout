@@ -51,6 +51,32 @@ describe('TeamPage', () => {
 });
 
 describe('Sparkline', () => {
+  const LONG = 'Drove very well in auto, picked up two coral from the station quickly, then defended on the far side for the rest of the match.';
+
+  it('shortens a long text answer in the match table and shows all of it in a popup', async () => {
+    const long = setAnswer(record(f, { matchKey: 'qm4', team: 5098, scout: 'Ada' }), 'comments', LONG);
+    render(TeamPage, { api: fakeApi({ team: async () => ({ ...detail, matchRecords: [r1, long] }) }), team: 5098 });
+    const table = (await screen.findByRole('heading', { name: /Matches/ })).parentElement!.querySelector('table')!;
+    expect(within(table).getByText('Fast driver')).toBeTruthy(); // short: shown whole, not a button
+    expect(within(table).queryByRole('button', { name: /Fast driver/ })).toBeNull();
+    const peek = within(table).getByRole('button', { name: /^Drove very well in…/ });
+    expect(peek.textContent!.length).toBeLessThanOrEqual(25);
+    await fireEvent.click(peek);
+    const dialog = screen.getByRole('dialog', { name: 'Comments · Qual 4 (Ada)' });
+    expect(dialog.textContent).toContain(LONG);
+    await fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it("lists a text question's answers under Comments only when its summary is the list of answers", async () => {
+    const quiet = structuredClone(f);
+    const q = quiet.sections.flatMap(s => s.questions).find(q => q.key === 'comments')!;
+    q.summary = 'none';
+    render(TeamPage, { api: fakeApi({ team: async () => ({ ...detail, matchForm: quiet }) }), team: 5098 });
+    expect(await screen.findByRole('heading', { name: 'Team 5098' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Comments' })).toBeNull();
+  });
+
   it('plots only the known values', () => {
     const { container } = render(Sparkline, { values: [1, null, 3], label: 'Coral' });
     expect(container.querySelectorAll('circle')).toHaveLength(2);
