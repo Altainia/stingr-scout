@@ -34,33 +34,45 @@
 
   let items = $derived([{ key: 'score', label: 'Score' }, ...(view?.fields ?? [])]);
 
-  async function save(match: string, side: AllianceSide, item: string, text: string) {
+  /** Saves a typed value. Something that isn't a number, or a failed save, is reported and the stored value put back. */
+  async function save(match: string, side: AllianceSide, item: string, input: HTMLInputElement, stored: number | undefined) {
+    const text = input.value;
     const value = text.trim() === '' ? null : Number(text);
-    if (value !== null && !Number.isFinite(value)) return;
+    const restore = () => { input.value = stored === undefined ? '' : String(stored); };
+    if (input.validity?.badInput || (value !== null && !Number.isFinite(value))) {
+      error = new Error(`"${text || 'That'}" isn't a number this page can save.`);
+      restore();
+      return;
+    }
     try {
       await api.setAllianceValue(match, side, item, value);
+      error = null;
       await load();
     } catch (e) {
       error = e;
+      restore();
     }
   }
 
-  async function saveFields(fields: AllianceField[]) {
+  async function saveFields(fields: AllianceField[]): Promise<boolean> {
     try {
       const saved = await api.setAllianceFields(fields);
       if (view) view = { ...view, fields: saved };
       await load();
+      return true;
     } catch (e) {
       error = e;
+      return false;
     }
   }
 
-  function addField() {
+  async function addField() {
     const label = newField.trim();
     if (!label || !view) return;
-    const key = uniqueKey(slugify(label), ['score', ...view.fields.map(f => f.key)]);
-    newField = '';
-    void saveFields([...view.fields, { key, label }]);
+    // Keys are kept short (at most 40 characters) however long the label is.
+    const base = slugify(label).slice(0, 36).replace(/_+$/, '') || 'field';
+    const key = uniqueKey(base, ['score', ...view.fields.map(f => f.key)]);
+    if (await saveFields([...view.fields, { key, label }])) newField = ''; // kept if it couldn't be saved
   }
 
   const update = (key: string, patch: Partial<AllianceField>) =>
@@ -117,13 +129,14 @@
     {/if}
     <div class="row">
       <label>New field <input aria-label="New field" placeholder="e.g. Balls in hopper" value={newField} oninput={e => (newField = e.currentTarget.value)}
-        onkeydown={e => { if (e.key === 'Enter') addField(); }} /></label>
-      <button type="button" disabled={!newField.trim()} onclick={addField}>Add field</button>
+        onkeydown={e => { if (e.key === 'Enter') void addField(); }} /></label>
+      <button type="button" disabled={!newField.trim()} onclick={() => void addField()}>Add field</button>
     </div>
   </section>
 
   <section class="card" aria-labelledby="results-title">
     <h2 id="results-title">Results</h2>
+    <p class="hint">Values you type are never replaced by a fetch; clear one to let The Blue Alliance fill it again. Estimates use qualification matches only.</p>
     <div class="row">
       <button type="button" disabled={fetching} onclick={fetchTba}>{fetching ? 'Fetching…' : 'Fetch from TBA'}</button>
       {#if fetched}<span class="banner ok" role="status">{fetched}</span>{/if}
@@ -134,8 +147,8 @@
       <div class="scroll-x">
         <table class="grid alliance-table">
           <thead><tr><th>Match</th><th>Alliance</th><th>Teams</th>{#each items as it (it.key)}<th>{it.label}</th>{/each}</tr></thead>
-          <tbody>
-            {#each view.matches as m (m.matchKey)}
+          {#each view.matches as m (m.matchKey)}
+            <tbody>
               {#each SIDES as side (side)}
                 {@const a = m[side]}
                 <tr aria-label="{matchLabel(m.matchKey)} {side}" class="side-{side}" class:first={side === 'red'}>
@@ -147,15 +160,15 @@
                     <td>
                       <span class="with-source">
                         <input type="number" class="narrow" aria-label="{matchLabel(m.matchKey)} {side} {it.label}" value={v?.value ?? ''}
-                          onchange={e => save(m.matchKey, side, it.key, e.currentTarget.value)} />
+                          onchange={e => save(m.matchKey, side, it.key, e.currentTarget, v?.value)} />
                         {#if v?.source === 'tba'}<span class="tag tba" title="From The Blue Alliance">TBA</span>{/if}
                       </span>
                     </td>
                   {/each}
                 </tr>
               {/each}
-            {/each}
-          </tbody>
+            </tbody>
+          {/each}
         </table>
       </div>
     {/if}

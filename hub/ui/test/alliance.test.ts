@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import type { AllianceView } from '../src/lib/api';
 import AlliancePage from '../src/pages/AlliancePage.svelte';
@@ -51,5 +51,35 @@ describe('AlliancePage', () => {
     await waitFor(() => expect(setAllianceFields).toHaveBeenLastCalledWith([
       { key: 'hopper', label: 'Balls in hopper', tba: 'totalPoints' }, { key: 'coral_in_reef', label: 'Coral in reef' },
     ]));
+  });
+
+  it('makes a short key from a long label, and keeps the typed label if saving fails', async () => {
+    const setAllianceFields = vi.fn(async (f: AllianceView['fields']) => f);
+    render(AlliancePage, { api: fakeApi({ alliance: async () => VIEW(), setAllianceFields }) });
+    await fireEvent.input(await screen.findByLabelText('New field'), { target: { value: 'Number of balls scored into the shared hopper by the alliance' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Add field' }));
+    const key = (setAllianceFields.mock.lastCall![0] as AllianceView['fields']).at(-1)!.key;
+    expect(key.length).toBeLessThanOrEqual(40);
+    cleanup();
+    render(AlliancePage, { api: fakeApi({ alliance: async () => VIEW(), setAllianceFields: async () => { throw new Error('nope'); } }) });
+    await fireEvent.input(await screen.findByLabelText('New field'), { target: { value: 'Coral' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Add field' }));
+    await waitFor(() => expect((screen.getByLabelText('New field') as HTMLInputElement).value).toBe('Coral'));
+  });
+
+  it("doesn't save, and says so, when a value isn't a number; a failed save puts the stored value back", async () => {
+    const setAllianceValue = vi.fn(async () => { throw new Error('Hub unreachable'); });
+    render(AlliancePage, { api: fakeApi({ alliance: async () => VIEW(), setAllianceValue }) });
+    const cell = (await screen.findByLabelText('Qual 1 red Score')) as HTMLInputElement;
+    // What a browser reports for text it can't read as a number (e.g. letters, or 1e999): an empty value marked bad input.
+    Object.defineProperty(cell, 'validity', { configurable: true, value: { badInput: true } });
+    await fireEvent.change(cell, { target: { value: '' } });
+    Object.defineProperty(cell, 'validity', { configurable: true, value: { badInput: false } });
+    expect(setAllianceValue).not.toHaveBeenCalled();
+    expect(screen.getByText(/isn't a number this page can save/)).toBeTruthy();
+    expect(cell.value).toBe('87'); // back to what's stored
+    await fireEvent.change(cell, { target: { value: '90' } });
+    expect(setAllianceValue).toHaveBeenCalledWith('qm1', 'red', 'score', 90);
+    await waitFor(() => expect(cell.value).toBe('87'));
   });
 });

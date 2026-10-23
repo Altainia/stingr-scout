@@ -89,6 +89,7 @@ describe('fetching alliance results from The Blue Alliance', () => {
     alliances: { red: { score: red, team_keys: ['frc5098', 'frc254', 'frc118'] }, blue: { score: blue, team_keys: ['frc148', 'frc971', 'frc1323'] } },
     score_breakdown: rb && bb ? { red: rb, blue: bb } : null,
   });
+  const NULL_SCORE = [{ key: '2027test_qm1', alliances: { red: { score: null }, blue: { score: null } }, score_breakdown: null }];
   const MATCHES = [
     tbaMatch('qm1', 87, 64, { hubFuelCount: 31, endgame: { climbed: true }, totalPoints: 87 }, { hubFuelCount: 20, endgame: { climbed: false }, totalPoints: 64 }),
     tbaMatch('qm2', -1, -1, null, null), // not played yet
@@ -128,6 +129,33 @@ describe('fetching alliance results from The Blue Alliance', () => {
     expect(matches[0].blue.values.score).toEqual({ value: 64, source: 'tba' });
   });
 
+  it("removes a field's TBA values when its link changes or goes, keeping typed ones", async () => {
+    const app = await tbaHub();
+    await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper', tba: 'hubFuelCount' }] });
+    await app.inject({ method: 'PUT', url: '/api/alliance/qm1/blue/hopper', payload: { value: 7 } }); // typed
+    await app.inject({ method: 'POST', url: '/api/alliance/tba' });
+    const before = (await app.inject({ url: '/api/alliance' })).json().matches[0];
+    expect(before.red.values.hopper).toEqual({ value: 31, source: 'tba' });
+    await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper' }] }); // unlinked
+    const after = (await app.inject({ url: '/api/alliance' })).json().matches[0];
+    expect(after.red.values.hopper).toBeUndefined();
+    expect(after.blue.values.hopper).toEqual({ value: 7, source: 'manual' });
+    expect(after.red.values.score).toEqual({ value: 87, source: 'tba' }); // other items untouched
+  });
+
+  it('skips a match whose score TBA leaves blank, keeping what is there', async () => {
+    const app = await tbaHub(NULL_SCORE);
+    await app.inject({ method: 'PUT', url: '/api/alliance/qm1/red/score', payload: { value: 50 } });
+    expect((await app.inject({ method: 'POST', url: '/api/alliance/tba' })).json()).toEqual({ played: 0, filled: 0 });
+  });
+
+  it('explains an odd answer from The Blue Alliance', async () => {
+    const app = await tbaHub({ not: 'a list' });
+    const res = await app.inject({ method: 'POST', url: '/api/alliance/tba' });
+    expect(res.statusCode).toBe(502);
+    expect(res.json().error).toBe("The Blue Alliance's answer wasn't a list of matches");
+  });
+
   it('explains when The Blue Alliance cannot be reached or no key is set', async () => {
     const offline = await makeApp({ fetch: (async () => { throw new TypeError('fetch failed'); }) as typeof fetch });
     await setupEvent(offline);
@@ -151,5 +179,29 @@ describe('estimated shares in summaries', () => {
       { item: 'score', label: 'Score', value: null, results: 1 },
       { item: 'hopper', label: 'Balls in hopper', value: null, results: 0 },
     ]);
+  });
+});
+
+describe('alliance results: review fixes', () => {
+
+  it('only counts qualification matches, and only alliances of three different teams, in the estimates', async () => {
+    const { app, put, get } = await hub();
+    await app.inject({ method: 'PUT', url: '/api/schedule', payload: [
+      { matchKey: 'qm1', red: [1, 2, 3], blue: [4, 5, 6] }, { matchKey: 'qm2', red: [1, 4, 5], blue: [2, 3, 6] },
+      { matchKey: 'qm3', red: [1, 2, 6], blue: [3, 4, 5] }, { matchKey: 'qm4', red: [1, 3, 5], blue: [2, 4, 6] },
+      { matchKey: 'sf1m1', red: [1, 2, 3], blue: [4, 5, 6] }, { matchKey: 'qm5', red: [1, 0, 0], blue: [2, 2, 3] },
+    ] });
+    for (const m of ['qm1', 'qm2', 'qm3', 'qm4']) for (const s of ['red', 'blue']) await put(m, s, 'score', 30);
+    await put('sf1m1', 'red', 'score', 900); // a playoff: left out
+    await put('qm5', 'red', 'score', 900); // missing teams: left out
+    await put('qm5', 'blue', 'score', 900); // a team twice: left out
+    const { shares } = await get();
+    expect(shares.score[1]).toBeCloseTo(10, 0);
+  });
+
+  it('refuses a value for something that is not a match', async () => {
+    const { put } = await hub();
+    expect((await put('banana', 'red', 'score', 3)).statusCode).toBe(400);
+    expect((await put('1', 'red', 'score', 3)).statusCode).toBe(200); // "1" is qualification match 1
   });
 });

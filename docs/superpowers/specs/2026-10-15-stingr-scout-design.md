@@ -375,9 +375,10 @@ Alliance fields belong to the season: they are kept across events and removed by
 - each alliance's score;
 - each field linked to a score-breakdown item (numbers only; `true`/`false` become 1/0).
 
-Values typed on the hub are never overwritten by a fetch. A value from TBA is replaced by a newer fetch. The page lists the score-breakdown items TBA reported, so a field can be linked to one. Without internet the fetch fails with a clear message and nothing changes.
+Values typed on the hub are never overwritten by a fetch; clearing a typed value lets the next fetch fill it again. A value from TBA is replaced by a newer fetch, and is removed when its field's TBA link is changed or removed. The page lists the score-breakdown items TBA reported, so a field can be linked to one. Without internet the fetch fails with a clear message and nothing changes.
 
 **Estimated share (OPR):** for the score and for each field, the hub estimates each team's contribution: the per-team values `x` that best explain every alliance result (least squares: each alliance's value ≈ the sum of its three teams' `x`).
+- Only qualification matches count, as in The Blue Alliance's own OPR (playoff alliances aren't drawn at random), and only alliances with three different known teams.
 - A small ridge term keeps the estimate defined early in an event.
 - A team's estimate is shown only once at least 3 of its alliances have a result; before that it shows "—".
 - It appears on the Teams table (a column for the score's estimate, sortable) and on the team page (the score and each field). The teams CSV export gets a column for each.

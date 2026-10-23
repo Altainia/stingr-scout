@@ -1,4 +1,4 @@
-import { type AllianceField, type AllianceMatch, type AllianceSide, compareMatchKeys, estimateShares } from '@stingr/shared';
+import { type AllianceField, type AllianceMatch, type AllianceSide, compareMatchKeys, estimateShares, normalizeMatchKey } from '@stingr/shared';
 import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
 import { type Db, tx } from '../db';
@@ -26,7 +26,10 @@ export function allianceMatches(db: Db, eventKey: string): AllianceMatch[] {
 export function allianceShares(matches: AllianceMatch[], fields: AllianceField[]): Record<string, Record<number, number | null>> {
   const out: Record<string, Record<number, number | null>> = {};
   for (const item of ['score', ...fields.map(f => f.key)]) {
-    const results = matches.flatMap(m => SIDES.filter(s => m[s].teams.length).map(s => ({ teams: m[s].teams.filter(t => t > 0), value: m[s].values[item]?.value ?? null })));
+    // Qualification matches only (playoff alliances aren't drawn at random), and only alliances of three different teams.
+    const results = matches.filter(m => m.matchKey.startsWith('qm')).flatMap(m => SIDES
+      .filter(s => m[s].teams.length === 3 && new Set(m[s].teams).size === 3 && m[s].teams.every(t => t > 0))
+      .map(s => ({ teams: m[s].teams, value: m[s].values[item]?.value ?? null })));
     out[item] = Object.fromEntries(estimateShares(results));
   }
   return out;
@@ -59,7 +62,10 @@ export function allianceRoutes(app: FastifyInstance, ctx: HubContext): void {
 
   app.put('/api/alliance/:match/:alliance/:item', async req => {
     const ev = requireEvent(ctx.db);
-    const { match, alliance, item } = req.params as { match: string; alliance: string; item: string };
+    const params = req.params as { match: string; alliance: string; item: string };
+    const { alliance, item } = params;
+    const match = normalizeMatchKey(params.match);
+    if (!match) throw new HttpError(400, `"${params.match}" isn't a match (for example qm12 or sf1m1)`);
     if (alliance !== 'red' && alliance !== 'blue') throw new HttpError(400, 'The alliance must be red or blue');
     if (item !== 'score' && !allianceFields(ctx.db).some(f => f.key === item)) throw new HttpError(400, `There is no alliance field "${item}"`);
     const value = bodyObject(req.body).value;

@@ -1,5 +1,5 @@
 import type { AllianceEntry, AllianceField, AllianceSide } from '@stingr/shared';
-import type { Db } from '../db';
+import { type Db, tx } from '../db';
 import { getSetting, setSetting } from './settings';
 
 export const ALLIANCE_FIELD_KEY = /^[a-z][a-z0-9_]{0,39}$/;
@@ -10,12 +10,21 @@ export function allianceFields(db: Db): AllianceField[] {
   return raw ? (JSON.parse(raw) as AllianceField[]) : [];
 }
 
-/** Replaces the fields; values of fields that are gone are removed. */
+/**
+ * Replaces the fields. Values of fields that are gone are removed, and so are a field's values from The Blue Alliance
+ * when its TBA link changes (they came from the old item; typed values stay).
+ */
 export function setAllianceFields(db: Db, fields: AllianceField[]): void {
-  setSetting(db, 'alliance_fields', fields.length ? JSON.stringify(fields) : null);
-  const keep = new Set(['score', ...fields.map(f => f.key)]);
-  const items = db.prepare('SELECT DISTINCT item FROM alliance_results').all() as unknown as { item: string }[];
-  for (const { item } of items) if (!keep.has(item)) db.prepare('DELETE FROM alliance_results WHERE item = ?').run(item);
+  const before = new Map(allianceFields(db).map(f => [f.key, f.tba]));
+  tx(db, () => {
+    setSetting(db, 'alliance_fields', fields.length ? JSON.stringify(fields) : null);
+    const keep = new Set(['score', ...fields.map(f => f.key)]);
+    const items = db.prepare('SELECT DISTINCT item FROM alliance_results').all() as unknown as { item: string }[];
+    for (const { item } of items) if (!keep.has(item)) db.prepare('DELETE FROM alliance_results WHERE item = ?').run(item);
+    for (const f of fields) {
+      if (before.has(f.key) && before.get(f.key) !== f.tba) db.prepare("DELETE FROM alliance_results WHERE item = ? AND source = 'tba'").run(f.key);
+    }
+  });
 }
 
 /** match → alliance → item → value, for an event. */
