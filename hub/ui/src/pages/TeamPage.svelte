@@ -141,6 +141,24 @@
     <div><strong>{PIT[s.pit]}</strong><div class="muted">pit scouting</div></div>
   </section>
 
+  {#if detail.allianceShares?.some(a => a.results > 0)}
+    <section class="card" aria-labelledby="estimates-title">
+      <h2 id="estimates-title">Estimated from alliance results</h2>
+      <p class="hint">This team's share of each alliance total, worked out from every alliance it was on (OPR).</p>
+      <div class="figures">
+        {#each detail.allianceShares as a (a.item)}
+          <div>
+            {#if a.value !== null}
+              <strong>{num(a.value)}</strong><div class="muted">{a.label} <span class="hint">· {a.results} alliances</span></div>
+            {:else}
+              <strong>—</strong><div class="muted">{a.label} <span class="hint">· needs 3 alliance results, has {a.results}</span></div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
   <section class="card compare">
     <h2>Compare</h2>
     <div class="row compare-row">

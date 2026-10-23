@@ -10,7 +10,7 @@
   let { api }: { api: Api } = $props();
   type Col = { id: string; label: string; get: (s: TeamSummary) => number | string | null; show: (s: TeamSummary) => string };
 
-  let data = $state<{ form: FormDef | null; summaries: TeamSummary[] } | null>(null);
+  let data = $state<{ form: FormDef | null; summaries: TeamSummary[]; scoreShares?: Record<number, number | null> } | null>(null);
   let error = $state<unknown>(null);
   let sortId = $state('est');
   let dir = $state<'asc' | 'desc'>('desc');
@@ -45,6 +45,11 @@
       { id: 'noshow', label: 'No-shows', get: s => s.noShowPct, show: s => pct(s.noShowPct) },
       { id: 'est', label: 'Est. points', get: s => s.estPoints, show: s => num(s.estPoints) },
     ];
+    // Each team's estimated share of the alliance score (from Alliance results), once any are recorded.
+    const shares = data?.scoreShares;
+    if (shares && Object.values(shares).some(v => v !== null)) {
+      list.push({ id: 'score_share', label: 'Score share', get: s => shares[s.team] ?? null, show: s => num(shares[s.team] ?? null) });
+    }
     const form = data?.form;
     if (form) {
       for (const sec of form.sections) {

@@ -111,7 +111,7 @@ test('downloads the match CSV', async ({ page }) => {
 test('fits a 1280×800 laptop screen without sideways scrolling', async ({ page }) => {
   // 1280×800 less the desktop panel and browser toolbars.
   await page.setViewportSize({ width: 1280, height: 650 });
-  for (const path of ['', 'event', 'forms/match', 'forms/pit', 'coverage', 'teams', 'teams/5098', 'qr', 'data', 'settings']) {
+  for (const path of ['', 'event', 'forms/match', 'forms/pit', 'coverage', 'alliance', 'teams', 'teams/5098', 'qr', 'data', 'settings']) {
     await page.goto(`/hub/#/${path}`);
     await expect(page.locator('main h1')).toBeVisible();
     const { scroll, client } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));

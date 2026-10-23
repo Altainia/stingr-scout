@@ -16,6 +16,7 @@ const detail = {
   summary: buildTeamSummaries([5098], f, [r1, r2, r3], [pit])[0],
   matchForm: f, pitForm: pitForm(), matchRecords: [r1, r2, r3], pitRecords: [pit],
   eventAverages: eventAverages(f, [r1, r2, r3]),
+  allianceShares: [{ item: 'score', label: 'Score', value: 41.25, results: 4 }, { item: 'hopper', label: 'Balls in hopper', value: null, results: 1 }],
 };
 
 describe('TeamPage', () => {
@@ -114,5 +115,15 @@ describe('TeamPage: comparing teams', () => {
     render(TeamPage, { api: api(), team: 5098, vs: [{ team: 118, slot: 2 }, { team: 254, slot: 3 }, { team: 6328, slot: 4 }] });
     expect(await screen.findByText(/up to 3 teams/)).toBeTruthy();
     expect(screen.queryByLabelText('Compare with')).toBeNull();
+  });
+});
+
+describe('TeamPage: alliance estimates', () => {
+  it("shows the team's estimated share of the alliance score and each field, or what it still needs", async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    const card = await screen.findByRole('region', { name: 'Estimated from alliance results' });
+    expect(within(card).getByText('41.3')).toBeTruthy();
+    expect(within(card).getByText('Score').closest('div')!.textContent).toContain('4 alliances');
+    expect(within(card).getByText('Balls in hopper').closest('div')!.textContent).toContain('needs 3 alliance results, has 1');
   });
 });

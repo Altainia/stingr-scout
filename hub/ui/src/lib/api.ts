@@ -1,4 +1,4 @@
-import type { EventInfo, FormDef, FormKind, ScheduleMatch, ScoutRecord, Side } from '@stingr/shared';
+import type { AllianceField, AllianceMatch, AllianceSide, EventInfo, FormDef, FormKind, ScheduleMatch, ScoutRecord, Side } from '@stingr/shared';
 import type { AdbStatus } from '../../../server/src/adb';
 import type { CoverageRow } from '../../../server/src/coverage';
 import type { MissedRef, MissedReport } from '../../../server/src/missed';
@@ -33,6 +33,16 @@ export interface TeamDetail {
   pitRecords: ScoutRecord[];
   /** the event's averages, to compare the team's charts against (null before a match form is published) */
   eventAverages: EventAverages | null;
+  /** the team's estimated share of the alliance score and each alliance field, with how many of its alliances have a result */
+  allianceShares: AllianceShare[];
+}
+export interface AllianceShare { item: string; label: string; value: number | null; results: number }
+export interface AllianceView {
+  fields: AllianceField[];
+  matches: AllianceMatch[];
+  shares: Record<string, Record<number, number | null>>;
+  /** score-breakdown items The Blue Alliance reported, to link fields to */
+  tbaItems: string[];
 }
 export type QrResult =
   | { status: 'partial'; group: string; have: number; total: number }
@@ -94,7 +104,12 @@ export function createApi(http: Http = (input, init) => fetch(input, init)) {
     missed: () => call<MissedReport>('GET', '/api/missed'),
     ackMissed: (id: string) => call<MissedReport>('POST', `/api/missed/${encodeURIComponent(id)}/ack`),
     unackMissed: (id: string) => call<MissedReport>('DELETE', `/api/missed/${encodeURIComponent(id)}/ack`),
-    summaries: () => call<{ form: FormDef | null; summaries: TeamSummary[] }>('GET', '/api/summaries'),
+    summaries: () => call<{ form: FormDef | null; summaries: TeamSummary[]; scoreShares?: Record<number, number | null> }>('GET', '/api/summaries'),
+    alliance: () => call<AllianceView>('GET', '/api/alliance'),
+    setAllianceValue: (match: string, side: AllianceSide, item: string, value: number | null) =>
+      call<{ ok: true }>('PUT', `/api/alliance/${encodeURIComponent(match)}/${side}/${encodeURIComponent(item)}`, { value }),
+    setAllianceFields: (fields: AllianceField[]) => call<AllianceField[]>('PUT', '/api/alliance-fields', fields),
+    fetchAllianceTba: () => call<{ played: number; filled: number }>('POST', '/api/alliance/tba'),
     team: (team: number) => call<TeamDetail>('GET', `/api/summaries/${team}`),
     qr: (text: string) => call<QrResult>('POST', '/api/qr', { text }, { accept: [422] }),
     devices: () => call<DevicesView>('GET', '/api/devices'),
