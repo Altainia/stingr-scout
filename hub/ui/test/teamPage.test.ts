@@ -5,7 +5,7 @@ import { buildTeamSummaries } from '../../server/src/summaries';
 import { matchForm, pitForm, record } from '../../../shared/test/fixtures';
 import Sparkline from '../src/components/Sparkline.svelte';
 import TeamPage from '../src/pages/TeamPage.svelte';
-import { fakeApi } from './helpers';
+import { fakeApi, fakeChanges } from './helpers';
 
 const NOW = '2027-03-01T10:00:00.000Z';
 const f = matchForm();
@@ -80,5 +80,26 @@ describe('Sparkline', () => {
   it('plots only the known values', () => {
     const { container } = render(Sparkline, { values: [1, null, 3], label: 'Coral' });
     expect(container.querySelectorAll('circle')).toHaveLength(2);
+  });
+});
+
+describe('TeamPage: refreshing', () => {
+  it("refreshes when the hub's data changes, not on a timer", async () => {
+    vi.useFakeTimers();
+    const hub = fakeChanges();
+    try {
+      const teamFn = vi.fn(async () => detail);
+      render(TeamPage, { api: fakeApi({ team: teamFn }), team: 5098 });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(teamFn).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(teamFn).toHaveBeenCalledTimes(1);
+      hub.changed();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(teamFn).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
   });
 });

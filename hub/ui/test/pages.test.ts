@@ -5,7 +5,7 @@ import { ApiError } from '../src/lib/api';
 import Dashboard from '../src/pages/Dashboard.svelte';
 import Settings from '../src/pages/Settings.svelte';
 import type { Api, MissedReport } from '../src/lib/api';
-import { fakeApi } from './helpers';
+import { fakeApi, fakeChanges } from './helpers';
 
 describe('ErrorNote', () => {
   it('explains when no event is selected', () => {
@@ -102,5 +102,28 @@ describe('Dashboard', () => {
     expect(await screen.findByText('adb is not installed. Install it with: sudo apt install adb')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Set one up' }).getAttribute('href')).toBe('#/event');
     await waitFor(() => expect(screen.getByText('No tablet has synced yet.')).toBeTruthy());
+  });
+});
+
+describe('Dashboard: refreshing', () => {
+  it("refreshes when the hub's data changes, not on a timer", async () => {
+    vi.useFakeTimers();
+    const hub = fakeChanges();
+    try {
+      const events = vi.fn(async () => ({ events: [], current: { key: '2027mokc', name: 'Heartland', redSide: 'left' as const } }));
+      const devices = vi.fn(async () => ({ adb: { available: true, devices: [] }, devices: [] }));
+      render(Dashboard, { api: fakeApi({ events, devices, missed: CONCERNS }) });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(events).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(events).toHaveBeenCalledTimes(1);
+      expect(devices.mock.calls.length).toBeGreaterThan(20); // USB connections are still checked every 2 seconds
+      hub.changed();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(events).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
   });
 });

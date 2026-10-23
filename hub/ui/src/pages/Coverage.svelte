@@ -1,6 +1,7 @@
 <script lang="ts">
   import { matchLabel, SLOTS } from '@stingr/shared';
   import { onMount } from 'svelte';
+  import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import MissedConcerns from '../components/MissedConcerns.svelte';
   import { type Api, type CoverageRow, MISSED_CHANGED, type MissedReport } from '../lib/api';
@@ -25,8 +26,7 @@
 
   onMount(() => {
     void refresh();
-    const t = setInterval(refresh, 5000);
-    return () => clearInterval(t);
+    return onHubChange(refresh); // new records synced: refresh
   });
 
   let totals = $derived.by(() => {

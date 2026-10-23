@@ -1,6 +1,7 @@
 <script lang="ts">
   import { allQuestions, type ChoiceQuestion, type FormDef, summaryKind } from '@stingr/shared';
   import { onMount } from 'svelte';
+  import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import type { Api, TeamSummary } from '../lib/api';
   import { num, pct } from '../lib/format';
@@ -15,12 +16,18 @@
   let dir = $state<'asc' | 'desc'>('desc');
   const PIT = { none: '—', done: '✓', noshow: 'Not present' } as const;
 
-  onMount(async () => {
+  async function load() {
     try {
       data = await api.summaries();
+      error = null;
     } catch (e) {
       error = e;
     }
+  }
+
+  onMount(() => {
+    void load();
+    return onHubChange(load); // new records synced: refresh
   });
 
   function topOption(s: TeamSummary, q: ChoiceQuestion): { label: string; share: number } | null {

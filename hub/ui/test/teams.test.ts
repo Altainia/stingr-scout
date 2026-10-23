@@ -1,10 +1,10 @@
 import { markNoShow, setAnswer } from '@stingr/shared';
 import { fireEvent, render, screen } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildTeamSummaries } from '../../server/src/summaries';
 import { matchForm, record } from '../../../shared/test/fixtures';
 import Teams from '../src/pages/Teams.svelte';
-import { fakeApi } from './helpers';
+import { fakeApi, fakeChanges } from './helpers';
 
 const f = matchForm();
 const NOW = '2027-03-01T10:00:00.000Z';
@@ -45,5 +45,26 @@ describe('Teams', () => {
   it('explains when no match form is published', async () => {
     render(Teams, { api: fakeApi({ summaries: async () => ({ form: null, summaries: [] }) }) });
     expect(await screen.findByText(/No match form is published yet/)).toBeTruthy();
+  });
+});
+
+describe('Teams: refreshing', () => {
+  it("refreshes when the hub's data changes, not on a timer", async () => {
+    vi.useFakeTimers();
+    const hub = fakeChanges();
+    try {
+      const summaries = vi.fn(async () => ({ form: null, summaries: [] }));
+      render(Teams, { api: fakeApi({ summaries }) });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(summaries).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(summaries).toHaveBeenCalledTimes(1);
+      hub.changed();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(summaries).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
   });
 });

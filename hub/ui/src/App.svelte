@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { type Api, MISSED_CHANGED, needsLook } from './lib/api';
+  import { onHubChange } from './lib/changes';
   import { href, parseRoute, type Route } from './lib/router';
   import Coverage from './pages/Coverage.svelte';
   import Dashboard from './pages/Dashboard.svelte';
@@ -28,12 +29,8 @@
   onMount(() => {
     void countMissed();
     window.addEventListener(MISSED_CHANGED, countMissed);
-    const changes = typeof EventSource === 'undefined' ? null : new EventSource('/api/changes');
-    if (changes) {
-      changes.onmessage = () => void countMissed();
-      changes.onopen = () => void countMissed();
-    }
-    return () => { changes?.close(); window.removeEventListener(MISSED_CHANGED, countMissed); };
+    const stop = onHubChange(countMissed);
+    return () => { stop(); window.removeEventListener(MISSED_CHANGED, countMissed); };
   });
 
   onMount(() => {

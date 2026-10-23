@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import MissedConcerns from '../components/MissedConcerns.svelte';
   import { type Api, type DevicesView, type EventsView, MISSED_CHANGED, type MissedReport, needsLook } from '../lib/api';
@@ -13,23 +14,32 @@
   let missed = $state<MissedReport | null>(null);
   let pending = $derived(missed ? needsLook(missed) : 0);
 
-  async function refresh() {
+  // USB connections aren't hub data, so they're still checked every 2 seconds; the rest refreshes when data changes.
+  async function refreshUsb() {
     try {
-      const [d, e] = await Promise.all([api.devices(), api.events()]);
-      devices = d;
-      events = e;
+      devices = await api.devices();
       now = Date.now();
-      error = null;
-      missed = await api.missed().catch(() => null); // none without a current event
     } catch (e) {
       error = e;
     }
   }
 
+  async function refreshData() {
+    try {
+      events = await api.events();
+      error = null;
+    } catch (e) {
+      error = e;
+    }
+    missed = await api.missed().catch(() => null); // none without a current event
+  }
+
   onMount(() => {
-    void refresh();
-    const t = setInterval(refresh, 2000);
-    return () => clearInterval(t);
+    void refreshUsb();
+    void refreshData();
+    const t = setInterval(refreshUsb, 2000);
+    const stop = onHubChange(() => { void refreshData(); void refreshUsb(); });
+    return () => { clearInterval(t); stop(); };
   });
 
   function usbState(state: string, reversed: boolean, problem?: string): string {

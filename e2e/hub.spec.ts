@@ -346,3 +346,15 @@ test('the Coverage badge updates by itself when a tablet syncs', async ({ page }
   expect(count).toBeGreaterThan(0);
   await expect(coverage.locator('.nav-badge')).toHaveText(new RegExp(`^${count}`)); // no reload
 });
+
+test('an open team page shows a newly synced match without a reload', async ({ page }) => {
+  await page.goto('/hub/#/teams/9100');
+  await expect(page.getByRole('heading', { name: 'Team 9100' })).toBeVisible();
+  await expect(page.getByText('No matches scouted yet.')).toBeVisible();
+  const { current } = await (await api.get('/api/events')).json();
+  const forms = await (await api.get('/api/forms')).json();
+  const version = forms.filter((f: { kind: string }) => f.kind === 'match').at(-1).version;
+  const rec = { ...record(matchForm(), { eventKey: current.key, matchKey: 'qm91', slot: 'blue3', team: 9100, scout: 'Zed' }), formVersion: version };
+  expect((await api.post('/api/sync', { data: { device: { id: 'e2e-live', name: 'Live' }, records: [rec] } })).ok()).toBe(true);
+  await expect(page.getByRole('cell', { name: /Qual 91/ })).toBeVisible(); // no reload
+});

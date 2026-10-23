@@ -2,6 +2,7 @@
   import TextDialog from '../components/TextDialog.svelte';
   import { allQuestions, describeAnswer, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind } from '@stingr/shared';
   import { onMount } from 'svelte';
+  import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import FieldScatter from '../components/FieldScatter.svelte';
   import Sparkline from '../components/Sparkline.svelte';
@@ -14,12 +15,18 @@
   let history = $state<Record<string, ScoutRecord[]>>({});
   const PIT = { none: 'Not yet', done: 'Done ✓', noshow: 'Not present' } as const;
 
-  onMount(async () => {
+  async function load() {
     try {
       detail = await api.team(team);
+      error = null;
     } catch (e) {
       error = e;
     }
+  }
+
+  onMount(() => {
+    void load();
+    return onHubChange(load); // new records synced: refresh
   });
 
   let form = $derived(detail?.matchForm ?? null);

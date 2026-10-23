@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type MissedReport } from '../src/lib/api';
 import Coverage from '../src/pages/Coverage.svelte';
-import { fakeApi } from './helpers';
+import { fakeApi, fakeChanges } from './helpers';
 
 const cell = (team: number, status: 'empty' | 'ok' | 'missed' | 'noshow', recordIds: string[] = []) => ({ team, status, recordIds });
 const ROWS = [
@@ -76,5 +76,26 @@ describe('Coverage', () => {
     expect(await within(climb()).findByText('Acknowledged')).toBeTruthy();
     await fireEvent.click(within(climb()).getByRole('button', { name: 'Undo' }));
     expect(unackMissed).toHaveBeenCalledWith('q:climb_time');
+  });
+});
+
+describe('Coverage: refreshing', () => {
+  it("refreshes when the hub's data changes, not on a timer", async () => {
+    vi.useFakeTimers();
+    const hub = fakeChanges();
+    try {
+      const coverage = vi.fn(async () => ROWS);
+      render(Coverage, { api: fakeApi({ coverage, missed: NONE }) });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(coverage).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(coverage).toHaveBeenCalledTimes(1);
+      hub.changed();
+      await vi.advanceTimersByTimeAsync(300);
+      expect(coverage).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
   });
 });
