@@ -24,11 +24,16 @@
       missedCount = 0; // no current event yet
     }
   }
+  // Recount only when the hub says something changed (a sync, a QR scan, a publish, …), and on reconnecting.
   onMount(() => {
     void countMissed();
-    const t = setInterval(countMissed, 10_000);
     window.addEventListener(MISSED_CHANGED, countMissed);
-    return () => { clearInterval(t); window.removeEventListener(MISSED_CHANGED, countMissed); };
+    const changes = typeof EventSource === 'undefined' ? null : new EventSource('/api/changes');
+    if (changes) {
+      changes.onmessage = () => void countMissed();
+      changes.onopen = () => void countMissed();
+    }
+    return () => { changes?.close(); window.removeEventListener(MISSED_CHANGED, countMissed); };
   });
 
   onMount(() => {

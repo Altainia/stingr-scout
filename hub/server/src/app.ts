@@ -6,6 +6,7 @@ import type { AdbWatcher } from './adb';
 import type { Db } from './db';
 import { HttpError } from './http';
 import { adminRoutes } from './routes/admin';
+import { changesRoutes } from './routes/changes';
 import { clearRoutes } from './routes/clear';
 import { dataRoutes } from './routes/data';
 import { eventRoutes } from './routes/event';
@@ -60,6 +61,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance> {
     return reply.status(500).send({ error: `Internal error: ${err.message}` });
   });
 
+  changesRoutes(app); // first: its hook watches every route below
   syncRoutes(app, ctx);
   recordRoutes(app, ctx);
   formRoutes(app, ctx);

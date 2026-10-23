@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../src/App.svelte';
 import { fakeApi } from './helpers';
 
@@ -44,5 +44,32 @@ describe('App', () => {
     const coverage = within(screen.getByRole('navigation', { name: 'Hub' })).getByRole('link', { name: /^Coverage/ });
     expect(await within(coverage).findByText('2')).toBeTruthy();
     expect(coverage.textContent).toContain('need a look');
+  });
+
+  it('recounts the badge when the hub says something changed, not on a timer', async () => {
+    vi.useFakeTimers();
+    const streams: { onmessage: (() => void) | null; onopen: (() => void) | null; url: string }[] = [];
+    vi.stubGlobal('EventSource', class {
+      onmessage: (() => void) | null = null;
+      onopen: (() => void) | null = null;
+      constructor(public url: string) { streams.push(this); }
+      close() {}
+    });
+    try {
+      location.hash = '#/settings';
+      const missed = vi.fn(async () => ({ questions: [], scouts: [] }));
+      render(App, { api: fakeApi({ settings: async () => ({ tbaKeySet: false }), missed }) });
+      expect(streams[0].url).toBe('/api/changes');
+      expect(missed).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(missed).toHaveBeenCalledTimes(1); // no polling
+      streams[0].onmessage?.();
+      expect(missed).toHaveBeenCalledTimes(2);
+      streams[0].onopen?.(); // reconnected: catch up on anything missed while disconnected
+      expect(missed).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
   });
 });

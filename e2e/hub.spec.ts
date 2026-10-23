@@ -328,3 +328,21 @@ test('a delete dialog closes on Escape or a click outside, and Enter never delet
   await page.keyboard.press('Escape');
   await expect(question).toBeVisible(); // still there
 });
+
+test('the Coverage badge updates by itself when a tablet syncs', async ({ page }) => {
+  await page.goto('/hub/#/settings');
+  const coverage = page.getByRole('navigation', { name: 'Hub' }).getByRole('link', { name: /^Coverage/ });
+  await expect(coverage).toBeVisible();
+  const { current } = await (await api.get('/api/events')).json();
+  const forms = await (await api.get('/api/forms')).json();
+  const version = forms.filter((f: { kind: string }) => f.kind === 'match').at(-1).version;
+  const records = ['Ann', 'Bo', 'Cat', 'Dee'].flatMap((scout, i) => [0, 1].map(j => {
+    const r = { ...record(matchForm(), { eventKey: current.key, matchKey: `qm${70 + i * 2 + j}`, slot: 'red1', team: 9000 + i, scout }), formVersion: version };
+    return i < 3 && j === 0 ? { ...r, missed: ['climb_time'] } : r;
+  }));
+  expect((await api.post('/api/sync', { data: { device: { id: 'e2e-badge', name: 'Badge' }, records } })).ok()).toBe(true);
+  const pending = (await (await api.get('/api/missed')).json());
+  const count = [...pending.questions, ...pending.scouts].filter((c: { acknowledged: boolean }) => !c.acknowledged).length;
+  expect(count).toBeGreaterThan(0);
+  await expect(coverage.locator('.nav-badge')).toHaveText(new RegExp(`^${count}`)); // no reload
+});
