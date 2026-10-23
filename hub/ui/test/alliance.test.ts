@@ -83,3 +83,14 @@ describe('AlliancePage', () => {
     await waitFor(() => expect(cell.value).toBe('87'));
   });
 });
+
+describe('AlliancePage: names', () => {
+  it("links each alliance's teams, with their names on hover", async () => {
+    render(AlliancePage, { api: fakeApi({ alliance: async () => VIEW(), teamNames: async () => ({ 254: 'The Cheesy Poofs' }) }) });
+    const red1 = await screen.findByRole('row', { name: /Qual 1 red/ });
+    const poofs = within(red1).getByRole('link', { name: '254' });
+    expect(poofs.getAttribute('href')).toBe('#/teams/254');
+    await vi.waitFor(() => expect(poofs.getAttribute('title')).toBe('254 The Cheesy Poofs'));
+    expect(within(red1).getByRole('link', { name: '118' }).getAttribute('title')).toBeNull();
+  });
+});

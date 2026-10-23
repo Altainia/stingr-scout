@@ -1,6 +1,6 @@
 <script lang="ts">
   import TextDialog from '../components/TextDialog.svelte';
-  import { allQuestions, describeAnswer, estimatedPoints, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind } from '@stingr/shared';
+  import { allQuestions, describeAnswer, estimatedPoints, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind, teamLabel } from '@stingr/shared';
   import { onMount } from 'svelte';
   import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
@@ -12,13 +12,14 @@
   import type { Api, TeamDetail } from '../lib/api';
   import { num, slotLabel } from '../lib/format';
   import { type Compared, href, MAX_COMPARED } from '../lib/router';
+  import { loadTeamNames } from '../lib/teamNames';
 
   let { api, team, vs = [] }: { api: Api; team: number; vs?: Compared[] } = $props();
   // Teams compared with this one (from the address), their details, and names for labels.
   let others = $state<Record<number, TeamDetail>>({});
   let eventTeams = $state<number[]>([]);
   let names = $state<Record<number, string>>({});
-  const nameOf = (t: number) => (names[t] ? `${t} ${names[t]}` : String(t));
+  const nameOf = (t: number) => teamLabel(t, names);
   let detail = $state<TeamDetail | null>(null);
   let error = $state<unknown>(null);
   let history = $state<Record<string, ScoutRecord[]>>({});
@@ -43,8 +44,9 @@
   }
 
   async function loadTeams() {
+    names = await loadTeamNames(api);
     try {
-      [eventTeams, names] = await Promise.all([api.teams(), api.teamNames()]);
+      eventTeams = await api.teams();
     } catch {
       // the picker just stays empty
     }
@@ -53,7 +55,7 @@
   onMount(() => {
     void load();
     void loadTeams();
-    return onHubChange(() => { void load(); void loadOthers(); }); // new records synced: refresh
+    return onHubChange(() => { void load(); void loadOthers(); void loadTeams(); }); // new records synced (or names changed): refresh
   });
   $effect(() => { void vs.map(c => c.team).join(); void loadOthers(); }); // whenever the comparison changes
 
@@ -152,7 +154,7 @@
 {/snippet}
 
 <p><a href="#/teams">‹ All teams</a></p>
-<h1>Team {team}</h1>
+<h1>Team {team}{#if names[team]}{' '}<span class="team-name">{names[team]}</span>{/if}</h1>
 <ErrorNote {error} />
 
 {#if detail}
@@ -370,7 +372,7 @@
       {#if pit.photoIds.length}
         <div class="photos">
           {#each pit.photoIds as id (id)}
-            <a href="/api/photos/{id}" target="_blank" rel="noopener"><img src="/api/photos/{id}" alt="Team {team} robot" loading="lazy" /></a>
+            <a href="/api/photos/{id}" target="_blank" rel="noopener"><img src="/api/photos/{id}" alt="Team {nameOf(team)} robot" loading="lazy" /></a>
           {/each}
         </div>
       {/if}

@@ -32,7 +32,7 @@
 
 <section>
   <header class="bar">
-    <h1>{local ? recordTitle(local.rec) : 'Record'}</h1>
+    <h1>{local ? recordTitle(local.rec, store.config?.teamNames) : 'Record'}</h1>
     <button type="button" onclick={() => store.go({ name: 'records' })}>Back</button>
   </header>
   {#if error}

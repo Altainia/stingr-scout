@@ -72,7 +72,7 @@
   <button type="button" onclick={() => store.discardDraft()}>Back</button>
 {:else}
   <header class="bar">
-    <h1>{recordTitle(rec)}</h1>
+    <h1>{recordTitle(rec, store.config?.teamNames)}</h1>
     {#if draft.isEdit}<span class="tag">Editing</span>{/if}
     <button type="button" onclick={() => (confirming = 'discard')}>Cancel</button>
   </header>

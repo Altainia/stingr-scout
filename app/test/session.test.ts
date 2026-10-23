@@ -77,6 +77,10 @@ describe('recordTitle', () => {
     expect(recordTitle(record(matchForm()))).toBe('Qual 1 · Red 1 · Team 5098');
     expect(recordTitle(record(pitForm()))).toBe('Pit · Team 5098');
   });
+  it("adds the team's name when the hub has one", () => {
+    expect(recordTitle(record(matchForm()), { 5098: 'Stingr' })).toBe('Qual 1 · Red 1 · Team 5098 Stingr');
+    expect(recordTitle(record(pitForm()), { 254: 'The Cheesy Poofs' })).toBe('Pit · Team 5098');
+  });
 });
 
 describe('arrangePitTeams', () => {

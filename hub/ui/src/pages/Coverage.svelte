@@ -1,15 +1,17 @@
 <script lang="ts">
-  import { matchLabel, SLOTS } from '@stingr/shared';
+  import { matchLabel, SLOTS, teamLabel } from '@stingr/shared';
   import { onMount } from 'svelte';
   import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import MissedConcerns from '../components/MissedConcerns.svelte';
   import { type Api, type CoverageRow, MISSED_CHANGED, type MissedReport } from '../lib/api';
   import { slotLabel } from '../lib/format';
+  import { loadTeamNames } from '../lib/teamNames';
 
   let { api }: { api: Api } = $props();
   let rows = $state<CoverageRow[] | null>(null);
   let missed = $state<MissedReport | null>(null);
+  let names = $state<Record<number, string>>({});
   let error = $state<unknown>(null);
 
   const SYMBOL = { empty: '', ok: '✓', missed: '⚠', noshow: '✗' } as const;
@@ -17,6 +19,7 @@
 
   async function refresh() {
     try {
+      void loadTeamNames(api).then(n => (names = n));
       [rows, missed] = await Promise.all([api.coverage(), api.missed()]);
       error = null;
     } catch (e) {
@@ -68,7 +71,7 @@
         {#if !missed.questions.length && !missed.scouts.length}
           <p class="muted">Nothing stands out yet. Questions scouts often miss, and scouts who miss a question much more than others, will show here.</p>
         {/if}
-        <MissedConcerns report={missed} onack={id => change(api.ackMissed(id))} onundo={id => change(api.unackMissed(id))} />
+        <MissedConcerns report={missed} {names} onack={id => change(api.ackMissed(id))} onundo={id => change(api.unackMissed(id))} />
       </section>
     {/if}
     <div class="scroll-x">
@@ -83,7 +86,7 @@
               {#each SLOTS as s (s)}
                 {@const c = r.cells[s]}
                 <td class="cell-{c.status}" title={TITLE[c.status]} aria-label="{matchLabel(r.matchKey)} {slotLabel(s)}">
-                  {#if c.team}<a href="#/teams/{c.team}">{c.team}</a>{/if}
+                  {#if c.team}<a href="#/teams/{c.team}" title={names[c.team] ? teamLabel(c.team, names) : undefined}>{c.team}</a>{/if}
                   {SYMBOL[c.status]}
                   {#if c.recordIds.length > 1}<span class="tag">{c.recordIds.length}×</span>{/if}
                 </td>

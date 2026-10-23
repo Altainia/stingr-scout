@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { matchLabel, normalizeMatchKey, SLOTS, type Slot } from '@stingr/shared';
+  import { matchLabel, normalizeMatchKey, SLOTS, type Slot, teamLabel } from '@stingr/shared';
   import { untrack } from 'svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import { nextMatchKey, parseTeamInput, slotLabel, teamFor } from '../lib/session';
@@ -39,6 +39,7 @@
   let scheduledTeam = $derived(matchKey ? teamFor(schedule, matchKey, slot) : null);
   let teamText = $derived(teamOverride ?? (scheduledTeam === null ? '' : String(scheduledTeam)));
   let team = $derived(parseTeamInput(teamText));
+  let teamName = $derived(team === null ? null : (store.config?.teamNames[team] ?? null)); // so the scout can check it's the right robot
   let matchForm = $derived(store.form('match'));
   let canStart = $derived(!!matchForm && !!store.event && scout.trim() !== '' && !!matchKey && team !== null && !busy);
 
@@ -106,9 +107,12 @@
             {#each SLOTS as s (s)}<option value={s}>{slotLabel(s)}</option>{/each}
           </select>
         </label>
-        <label>Team
-          <input aria-label="Team" class="short" value={teamText} inputmode="numeric" oninput={e => (teamOverride = e.currentTarget.value)} />
-        </label>
+        <div class="team-field">
+          <label>Team
+            <input aria-label="Team" class="short" value={teamText} inputmode="numeric" oninput={e => (teamOverride = e.currentTarget.value)} />
+          </label>
+          <span class="team-name-hint">{teamName ?? ''}</span>
+        </div>
       </div>
       {#if slot !== store.settings.defaultSlot}
         <button type="button" class="link" onclick={() => store.saveSettings({ defaultSlot: slot })}>Make {slotLabel(slot)} this tablet's default</button>
@@ -142,6 +146,6 @@
     onconfirm={noShow}
     oncancel={() => (confirmNoShow = false)}
   >
-    <p>Team {team} in {matchKey ? matchLabel(matchKey) : ''} ({slotLabel(slot)}) will be recorded as not present. You can undo this from Past records.</p>
+    <p>Team {team === null ? '' : teamLabel(team, store.config?.teamNames)} in {matchKey ? matchLabel(matchKey) : ''} ({slotLabel(slot)}) will be recorded as not present. You can undo this from Past records.</p>
   </ConfirmDialog>
 {/if}

@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { type AllianceField, type AllianceSide, matchLabel } from '@stingr/shared';
+  import { type AllianceField, type AllianceSide, matchLabel, teamLabel } from '@stingr/shared';
   import { onMount } from 'svelte';
   import ConfirmDialog from '../../../../app/src/components/ConfirmDialog.svelte';
   import ErrorNote from '../components/ErrorNote.svelte';
   import type { AllianceView, Api } from '../lib/api';
   import { onHubChange } from '../lib/changes';
   import { slugify, uniqueKey } from '../lib/formEdit';
+  import { loadTeamNames } from '../lib/teamNames';
 
   // Alliance results: what can't be put down to one robot (each alliance's score, and this season's alliance fields),
   // typed in here or fetched from The Blue Alliance. They feed each team's estimated share (Teams, team pages).
@@ -16,10 +17,12 @@
   let fetched = $state<string | null>(null);
   let newField = $state('');
   let removing = $state<AllianceField | null>(null);
+  let names = $state<Record<number, string>>({});
   const SIDES: AllianceSide[] = ['red', 'blue'];
 
   async function load() {
     try {
+      void loadTeamNames(api).then(n => (names = n));
       view = await api.alliance();
       error = null;
     } catch (e) {
@@ -154,7 +157,7 @@
                 <tr aria-label="{matchLabel(m.matchKey)} {side}" class="side-{side}" class:first={side === 'red'}>
                   {#if side === 'red'}<th rowspan="2" scope="rowgroup">{matchLabel(m.matchKey)}</th>{/if}
                   <td class={side}>{side === 'red' ? 'Red' : 'Blue'}</td>
-                  <td>{a.teams.join(' · ') || '—'}</td>
+                  <td class="nowrap">{#each a.teams as t, i (i)}{#if i}{' · '}{/if}<a href="#/teams/{t}" title={names[t] ? teamLabel(t, names) : undefined}>{t}</a>{:else}—{/each}</td>
                   {#each items as it (it.key)}
                     {@const v = a.values[it.key]}
                     <td>

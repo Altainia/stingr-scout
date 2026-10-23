@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { matchLabel } from '@stingr/shared';
+  import { matchLabel, teamLabel } from '@stingr/shared';
   import type { MissedRef, MissedReport } from '../lib/api';
   import { slotLabel } from '../lib/format';
 
   // The lists of missed-answer concerns, each with Acknowledge (or, once acknowledged, Undo).
-  let { report, pendingOnly = false, onack, onundo }: {
+  let { report, names = {}, pendingOnly = false, onack, onundo }: {
     report: MissedReport;
+    /** team names, shown after each team's number */
+    names?: Record<number, string>;
     /** only the concerns that still need a look (the Dashboard) */
     pendingOnly?: boolean;
     onack: (id: string) => void;
@@ -15,7 +17,7 @@
   let questions = $derived(report.questions.filter(q => !pendingOnly || !q.acknowledged));
   let scouts = $derived(report.scouts.filter(s => !pendingOnly || !s.acknowledged));
   const pct = (n: number, of: number) => `${of ? Math.round((100 * n) / of) : 0}%`;
-  const where = (m: MissedRef) => `${matchLabel(m.matchKey)}${m.slot ? ` · ${slotLabel(m.slot)}` : ''} · Team ${m.team} (${m.scout})`;
+  const where = (m: MissedRef) => `${matchLabel(m.matchKey)}${m.slot ? ` · ${slotLabel(m.slot)}` : ''} · Team ${teamLabel(m.team, names)} (${m.scout})`;
 </script>
 
 {#snippet actions(id: string, acknowledged: boolean)}

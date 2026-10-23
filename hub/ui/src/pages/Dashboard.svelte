@@ -5,6 +5,7 @@
   import MissedConcerns from '../components/MissedConcerns.svelte';
   import { type Api, type DevicesView, type EventsView, MISSED_CHANGED, type MissedReport, needsLook } from '../lib/api';
   import { ago } from '../lib/format';
+  import { loadTeamNames } from '../lib/teamNames';
 
   let { api }: { api: Api } = $props();
   let devices = $state<DevicesView | null>(null);
@@ -12,6 +13,7 @@
   let error = $state<unknown>(null);
   let now = $state(Date.now());
   let missed = $state<MissedReport | null>(null);
+  let names = $state<Record<number, string>>({});
   let pending = $derived(missed ? needsLook(missed) : 0);
 
   // USB connections aren't hub data, so they're still checked every 2 seconds; the rest refreshes when data changes.
@@ -31,7 +33,7 @@
     } catch (e) {
       error = e;
     }
-    missed = await api.missed().catch(() => null); // none without a current event
+    [missed, names] = await Promise.all([api.missed().catch(() => null), loadTeamNames(api)]); // no concerns without a current event
   }
 
   onMount(() => {
@@ -57,7 +59,7 @@
   <section class="card needs-look" aria-labelledby="needs-look-title">
     <h2 id="needs-look-title">Needs a look ({pending})</h2>
     <p class="hint">Patterns in missed answers. Acknowledge one once you've dealt with it; it comes back if it keeps getting worse.</p>
-    <MissedConcerns report={missed} pendingOnly onack={async id => {
+    <MissedConcerns report={missed} {names} pendingOnly onack={async id => {
       try { missed = await api.ackMissed(id); window.dispatchEvent(new Event(MISSED_CHANGED)); } catch (e) { error = e; }
     }} />
     <p><a href="#/coverage">See all on Coverage ›</a></p>

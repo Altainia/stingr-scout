@@ -196,3 +196,16 @@ describe('TeamPage: enlarging a chart', () => {
     expect(header).toEqual(['Match', '5098', '254']);
   });
 });
+
+describe('TeamPage: team names', () => {
+  it("shows the team's name beside its number at the top", async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail, teams: async () => [5098], teamNames: async () => ({ 5098: 'Stingr' }) }), team: 5098 });
+    expect(await screen.findByRole('heading', { name: 'Team 5098 Stingr' })).toBeTruthy();
+  });
+
+  it('still shows the page when names cannot be loaded', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail, teams: async () => [5098] }), team: 5098 });
+    expect(await screen.findByRole('heading', { name: 'Team 5098' })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

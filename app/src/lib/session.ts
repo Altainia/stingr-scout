@@ -1,6 +1,6 @@
 import {
   compareMatchKeys, type FormDef, type FormKind, matchLabel, parseMatchKey, type ScheduleMatch,
-  type ScoutRecord, type Slot, SLOTS,
+  type ScoutRecord, type Slot, SLOTS, teamLabel,
 } from '@stingr/shared';
 
 export function slotLabel(slot: Slot): string {
@@ -74,9 +74,10 @@ export function arrangePitTeams<R extends { team: number; status: PitStatus }>(r
     .toSorted(compare);
 }
 
-export function recordTitle(rec: ScoutRecord): string {
-  if (rec.kind === 'pit') return `Pit · Team ${rec.team}`;
-  return `${matchLabel(rec.matchKey ?? '')} · ${rec.slot ? slotLabel(rec.slot) : '?'} · Team ${rec.team}`;
+export function recordTitle(rec: ScoutRecord, names: Record<number, string> = {}): string {
+  const team = `Team ${teamLabel(rec.team, names)}`;
+  if (rec.kind === 'pit') return `Pit · ${team}`;
+  return `${matchLabel(rec.matchKey ?? '')} · ${rec.slot ? slotLabel(rec.slot) : '?'} · ${team}`;
 }
 
 export function parseTeamInput(text: string): number | null {

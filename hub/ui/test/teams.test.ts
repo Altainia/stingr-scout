@@ -78,3 +78,12 @@ describe('Teams: estimated score share', () => {
     expect(screen.getByText('21.5')).toBeTruthy();
   });
 });
+
+describe('Teams: names', () => {
+  it("shows each team's name beside its number", async () => {
+    render(Teams, { api: fakeApi({ summaries: async () => ({ form: f, summaries }), teamNames: async () => ({ 254: 'The Cheesy Poofs' }) }) });
+    const link = await screen.findByRole('link', { name: '254' });
+    await vi.waitFor(() => expect(link.closest('td')!.textContent).toContain('The Cheesy Poofs'));
+    expect(screen.getByRole('link', { name: '118' }).closest('td')!.textContent).toBe('118');
+  });
+});

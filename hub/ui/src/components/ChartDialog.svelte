@@ -73,7 +73,7 @@
           </tbody>
         {:else}
           {@const count = Math.max(0, ...c.series.map(s => s.matches.length))}
-          <thead><tr><th>Match</th>{#each c.series as s (s.id)}<th>{s.id}</th>{/each}</tr></thead>
+          <thead><tr><th>Match</th>{#each c.series as s (s.id)}<th title={s.name}>{s.id}</th>{/each}</tr></thead>
           <tbody>
             {#each Array.from({ length: count }, (_, i) => i) as i (i)}
               <tr>

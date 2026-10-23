@@ -122,3 +122,23 @@ describe('Home', () => {
     await waitFor(() => expect(store.settings.defaultSlot).toBe('blue3'));
   });
 });
+
+describe('Home: team names', () => {
+  it("shows the chosen team's name under its number, so the scout can check the robot", async () => {
+    const { store } = await makeStore();
+    render(Home, { store });
+    const match = screen.getByRole('region', { name: 'Match scouting' });
+    expect(within(match).getByText('Stingr')).toBeTruthy();
+    await fireEvent.change(screen.getByLabelText('Slot'), { target: { value: 'blue1' } }); // team 4: no name
+    expect(within(match).queryByText('Stingr')).toBeNull();
+    await fireEvent.input(screen.getByLabelText('Team'), { target: { value: '254' } });
+    expect(within(match).getByText('The Cheesy Poofs')).toBeTruthy();
+  });
+
+  it('names the team when asking about a robot that is not there', async () => {
+    const { store } = await makeStore();
+    render(Home, { store });
+    await fireEvent.click(button('Robot not present'));
+    expect(screen.getByRole('dialog').textContent).toContain('Team 5098 Stingr in Qual 1 (Red 1)');
+  });
+});

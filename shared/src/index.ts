@@ -8,3 +8,4 @@ export * from './qr';
 export * from './describe';
 export * from './theme';
 export * from './contribution';
+export * from './teamName';

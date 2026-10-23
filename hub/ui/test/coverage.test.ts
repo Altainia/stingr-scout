@@ -99,3 +99,13 @@ describe('Coverage: refreshing', () => {
     }
   });
 });
+
+describe('Coverage: names', () => {
+  it("gives each team in the grid its name on hover, and names teams in the missed-answer lists", async () => {
+    render(Coverage, { api: fakeApi({ coverage: async () => ROWS, missed: REPORT, teamNames: async () => ({ 254: 'The Cheesy Poofs' }) }) });
+    const red2 = await screen.findByLabelText('Qual 1 Red 2');
+    await vi.waitFor(() => expect(within(red2).getByRole('link', { name: '254' }).getAttribute('title')).toBe('254 The Cheesy Poofs'));
+    expect(within(screen.getByLabelText('Qual 1 Red 1')).getByRole('link', { name: '5098' }).getAttribute('title')).toBeNull();
+    expect(screen.getByText('Qual 3 · Red 2 · Team 254 The Cheesy Poofs (Ada)')).toBeTruthy();
+  });
+});

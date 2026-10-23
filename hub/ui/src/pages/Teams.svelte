@@ -6,18 +6,21 @@
   import type { Api, TeamSummary } from '../lib/api';
   import { num, pct } from '../lib/format';
   import { sortBy } from '../lib/sort';
+  import { loadTeamNames } from '../lib/teamNames';
 
   let { api }: { api: Api } = $props();
   type Col = { id: string; label: string; get: (s: TeamSummary) => number | string | null; show: (s: TeamSummary) => string };
 
   let data = $state<{ form: FormDef | null; summaries: TeamSummary[]; scoreShares?: Record<number, number | null> } | null>(null);
   let error = $state<unknown>(null);
+  let names = $state<Record<number, string>>({});
   let sortId = $state('est');
   let dir = $state<'asc' | 'desc'>('desc');
   const PIT = { none: '—', done: '✓', noshow: 'Not present' } as const;
 
   async function load() {
     try {
+      void loadTeamNames(api).then(n => (names = n));
       data = await api.summaries();
       error = null;
     } catch (e) {
@@ -116,7 +119,7 @@
         {#each rows as s (s.team)}
           <tr>
             {#each cols as c (c.id)}
-              <td>{#if c.id === 'team'}<a href="#/teams/{s.team}">{s.team}</a>{:else}{c.show(s)}{/if}</td>
+              <td>{#if c.id === 'team'}<a href="#/teams/{s.team}">{s.team}</a>{#if names[s.team]}<span class="team-name">{names[s.team]}</span>{/if}{:else}{c.show(s)}{/if}</td>
             {/each}
           </tr>
         {/each}
