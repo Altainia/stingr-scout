@@ -81,3 +81,44 @@ describe('GET /api/missed', () => {
     expect(res.json()).toEqual({ questions: [], scouts: [] });
   });
 });
+
+describe('acknowledging a concern', () => {
+  /** A hub with the 'climb_time' question missed by three scouts. */
+  async function hubWithConcern() {
+    const app = await makeApp();
+    await setupEvent(app);
+    const sync = (records: ScoutRecord[]) => app.inject({ method: 'POST', url: '/api/sync', payload: { device: { id: 'd', name: 'T' }, records } });
+    await sync([rec('Ada', ['climb_time']), rec('Ben', ['climb_time']), rec('Cy', ['climb_time']), rec('Di'), rec('Ada'), rec('Ben'), rec('Cy'), rec('Di')]);
+    const report = async () => (await app.inject({ url: '/api/missed' })).json();
+    return { app, sync, report };
+  }
+
+  it('marks it acknowledged until it has 3 more misses, and can be undone', async () => {
+    const { app, sync, report } = await hubWithConcern();
+    const q = (await report()).questions[0];
+    expect(q).toMatchObject({ id: 'q:climb_time', acknowledged: false });
+    const acked = await app.inject({ method: 'POST', url: '/api/missed/q%3Aclimb_time/ack' });
+    expect(acked.json().questions[0]).toMatchObject({ acknowledged: true });
+    await sync([rec('Di', ['climb_time']), rec('Ada', ['climb_time'])]); // 2 more: still quiet
+    expect((await report()).questions[0]).toMatchObject({ missed: 5, acknowledged: true });
+    await sync([rec('Ben', ['climb_time'])]); // 3 more: it's back
+    expect((await report()).questions[0]).toMatchObject({ missed: 6, acknowledged: false });
+    await app.inject({ method: 'POST', url: '/api/missed/q%3Aclimb_time/ack' });
+    await app.inject({ method: 'DELETE', url: '/api/missed/q%3Aclimb_time/ack' });
+    expect((await report()).questions[0]).toMatchObject({ acknowledged: false });
+  });
+
+  it("refuses to acknowledge something that isn't a current concern", async () => {
+    const { app } = await hubWithConcern();
+    expect((await app.inject({ method: 'POST', url: '/api/missed/q%3Anope/ack' })).statusCode).toBe(404);
+  });
+
+  it('forgets acknowledgements when the event is deleted', async () => {
+    const { app, sync, report } = await hubWithConcern();
+    await app.inject({ method: 'POST', url: '/api/missed/q%3Aclimb_time/ack' });
+    await app.inject({ method: 'POST', url: '/api/events/2027test/delete', payload: { confirm: '2027test' } });
+    await app.inject({ method: 'POST', url: '/api/events', payload: { key: '2027test', name: 'Again' } });
+    await sync([rec('Ada', ['climb_time']), rec('Ben', ['climb_time']), rec('Cy', ['climb_time']), rec('Di')]);
+    expect((await report()).questions[0]).toMatchObject({ acknowledged: false });
+  });
+});

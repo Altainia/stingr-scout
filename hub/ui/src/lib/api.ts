@@ -9,6 +9,11 @@ import type { TeamSummary } from '../../../server/src/summaries';
 
 export type { AdbStatus, CoverageRow, MissedRef, MissedReport, DeviceRow, EventCounts, PublishResult, SeasonCounts, TeamSummary };
 
+/** Count of missed-answer concerns that still need a look; the menu badge shows it. */
+export const needsLook = (r: MissedReport) => [...r.questions, ...r.scouts].filter(c => !c.acknowledged).length;
+/** Fired after a concern is acknowledged or un-acknowledged, so the menu badge updates straight away. */
+export const MISSED_CHANGED = 'stingr:missed-changed';
+
 export class ApiError extends Error {
   readonly status: number;
   constructor(status: number, message: string) {
@@ -85,6 +90,8 @@ export function createApi(http: Http = (input, init) => fetch(input, init)) {
     history: (id: string) => call<ScoutRecord[]>('GET', `/api/records/${encodeURIComponent(id)}/history`),
     coverage: () => call<CoverageRow[]>('GET', '/api/coverage'),
     missed: () => call<MissedReport>('GET', '/api/missed'),
+    ackMissed: (id: string) => call<MissedReport>('POST', `/api/missed/${encodeURIComponent(id)}/ack`),
+    unackMissed: (id: string) => call<MissedReport>('DELETE', `/api/missed/${encodeURIComponent(id)}/ack`),
     summaries: () => call<{ form: FormDef | null; summaries: TeamSummary[] }>('GET', '/api/summaries'),
     team: (team: number) => call<TeamDetail>('GET', `/api/summaries/${team}`),
     qr: (text: string) => call<QrResult>('POST', '/api/qr', { text }, { accept: [422] }),

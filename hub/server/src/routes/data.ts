@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
 import { buildCoverage } from '../coverage';
 import { buildMissedReport } from '../missed';
+import { acknowledgeMissed, missedAcks, unacknowledgeMissed } from '../store/missedAcks';
 import { bodyObject, HttpError, requireEvent } from '../http';
 import { getForm, latestForm } from '../store/forms';
 import { currentRecords } from '../store/records';
@@ -35,9 +36,26 @@ export function dataRoutes(app: FastifyInstance, ctx: HubContext): void {
     return buildCoverage(listSchedule(ctx.db, ev.key), currentRecords(ctx.db, ev.key, 'match'));
   });
 
-  app.get('/api/missed', async () => {
+  const missedReport = (eventKey: string) => buildMissedReport(
+    currentRecords(ctx.db, eventKey, 'match'), v => getForm(ctx.db, 'match', v), latestForm(ctx.db, 'match') ?? null, missedAcks(ctx.db, eventKey),
+  );
+
+  app.get('/api/missed', async () => missedReport(requireEvent(ctx.db).key));
+
+  app.post('/api/missed/:id/ack', async req => {
     const ev = requireEvent(ctx.db);
-    return buildMissedReport(currentRecords(ctx.db, ev.key, 'match'), v => getForm(ctx.db, 'match', v), latestForm(ctx.db, 'match') ?? null);
+    const { id } = req.params as { id: string };
+    const report = missedReport(ev.key);
+    const concern = [...report.questions, ...report.scouts].find(c => c.id === id);
+    if (!concern) throw new HttpError(404, 'That is not a current concern');
+    acknowledgeMissed(ctx.db, ev.key, id, concern.missed, ctx.now());
+    return missedReport(ev.key);
+  });
+
+  app.delete('/api/missed/:id/ack', async req => {
+    const ev = requireEvent(ctx.db);
+    unacknowledgeMissed(ctx.db, ev.key, (req.params as { id: string }).id);
+    return missedReport(ev.key);
   });
 
   app.get('/api/summaries', async () => {

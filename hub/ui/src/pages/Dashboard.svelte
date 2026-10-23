@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import ErrorNote from '../components/ErrorNote.svelte';
-  import type { Api, DevicesView, EventsView } from '../lib/api';
+  import MissedConcerns from '../components/MissedConcerns.svelte';
+  import { type Api, type DevicesView, type EventsView, MISSED_CHANGED, type MissedReport, needsLook } from '../lib/api';
   import { ago } from '../lib/format';
 
   let { api }: { api: Api } = $props();
@@ -9,6 +10,8 @@
   let events = $state<EventsView | null>(null);
   let error = $state<unknown>(null);
   let now = $state(Date.now());
+  let missed = $state<MissedReport | null>(null);
+  let pending = $derived(missed ? needsLook(missed) : 0);
 
   async function refresh() {
     try {
@@ -17,6 +20,7 @@
       events = e;
       now = Date.now();
       error = null;
+      missed = await api.missed().catch(() => null); // none without a current event
     } catch (e) {
       error = e;
     }
@@ -38,6 +42,17 @@
 
 <h1>Dashboard</h1>
 <ErrorNote {error} />
+
+{#if missed && pending > 0}
+  <section class="card needs-look" aria-labelledby="needs-look-title">
+    <h2 id="needs-look-title">Needs a look ({pending})</h2>
+    <p class="hint">Patterns in missed answers. Acknowledge one once you've dealt with it; it comes back if it keeps getting worse.</p>
+    <MissedConcerns report={missed} pendingOnly onack={async id => {
+      try { missed = await api.ackMissed(id); window.dispatchEvent(new Event(MISSED_CHANGED)); } catch (e) { error = e; }
+    }} />
+    <p><a href="#/coverage">See all on Coverage ›</a></p>
+  </section>
+{/if}
 
 <section class="card">
   <h2>Event</h2>

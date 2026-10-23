@@ -34,6 +34,8 @@ const MIGRATIONS: string[] = [
    UPDATE events SET instance = lower(hex(randomblob(16))) WHERE instance = '';`,
   // Team names belong to the team, not an event, so they carry over between events and seasons.
   `CREATE TABLE team_names (team INTEGER PRIMARY KEY, name TEXT NOT NULL);`,
+  // A missed-answer concern the scout captain has looked at, with how many misses it had then (it comes back if it grows).
+  `CREATE TABLE missed_acks (event_key TEXT NOT NULL, concern TEXT NOT NULL, missed INTEGER NOT NULL, at TEXT NOT NULL, PRIMARY KEY (event_key, concern));`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

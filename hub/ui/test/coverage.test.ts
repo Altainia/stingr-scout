@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/svelte';
-import { describe, expect, it } from 'vitest';
-import { ApiError } from '../src/lib/api';
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
+import { describe, expect, it, vi } from 'vitest';
+import { ApiError, type MissedReport } from '../src/lib/api';
 import Coverage from '../src/pages/Coverage.svelte';
 import { fakeApi } from './helpers';
 
@@ -17,13 +17,13 @@ const ROWS = [
 ];
 
 const NONE = async () => ({ questions: [], scouts: [] });
-const REPORT = async () => ({
+const REPORT = async (): Promise<MissedReport> => ({
   questions: [{
-    key: 'climb_time', label: 'Climb time', missed: 9, total: 40, scouts: 5, scoutsAsked: 6,
+    id: 'q:climb_time', acknowledged: false, key: 'climb_time', label: 'Climb time', missed: 9, total: 40, scouts: 5, scoutsAsked: 6,
     matches: [{ matchKey: 'qm3', slot: 'red2' as const, team: 254, scout: 'Ada' }],
   }],
   scouts: [{
-    scout: 'Ben', key: 'defense', label: 'Defense rating', missed: 6, total: 8, othersMissed: 2, othersTotal: 30,
+    id: 's:ben:defense', acknowledged: false, scout: 'Ben', key: 'defense', label: 'Defense rating', missed: 6, total: 8, othersMissed: 2, othersTotal: 30,
     matches: [{ matchKey: 'qm7', slot: 'blue1' as const, team: 118, scout: 'Ben' }],
   }],
 });
@@ -62,5 +62,19 @@ describe('Coverage', () => {
     render(Coverage, { api: fakeApi({ coverage: async () => ROWS, missed: NONE }) });
     const section = await screen.findByRole('region', { name: 'Missed answers' });
     expect(section.textContent).toContain('Nothing stands out yet');
+  });
+
+  it('acknowledges a concern, shows it as acknowledged, and can undo that', async () => {
+    const acked = async (): Promise<MissedReport> => { const r = await REPORT(); r.questions[0].acknowledged = true; return r; };
+    const ackMissed = vi.fn(acked);
+    const unackMissed = vi.fn(REPORT);
+    render(Coverage, { api: fakeApi({ coverage: async () => ROWS, missed: REPORT, ackMissed, unackMissed }) });
+    const section = await screen.findByRole('region', { name: 'Missed answers' });
+    const climb = () => within(section).getByText('Climb time', { selector: 'strong' }).closest('li')!;
+    await fireEvent.click(within(climb()).getByRole('button', { name: 'Acknowledge' }));
+    expect(ackMissed).toHaveBeenCalledWith('q:climb_time');
+    expect(await within(climb()).findByText('Acknowledged')).toBeTruthy();
+    await fireEvent.click(within(climb()).getByRole('button', { name: 'Undo' }));
+    expect(unackMissed).toHaveBeenCalledWith('q:climb_time');
   });
 });

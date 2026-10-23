@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vitest';
 import ErrorNote from '../src/components/ErrorNote.svelte';
 import { ApiError } from '../src/lib/api';
 import Dashboard from '../src/pages/Dashboard.svelte';
 import Settings from '../src/pages/Settings.svelte';
+import type { Api, MissedReport } from '../src/lib/api';
 import { fakeApi } from './helpers';
 
 describe('ErrorNote', () => {
@@ -38,6 +39,40 @@ describe('Settings theme', () => {
     render(Settings, { api: fakeApi({ settings: async () => ({ tbaKeySet: false }) }) });
     await fireEvent.change(screen.getByLabelText('Theme'), { target: { value: 'light' } });
     expect(document.documentElement.dataset.theme).toBe('light');
+  });
+});
+
+const CONCERNS = async (): Promise<MissedReport> => ({
+  questions: [{ id: 'q:climb_time', acknowledged: false, key: 'climb_time', label: 'Climb time', missed: 9, total: 40, scouts: 5, scoutsAsked: 6, matches: [] }],
+  scouts: [
+    { id: 's:ben:defense', acknowledged: false, scout: 'Ben', key: 'defense', label: 'Defense rating', missed: 6, total: 8, othersMissed: 2, othersTotal: 30, matches: [] },
+    { id: 's:ada:climb', acknowledged: true, scout: 'Ada', key: 'climb', label: 'Climb', missed: 4, total: 7, othersMissed: 2, othersTotal: 30, matches: [] },
+  ],
+});
+const dashboardApi = (over: Partial<Api> = {}) => fakeApi({
+  events: async () => ({ events: [], current: { key: '2027mokc', name: 'Heartland', redSide: 'left' } }),
+  devices: async () => ({ adb: { available: true, devices: [] }, devices: [] }),
+  ...over,
+});
+
+describe('Dashboard: missed answers', () => {
+  it('lists the concerns that need a look, and acknowledges one', async () => {
+    const ackMissed = vi.fn(async () => { const r = await CONCERNS(); r.questions[0].acknowledged = true; return r; });
+    render(Dashboard, { api: dashboardApi({ missed: CONCERNS, ackMissed }) });
+    const card = await screen.findByRole('region', { name: 'Needs a look (2)' });
+    expect(within(card).getByText('Climb time', { selector: 'strong' })).toBeTruthy();
+    expect(within(card).queryByText('Ada', { selector: 'strong' })).toBeNull(); // already acknowledged
+    expect(within(card).getByRole('link', { name: /See all on Coverage/ }).getAttribute('href')).toBe('#/coverage');
+    await fireEvent.click(within(within(card).getByText('Climb time', { selector: 'strong' }).closest('li')!).getByRole('button', { name: 'Acknowledge' }));
+    expect(ackMissed).toHaveBeenCalledWith('q:climb_time');
+    expect(await screen.findByRole('region', { name: 'Needs a look (1)' })).toBeTruthy();
+  });
+
+  it('shows no card when nothing needs a look', async () => {
+    const allAcked = async () => { const r = await CONCERNS(); for (const c of [...r.questions, ...r.scouts]) c.acknowledged = true; return r; };
+    render(Dashboard, { api: dashboardApi({ missed: allAcked }) });
+    expect(await screen.findByText('Heartland')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: /Needs a look/ })).toBeNull();
   });
 });
 

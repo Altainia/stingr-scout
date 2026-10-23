@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Api } from './lib/api';
+  import { type Api, MISSED_CHANGED, needsLook } from './lib/api';
   import { href, parseRoute, type Route } from './lib/router';
   import Coverage from './pages/Coverage.svelte';
   import Dashboard from './pages/Dashboard.svelte';
@@ -14,6 +14,22 @@
 
   let { api }: { api: Api } = $props();
   let route = $state<Route>(parseRoute(location.hash));
+
+  // The Coverage menu item counts missed-answer concerns that need a look, whichever page is open.
+  let missedCount = $state(0);
+  async function countMissed() {
+    try {
+      missedCount = needsLook(await api.missed());
+    } catch {
+      missedCount = 0; // no current event yet
+    }
+  }
+  onMount(() => {
+    void countMissed();
+    const t = setInterval(countMissed, 10_000);
+    window.addEventListener(MISSED_CHANGED, countMissed);
+    return () => { clearInterval(t); window.removeEventListener(MISSED_CHANGED, countMissed); };
+  });
 
   onMount(() => {
     const onHash = () => { route = parseRoute(location.hash); };
@@ -44,7 +60,7 @@
   <nav class="side" aria-label="Hub">
     <div class="brand">Stingr Scout Hub</div>
     {#each NAV as n (n.label)}
-      <a href={href(n.route)} class:active={isActive(n.route)} aria-current={isActive(n.route) ? 'page' : undefined}>{n.label}</a>
+      <a href={href(n.route)} class:active={isActive(n.route)} aria-current={isActive(n.route) ? 'page' : undefined}>{n.label}{#if n.route.page === 'coverage' && missedCount > 0}<span class="nav-badge" title="{missedCount} need a look">{missedCount}<span class="visually-hidden"> need a look</span></span>{/if}</a>
     {/each}
   </nav>
   <main>

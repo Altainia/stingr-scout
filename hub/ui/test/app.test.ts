@@ -30,4 +30,19 @@ describe('App', () => {
     render(App, { api: fakeApi() });
     expect(screen.getByText(/Page not found/)).toBeTruthy();
   });
+
+  it('counts missed-answer concerns that need a look on the Coverage menu item', async () => {
+    location.hash = '#/settings';
+    const missed = async () => ({
+      questions: [{ id: 'q:a', acknowledged: false, key: 'a', label: 'A', missed: 9, total: 40, scouts: 5, scoutsAsked: 6, matches: [] }],
+      scouts: [
+        { id: 's:b:a', acknowledged: false, scout: 'B', key: 'a', label: 'A', missed: 6, total: 8, othersMissed: 2, othersTotal: 30, matches: [] },
+        { id: 's:c:a', acknowledged: true, scout: 'C', key: 'a', label: 'A', missed: 6, total: 8, othersMissed: 2, othersTotal: 30, matches: [] },
+      ],
+    });
+    render(App, { api: fakeApi({ settings: async () => ({ tbaKeySet: false }), missed }) });
+    const coverage = within(screen.getByRole('navigation', { name: 'Hub' })).getByRole('link', { name: /^Coverage/ });
+    expect(await within(coverage).findByText('2')).toBeTruthy();
+    expect(coverage.textContent).toContain('need a look');
+  });
 });

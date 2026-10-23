@@ -95,3 +95,10 @@ td.text-cell { min-width: 9em; max-width: 11em; }
 .missed-list > li { margin-bottom: 10px; }
 .missed-list details { margin-top: 2px; }
 .missed-list summary { cursor: pointer; color: var(--link); }
+/* Missed-answer concerns: each with Acknowledge, or Acknowledged + Undo. */
+.missed-list .concern { display: flex; align-items: center; gap: 12px; }
+.missed-list li.acknowledged .concern { color: var(--muted); }
+.tag.acked { background: var(--chip); color: var(--text); font-size: 0.8rem; padding: 1px 8px; border-radius: 999px; }
+.needs-look { border-left: 4px solid var(--warn-text, var(--accent)); }
+.hub nav.side .nav-badge { display: inline-block; margin-left: 8px; min-width: 1.5em; padding: 0 6px; border-radius: 999px; background: var(--red); color: #fff; font-size: 0.85rem; font-weight: 700; text-align: center; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

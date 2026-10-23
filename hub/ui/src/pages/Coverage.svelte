@@ -2,7 +2,8 @@
   import { matchLabel, SLOTS } from '@stingr/shared';
   import { onMount } from 'svelte';
   import ErrorNote from '../components/ErrorNote.svelte';
-  import type { Api, CoverageRow, MissedRef, MissedReport } from '../lib/api';
+  import MissedConcerns from '../components/MissedConcerns.svelte';
+  import { type Api, type CoverageRow, MISSED_CHANGED, type MissedReport } from '../lib/api';
   import { slotLabel } from '../lib/format';
 
   let { api }: { api: Api } = $props();
@@ -42,16 +43,15 @@
     return t;
   });
 
-  const pct = (n: number, of: number) => `${of ? Math.round((100 * n) / of) : 0}%`;
-  const where = (m: MissedRef) => `${matchLabel(m.matchKey)}${m.slot ? ` · ${slotLabel(m.slot)}` : ''} · Team ${m.team} (${m.scout})`;
+  async function change(p: Promise<MissedReport>) {
+    try {
+      missed = await p;
+      window.dispatchEvent(new Event(MISSED_CHANGED));
+    } catch (e) {
+      error = e;
+    }
+  }
 </script>
-
-{#snippet matchList(matches: MissedRef[])}
-  <details>
-    <summary>Show the matches</summary>
-    <ul class="muted">{#each matches as m, i (i)}<li>{where(m)}</li>{/each}</ul>
-  </details>
-{/snippet}
 
 <h1>Coverage</h1>
 <ErrorNote {error} />
@@ -68,30 +68,7 @@
         {#if !missed.questions.length && !missed.scouts.length}
           <p class="muted">Nothing stands out yet. Questions scouts often miss, and scouts who miss a question much more than others, will show here.</p>
         {/if}
-        {#if missed.questions.length}
-          <h3>Questions scouts often miss</h3>
-          <p class="hint">It may be hard to see from the stands, or unclear. Consider rewording it or giving it a help text.</p>
-          <ul class="missed-list">
-            {#each missed.questions as q (q.key)}
-              <li>
-                <strong>{q.label}</strong>: missed in {q.missed} of {q.total} matches ({pct(q.missed, q.total)}), by {q.scouts} of {q.scoutsAsked} scouts
-                {@render matchList(q.matches)}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-        {#if missed.scouts.length}
-          <h3>Scouts who miss a question more than others</h3>
-          <p class="hint">They may need a pointer on what to watch for, or a different position.</p>
-          <ul class="missed-list">
-            {#each missed.scouts as s (`${s.scout}|${s.key}`)}
-              <li>
-                <strong>{s.scout}</strong> misses {s.label} in {s.missed} of {s.total} matches ({pct(s.missed, s.total)}); other scouts {s.othersMissed} of {s.othersTotal} ({pct(s.othersMissed, s.othersTotal)})
-                {@render matchList(s.matches)}
-              </li>
-            {/each}
-          </ul>
-        {/if}
+        <MissedConcerns report={missed} onack={id => change(api.ackMissed(id))} onundo={id => change(api.unackMissed(id))} />
       </section>
     {/if}
     <div class="scroll-x">
