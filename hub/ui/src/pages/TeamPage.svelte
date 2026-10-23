@@ -1,11 +1,12 @@
 <script lang="ts">
   import TextDialog from '../components/TextDialog.svelte';
-  import { allQuestions, describeAnswer, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind } from '@stingr/shared';
+  import { allQuestions, describeAnswer, estimatedPoints, matchLabel, type Point, type Question, recordPoints, type ScoutRecord, summaryKind } from '@stingr/shared';
   import { onMount } from 'svelte';
   import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import FieldScatter from '../components/FieldScatter.svelte';
-  import Sparkline from '../components/Sparkline.svelte';
+  import MatchLineChart from '../components/MatchLineChart.svelte';
+  import PointsChart from '../components/PointsChart.svelte';
   import type { Api, TeamDetail } from '../lib/api';
   import { num, slotLabel } from '../lib/format';
 
@@ -32,7 +33,21 @@
   let form = $derived(detail?.matchForm ?? null);
   let questions = $derived(form ? allQuestions(form) : []);
   let played = $derived((detail?.matchRecords ?? []).filter(r => !r.noShow));
-  let trends = $derived(questions.filter(q => summaryKind(q) === 'avg'));
+  // Charts: points per match, and each numeric question by match, beside the event's averages.
+  let numericQs = $derived(questions.filter(q => q.type === 'counter' || q.type === 'number' || q.type === 'rating' || q.type === 'timer'));
+  let scores = $derived(form ? form.sections.some(s => s.questions.some(q =>
+    ((q.type === 'counter' || q.type === 'toggle') && q.points !== undefined) || (q.type === 'choice' && q.options.some(o => o.points !== undefined)))) : false);
+  let pointsData = $derived(form ? (detail?.matchRecords ?? []).map(r => {
+    const by = r.noShow ? null : estimatedPoints(form, [r]).bySection;
+    const sections = form.sections.map(s => by?.[s.id] ?? null);
+    const state = r.noShow ? 'noshow' as const : sections.every(v => v === null) ? 'missed' as const : 'ok' as const;
+    return { label: matchLabel(r.matchKey ?? ''), scout: r.scout, state, sections };
+  }) : []);
+  const byMatch = (key: string) => (detail?.matchRecords ?? []).map(r => {
+    const v = r.answers[key];
+    const state = r.noShow ? 'noshow' as const : r.missed.includes(key) ? 'missed' as const : typeof v === 'number' ? 'ok' as const : 'blank' as const;
+    return { label: matchLabel(r.matchKey ?? ''), scout: r.scout, state, value: state === 'ok' ? (v as number) : null };
+  });
   let texts = $derived(questions.filter(q => q.type === 'text' && summaryKind(q) === 'list')); // "Don't summarize" leaves them out of Comments
   // Long text answers are shortened in the match table; the full text opens in a popup.
   const PREVIEW = 24;
@@ -51,10 +66,6 @@
   let pit = $derived((detail?.pitRecords ?? []).filter(r => !r.noShow).toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null);
 
   const cell = (r: ScoutRecord, q: Question) => (r.missed.includes(q.key) ? 'missed' : describeAnswer(q, r.answers[q.key]));
-  const numeric = (r: ScoutRecord, key: string) => {
-    const v = r.answers[key];
-    return typeof v === 'number' && !r.missed.includes(key) ? v : null;
-  };
 
   async function toggleHistory(id: string) {
     if (history[id]) {
@@ -81,6 +92,29 @@
     <div><strong>{s.noShows}</strong><div class="muted">no-shows</div></div>
     <div><strong>{PIT[s.pit]}</strong><div class="muted">pit scouting</div></div>
   </section>
+
+  {#if form && detail.matchRecords.length}
+    {#if scores}
+      <section class="card points-chart">
+        <h2>Points per match</h2>
+        <PointsChart matches={pointsData} sections={form.sections.map(s => ({ id: s.id, title: s.title }))} eventAverage={detail.eventAverages?.points.total ?? null} />
+      </section>
+    {/if}
+    {#if numericQs.length}
+      <section class="card">
+        <h2>By match</h2>
+        <p class="hint">The dashed line is the average across every team at this event. ⚠ missed · ✗ robot not there · – no answer</p>
+        <div class="charts">
+          {#each numericQs as q (q.key)}
+            <figure>
+              <figcaption>{q.label}</figcaption>
+              <MatchLineChart title={q.label} matches={byMatch(q.key)} eventAverage={detail.eventAverages?.questions[q.key] ?? null} />
+            </figure>
+          {/each}
+        </div>
+      </section>
+    {/if}
+  {/if}
 
   <section class="card">
     <h2>Matches</h2>
@@ -136,16 +170,6 @@
     {/if}
   </section>
 
-  {#if trends.length && played.length > 1}
-    <section class="card">
-      <h2>Trends</h2>
-      <div class="row">
-        {#each trends as q (q.key)}
-          <figure><figcaption>{q.label}</figcaption><Sparkline label={q.label} values={played.map(r => numeric(r, q.key))} /></figure>
-        {/each}
-      </div>
-    </section>
-  {/if}
 
   {#if texts.length}
     <section class="card">

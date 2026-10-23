@@ -8,7 +8,7 @@ import { bodyObject, HttpError, requireEvent } from '../http';
 import { getForm, latestForm } from '../store/forms';
 import { currentRecords } from '../store/records';
 import { listSchedule, listTeams } from '../store/schedule';
-import { buildTeamSummaries } from '../summaries';
+import { buildTeamSummaries, eventAverages } from '../summaries';
 import { ingestRecord } from '../sync';
 import { parseTeam } from './event';
 
@@ -76,6 +76,6 @@ export function dataRoutes(app: FastifyInstance, ctx: HubContext): void {
       .sort((a, b) => compareMatchKeys(a.matchKey ?? '', b.matchKey ?? ''));
     const pitRecords = currentRecords(ctx.db, ev.key, 'pit').filter(r => r.team === team);
     const [summary] = buildTeamSummaries([team], matchForm, matchRecords, pitRecords);
-    return { summary, matchForm, pitForm: latestForm(ctx.db, 'pit') ?? null, matchRecords, pitRecords };
+    return { summary, matchForm, pitForm: latestForm(ctx.db, 'pit') ?? null, matchRecords, pitRecords, eventAverages: eventAverages(matchForm, currentRecords(ctx.db, ev.key, 'match')) };
   });
 }

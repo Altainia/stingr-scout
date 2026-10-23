@@ -5,7 +5,7 @@ import type { MissedRef, MissedReport } from '../../../server/src/missed';
 import type { EventCounts, SeasonCounts } from '../../../server/src/store/clear';
 import type { DeviceRow } from '../../../server/src/store/devices';
 import type { PublishResult } from '../../../server/src/store/forms';
-import type { TeamSummary } from '../../../server/src/summaries';
+import type { EventAverages, TeamSummary } from '../../../server/src/summaries';
 
 export type { AdbStatus, CoverageRow, MissedRef, MissedReport, DeviceRow, EventCounts, PublishResult, SeasonCounts, TeamSummary };
 
@@ -31,6 +31,8 @@ export interface TeamDetail {
   pitForm: FormDef | null;
   matchRecords: ScoutRecord[];
   pitRecords: ScoutRecord[];
+  /** the event's averages, to compare the team's charts against (null before a match form is published) */
+  eventAverages: EventAverages | null;
 }
 export type QrResult =
   | { status: 'partial'; group: string; have: number; total: number }

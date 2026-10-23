@@ -1,4 +1,4 @@
-import { allQuestions, estimatedPoints, type FormDef, type QuestionStat, questionStat, type ScoutRecord } from '@stingr/shared';
+import { allQuestions, estimatedPoints, type FormDef, type PointsEstimate, type QuestionStat, questionStat, type ScoutRecord, usableValues } from '@stingr/shared';
 
 export interface TeamSummary {
   team: number;
@@ -31,4 +31,23 @@ export function buildTeamSummaries(teams: number[], matchForm: FormDef | null, m
   return [...all]
     .sort((a, b) => a - b)
     .map(team => summarizeTeam(team, matchForm, matchRecords.filter(r => r.team === team), pitRecords.filter(r => r.team === team)));
+}
+
+export interface EventAverages {
+  /** points per match across every team at the event, overall and by section */
+  points: PointsEstimate;
+  /** each numeric question's average per match across every team */
+  questions: Record<string, number | null>;
+}
+
+/** The event-wide averages a team's charts are compared against. */
+export function eventAverages(form: FormDef | null, records: ScoutRecord[]): EventAverages | null {
+  if (!form) return null;
+  const questions: Record<string, number | null> = {};
+  for (const q of allQuestions(form)) {
+    if (q.type !== 'counter' && q.type !== 'number' && q.type !== 'rating' && q.type !== 'timer') continue;
+    const nums = usableValues(q, records).filter((v): v is number => typeof v === 'number');
+    questions[q.key] = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+  }
+  return { points: estimatedPoints(form, records), questions };
 }

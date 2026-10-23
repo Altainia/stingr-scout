@@ -6,6 +6,19 @@ import { makeApp, setupEvent } from './helpers';
 const device = { id: 'dev-1', name: 'Tablet 1' };
 
 describe('coverage and summaries', () => {
+  it("includes the event's averages with a team, for comparing", async () => {
+    const app = await makeApp();
+    await setupEvent(app);
+    const f = matchForm();
+    const mine = setAnswer(setAnswer(record(f, { team: 5098, matchKey: 'qm1' }), 'auto_coral', 2), 'defense', 4);
+    const theirs = setAnswer(setAnswer(record(f, { team: 254, matchKey: 'qm1', slot: 'blue1' }), 'auto_coral', 6), 'defense', 2);
+    await app.inject({ method: 'POST', url: '/api/sync', payload: { device, records: [mine, theirs] } });
+    const { eventAverages } = (await app.inject({ url: '/api/summaries/5098' })).json();
+    expect(eventAverages.questions).toMatchObject({ auto_coral: 4, defense: 3 }); // across every team at the event
+    expect(eventAverages.points.total).toBe(16); // (2 + 6) / 2 coral × 4 points each
+    expect(eventAverages.points.bySection.auto).toBe(16);
+  });
+
   it('serves coverage and summaries for the current event', async () => {
     const app = await makeApp();
     await setupEvent(app);
