@@ -371,3 +371,23 @@ test('compares a team with another, kept in the address', async ({ page }) => {
   await expect(page).toHaveURL(/#\/teams\/5098$/);
   await expect(page.getByRole('img', { name: /^Points per match:/ })).toBeVisible(); // back to one team
 });
+
+test('keeps every hub tab live, however many are open', async ({ context }) => {
+  // A browser allows only 6 connections to one address; each tab listening for changes on its own used them all up.
+  const pages = [];
+  for (let i = 0; i < 8; i++) {
+    const p = await context.newPage();
+    await p.goto('/hub/', { timeout: 10_000 });
+    await expect(p.getByRole('heading', { name: 'Tablets that have synced' })).toBeVisible({ timeout: 5_000 });
+    pages.push(p);
+  }
+  // A sync still reaches every tab.
+  const api = await request.newContext({ baseURL: pages[0].url() });
+  await api.post('/api/sync', { data: { device: { id: 'eight-tabs', name: 'Eight tabs' }, records: [] } });
+  for (const p of pages) await expect(p.getByText('Eight tabs')).toBeVisible({ timeout: 5_000 });
+  // Closing the tab that holds the connection hands it to another.
+  await pages[0].close();
+  await api.post('/api/sync', { data: { device: { id: 'after-close', name: 'After close' }, records: [] } });
+  for (const p of pages.slice(1)) await expect(p.getByText('After close')).toBeVisible({ timeout: 5_000 });
+  await api.dispose();
+});
