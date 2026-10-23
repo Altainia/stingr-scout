@@ -358,3 +358,16 @@ test('an open team page shows a newly synced match without a reload', async ({ p
   expect((await api.post('/api/sync', { data: { device: { id: 'e2e-live', name: 'Live' }, records: [rec] } })).ok()).toBe(true);
   await expect(page.getByRole('cell', { name: /Qual 91/ })).toBeVisible(); // no reload
 });
+
+test('compares a team with another, kept in the address', async ({ page }) => {
+  await page.goto('/hub/#/teams/5098');
+  await page.getByLabel('Compare with').selectOption('254');
+  await expect(page).toHaveURL(/#\/teams\/5098\?vs=254:2$/);
+  await expect(page.getByRole('img', { name: /^Points per match, compared/ })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Teams side by side' })).toContainText('254');
+  await page.reload();
+  await expect(page.getByRole('img', { name: /^Points per match, compared/ })).toBeVisible(); // survives a reload
+  await page.getByRole('button', { name: 'Stop comparing with 254' }).click();
+  await expect(page).toHaveURL(/#\/teams\/5098$/);
+  await expect(page.getByRole('img', { name: /^Points per match:/ })).toBeVisible(); // back to one team
+});

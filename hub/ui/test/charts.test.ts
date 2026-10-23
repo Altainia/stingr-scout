@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 import MatchLineChart from '../src/components/MatchLineChart.svelte';
+import CompareChart from '../src/components/CompareChart.svelte';
 import PointsChart from '../src/components/PointsChart.svelte';
 
 const SECTIONS = [{ id: 'auto', title: 'Auto' }, { id: 'endgame', title: 'Endgame' }];
@@ -72,5 +73,43 @@ describe('MatchLineChart', () => {
     const tip = screen.getByRole('tooltip').textContent ?? '';
     expect(tip).toContain('Qual 3');
     expect(tip).toContain('missed');
+  });
+});
+
+describe('CompareChart', () => {
+  const series = [
+    { id: '5098', name: '5098 Stingr', slot: 1, matches: [
+      { label: 'Qual 1', scout: 'Ada', state: 'ok' as const, value: 10 },
+      { label: 'Qual 7', scout: 'Ben', state: 'ok' as const, value: 20 },
+      { label: 'Qual 12', scout: 'Cy', state: 'ok' as const, value: 30 },
+    ] },
+    { id: '254', name: '254 The Cheesy Poofs', slot: 3, matches: [
+      { label: 'Qual 2', scout: 'Di', state: 'ok' as const, value: 25 },
+      { label: 'Qual 9', scout: 'Eve', state: 'noshow' as const, value: null },
+    ] },
+  ];
+
+  it("draws each team's matches in order, with a legend and a label at each line's end", () => {
+    render(CompareChart, { title: 'Points per match', series, eventAverage: 18 });
+    const chart = screen.getByRole('img', { name: /^Points per match, compared/ });
+    expect(chart.querySelectorAll('path.line')).toHaveLength(2);
+    expect((chart.querySelector('path.line[data-team="254"]') as SVGElement).style.stroke).toBe('var(--chart-3)'); // its own colour
+    expect([...chart.querySelectorAll('text.end-label')].map(t => t.textContent)).toEqual(['5098', '254']);
+    expect(within(chart).getByText('3rd')).toBeTruthy(); // the x axis counts each team's matches
+    expect(within(chart).getByText('✗')).toBeTruthy();
+    expect(within(chart).getByText('Event avg 18')).toBeTruthy();
+    const legend = screen.getByRole('list', { name: 'Teams' });
+    expect(within(legend).getAllByRole('listitem').map(li => li.textContent?.trim())).toEqual(['5098 Stingr', '254 The Cheesy Poofs', 'Event average']);
+  });
+
+  it('lists every team at a point in the tooltip, with the match it was', async () => {
+    render(CompareChart, { title: 'Points per match', series, eventAverage: 18 });
+    const chart = screen.getByRole('img', { name: /^Points per match, compared/ });
+    await fireEvent.focus(chart);
+    await fireEvent.keyDown(chart, { key: 'ArrowRight' });
+    const tip = screen.getByRole('tooltip').textContent ?? '';
+    expect(tip).toContain('2nd match');
+    expect(tip).toMatch(/20\s*5098 Stingr\s*Qual 7/);
+    expect(tip).toMatch(/robot not there\s*254 The Cheesy Poofs\s*Qual 9/);
   });
 });

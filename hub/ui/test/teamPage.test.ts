@@ -73,3 +73,46 @@ describe('TeamPage: refreshing', () => {
     }
   });
 });
+
+describe('TeamPage: comparing teams', () => {
+  const other = (team: number) => {
+    const rs = [setAnswer(record(f, { matchKey: 'qm2', team, slot: 'blue1' }), 'auto_coral', 5)];
+    return { ...detail, summary: buildTeamSummaries([team], f, rs, [])[0], matchRecords: rs, pitRecords: [] };
+  };
+  const api = (over = {}) => fakeApi({
+    team: async (t: number) => (t === 5098 ? detail : other(t)),
+    teams: async () => [118, 254, 5098, 6328],
+    teamNames: async () => ({ 5098: 'Stingr', 254: 'The Cheesy Poofs' }),
+    ...over,
+  });
+
+  it('adds a team to compare with, giving it the next free colour', async () => {
+    location.hash = '#/teams/5098';
+    render(TeamPage, { api: api(), team: 5098, vs: [] });
+    const picker = (await screen.findByLabelText('Compare with')) as HTMLSelectElement;
+    expect([...picker.options].map(o => o.textContent)).toEqual(['Choose a team…', '118', '254 The Cheesy Poofs', '6328']);
+    await fireEvent.change(picker, { target: { value: '254' } });
+    expect(location.hash).toBe('#/teams/5098?vs=254:2');
+  });
+
+  it('shows the compared teams as chips, charts a line per team, and lines them up in a table', async () => {
+    location.hash = '#/teams/5098?vs=254:3';
+    render(TeamPage, { api: api(), team: 5098, vs: [{ team: 254, slot: 3 }] });
+    expect(await screen.findByRole('img', { name: /^Points per match, compared/ })).toBeTruthy();
+    expect(screen.getByRole('img', { name: /^Coral scored, compared/ })).toBeTruthy();
+    expect(screen.queryByRole('img', { name: /^Points per match:/ })).toBeNull(); // the by-section stack is for one team
+    const table = screen.getByRole('table', { name: 'Teams side by side' });
+    const rows = within(table).getAllByRole('row').map(r => r.textContent ?? '');
+    expect(rows.some(r => r.includes('5098 Stingr'))).toBe(true);
+    expect(rows.some(r => r.includes('254 The Cheesy Poofs'))).toBe(true);
+    expect(rows.at(-1)).toContain('Event average');
+    await fireEvent.click(screen.getByRole('button', { name: 'Stop comparing with 254' }));
+    expect(location.hash).toBe('#/teams/5098');
+  });
+
+  it('allows at most three teams to compare with', async () => {
+    render(TeamPage, { api: api(), team: 5098, vs: [{ team: 118, slot: 2 }, { team: 254, slot: 3 }, { team: 6328, slot: 4 }] });
+    expect(await screen.findByText(/up to 3 teams/)).toBeTruthy();
+    expect(screen.queryByLabelText('Compare with')).toBeNull();
+  });
+});

@@ -5,12 +5,19 @@
   import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import FieldScatter from '../components/FieldScatter.svelte';
+  import CompareChart from '../components/CompareChart.svelte';
   import MatchLineChart from '../components/MatchLineChart.svelte';
   import PointsChart from '../components/PointsChart.svelte';
   import type { Api, TeamDetail } from '../lib/api';
   import { num, slotLabel } from '../lib/format';
+  import { type Compared, href, MAX_COMPARED } from '../lib/router';
 
-  let { api, team }: { api: Api; team: number } = $props();
+  let { api, team, vs = [] }: { api: Api; team: number; vs?: Compared[] } = $props();
+  // Teams compared with this one (from the address), their details, and names for labels.
+  let others = $state<Record<number, TeamDetail>>({});
+  let eventTeams = $state<number[]>([]);
+  let names = $state<Record<number, string>>({});
+  const nameOf = (t: number) => (names[t] ? `${t} ${names[t]}` : String(t));
   let detail = $state<TeamDetail | null>(null);
   let error = $state<unknown>(null);
   let history = $state<Record<string, ScoutRecord[]>>({});
@@ -25,10 +32,38 @@
     }
   }
 
+  async function loadOthers() {
+    try {
+      const got = await Promise.all(vs.map(c => api.team(c.team)));
+      others = Object.fromEntries(vs.map((c, i) => [c.team, got[i]]));
+    } catch (e) {
+      error = e;
+    }
+  }
+
+  async function loadTeams() {
+    try {
+      [eventTeams, names] = await Promise.all([api.teams(), api.teamNames()]);
+    } catch {
+      // the picker just stays empty
+    }
+  }
+
   onMount(() => {
     void load();
-    return onHubChange(load); // new records synced: refresh
+    void loadTeams();
+    return onHubChange(() => { void load(); void loadOthers(); }); // new records synced: refresh
   });
+  $effect(() => { void vs.map(c => c.team).join(); void loadOthers(); }); // whenever the comparison changes
+
+  function compareWith(t: number) {
+    const free = [2, 3, 4].find(n => !vs.some(c => c.slot === n));
+    if (!t || free === undefined) return;
+    location.hash = href({ page: 'team', team, vs: [...vs, { team: t, slot: free }] });
+  }
+  const stopComparing = (t: number) => (location.hash = href({ page: 'team', team, vs: vs.filter(c => c.team !== t) }));
+  let comparing = $derived(vs.length > 0 && vs.every(c => others[c.team]));
+  let choices = $derived(eventTeams.filter(t => t !== team && !vs.some(c => c.team === t)));
 
   let form = $derived(detail?.matchForm ?? null);
   let questions = $derived(form ? allQuestions(form) : []);
@@ -43,7 +78,7 @@
     const state = r.noShow ? 'noshow' as const : sections.every(v => v === null) ? 'missed' as const : 'ok' as const;
     return { label: matchLabel(r.matchKey ?? ''), scout: r.scout, state, sections };
   }) : []);
-  const byMatch = (key: string) => (detail?.matchRecords ?? []).map(r => {
+  const byMatch = (key: string, records: ScoutRecord[] = detail?.matchRecords ?? []) => records.map(r => {
     const v = r.answers[key];
     const state = r.noShow ? 'noshow' as const : r.missed.includes(key) ? 'missed' as const : typeof v === 'number' ? 'ok' as const : 'blank' as const;
     return { label: matchLabel(r.matchKey ?? ''), scout: r.scout, state, value: state === 'ok' ? (v as number) : null };
@@ -78,6 +113,19 @@
       error = e;
     }
   }
+  // Comparing: a line per team, each in the colour it keeps (this team is always the first colour).
+  let teamsShown = $derived(detail ? [{ team, slot: 1, d: detail }, ...vs.flatMap(c => (others[c.team] ? [{ team: c.team, slot: c.slot, d: others[c.team] }] : []))] : []);
+  const pointsOf = (records: ScoutRecord[]) => records.map(r => {
+    const v = form && !r.noShow ? recordPoints(form, r) : null;
+    const state = r.noShow ? 'noshow' as const : v === null ? 'missed' as const : 'ok' as const;
+    return { label: matchLabel(r.matchKey ?? ''), scout: r.scout, state, value: v };
+  });
+  let pointsSeries = $derived(teamsShown.map(t => ({ id: String(t.team), name: nameOf(t.team), slot: t.slot, matches: pointsOf(t.d.matchRecords) })));
+  const questionSeries = (key: string) => teamsShown.map(t => ({ id: String(t.team), name: nameOf(t.team), slot: t.slot, matches: byMatch(key, t.d.matchRecords) }));
+  const avgOf = (key: string, records: ScoutRecord[]) => {
+    const nums = records.flatMap(r => (!r.noShow && !r.missed.includes(key) && typeof r.answers[key] === 'number' ? [r.answers[key] as number] : []));
+    return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+  };
 </script>
 
 <p><a href="#/teams">‹ All teams</a></p>
@@ -93,7 +141,73 @@
     <div><strong>{PIT[s.pit]}</strong><div class="muted">pit scouting</div></div>
   </section>
 
-  {#if form && detail.matchRecords.length}
+  <section class="card compare">
+    <h2>Compare</h2>
+    <div class="row compare-row">
+      {#each vs as c (c.team)}
+        <span class="compare-chip"><span class="line-key" style:background="var(--chart-{c.slot})"></span>{nameOf(c.team)}
+          <button type="button" class="small" aria-label="Stop comparing with {c.team}" onclick={() => stopComparing(c.team)}>✕</button></span>
+      {/each}
+      {#if vs.length < MAX_COMPARED}
+        <label class="compact">Compare with
+          <select aria-label="Compare with" value="" onchange={e => compareWith(Number(e.currentTarget.value))}>
+            <option value="">Choose a team…</option>
+            {#each choices as t (t)}<option value={t}>{nameOf(t)}</option>{/each}
+          </select>
+        </label>
+      {:else}
+        <span class="hint">You can compare up to {MAX_COMPARED} teams at a time.</span>
+      {/if}
+    </div>
+    {#if comparing && form}
+      <div class="scroll-x">
+        <table class="grid" aria-label="Teams side by side">
+          <thead><tr><th>Team</th><th>Matches</th><th>Est. points</th>{#each numericQs as q (q.key)}<th>{q.label}</th>{/each}</tr></thead>
+          <tbody>
+            {#each teamsShown as t (t.team)}
+              <tr>
+                <td><span class="line-key" style:background="var(--chart-{t.slot})"></span> {nameOf(t.team)}</td>
+                <td>{t.d.summary.matchRecords}</td>
+                <td>{num(t.d.summary.estPoints)}</td>
+                {#each numericQs as q (q.key)}<td>{num(avgOf(q.key, t.d.matchRecords))}</td>{/each}
+              </tr>
+            {/each}
+            <tr class="muted">
+              <td>Event average</td><td></td><td>{num(detail.eventAverages?.points.total ?? null)}</td>
+              {#each numericQs as q (q.key)}<td>{num(detail.eventAverages?.questions[q.key] ?? null)}</td>{/each}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {/if}
+  </section>
+
+  {#if form && comparing}
+    {#if scores}
+      <section class="card points-chart">
+        <h2>Points per match</h2>
+        <CompareChart title="Points per match" wide series={pointsSeries} eventAverage={detail.eventAverages?.points.total ?? null} />
+      </section>
+    {/if}
+    {#if numericQs.length}
+      <section class="card">
+        <h2>By match</h2>
+        <p class="hint">Each team's matches in order. ⚠ missed · ✗ robot not there · – no answer</p>
+        <ul class="chart-legend" aria-label="Teams in these charts">
+          {#each teamsShown as t (t.team)}<li><span class="line-key" style:background="var(--chart-{t.slot})"></span>{nameOf(t.team)}</li>{/each}
+          <li><span class="ref-key"></span>Event average</li>
+        </ul>
+        <div class="charts">
+          {#each numericQs as q (q.key)}
+            <figure>
+              <figcaption>{q.label}</figcaption>
+              <CompareChart title={q.label} legend={false} series={questionSeries(q.key)} eventAverage={detail.eventAverages?.questions[q.key] ?? null} />
+            </figure>
+          {/each}
+        </div>
+      </section>
+    {/if}
+  {:else if form && detail.matchRecords.length}
     {#if scores}
       <section class="card points-chart">
         <h2>Points per match</h2>

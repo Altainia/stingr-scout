@@ -77,7 +77,7 @@
     {:else if route.page === 'teams'}
       <Teams {api} />
     {:else if route.page === 'team'}
-      {#key route.team}<TeamPage {api} team={route.team} />{/key}
+      {#key route.team}<TeamPage {api} team={route.team} vs={route.vs ?? []} />{/key}
     {:else if route.page === 'qr'}
       <QrScan {api} />
     {:else if route.page === 'data'}

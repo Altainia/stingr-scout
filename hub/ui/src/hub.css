@@ -134,3 +134,12 @@ td.text-cell { min-width: 9em; max-width: 11em; }
 .charts figure { margin: 0; }
 .charts figcaption, .points-chart figcaption { font-weight: 600; margin-bottom: 4px; }
 .line-chart .axis text, .line-chart .ref text, .line-chart .gap { font-size: 12.5px; }
+.chart-legend .line-key { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+.compare-chart .line { stroke-width: 2; }
+.compare-chart .end-label { font-weight: 700; fill: var(--text); }
+.compare-row { align-items: center; }
+.compare-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.compare table .line-key { width: 14px; height: 3px; border-radius: 2px; display: inline-block; vertical-align: middle; }
+.chart-tip.beside { transform: translate(14px, 0); }
+.chart-tip.beside.flip { transform: translate(-14px, 0); } /* anchored by its right edge, so it never wraps */
+[aria-label='Teams in these charts'] { margin: 4px 0 12px; }

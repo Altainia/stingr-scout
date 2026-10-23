@@ -20,6 +20,22 @@ describe('router', () => {
     ['#/nope', { page: 'notfound' }],
   ])('%s', (hash, route) => expect(parseRoute(hash)).toEqual(route));
 
+  it('reads the teams a team is compared with, each with its colour slot', () => {
+    expect(parseRoute('#/teams/5098?vs=254:2,118:3')).toEqual({ page: 'team', team: 5098, vs: [{ team: 254, slot: 2 }, { team: 118, slot: 3 }] });
+    expect(parseRoute('#/teams/5098?vs=254,118')).toEqual({ page: 'team', team: 5098, vs: [{ team: 254, slot: 2 }, { team: 118, slot: 3 }] }); // typed by hand
+    expect(parseRoute('#/teams/5098?vs=118:4')).toEqual({ page: 'team', team: 5098, vs: [{ team: 118, slot: 4 }] }); // keeps its colour
+  });
+
+  it('ignores compared teams it cannot use', () => {
+    expect(parseRoute('#/teams/5098?vs=5098,abc,254,254,1,2,3')).toEqual({ page: 'team', team: 5098, vs: [{ team: 254, slot: 2 }, { team: 1, slot: 3 }, { team: 2, slot: 4 }] });
+    expect(parseRoute('#/teams/5098?vs=254:2,118:2')).toEqual({ page: 'team', team: 5098, vs: [{ team: 254, slot: 2 }, { team: 118, slot: 3 }] }); // one colour each
+  });
+
+  it('writes the comparison into the address', () => {
+    expect(href({ page: 'team', team: 5098, vs: [{ team: 118, slot: 3 }] })).toBe('#/teams/5098?vs=118:3');
+    expect(href({ page: 'team', team: 5098, vs: [] })).toBe('#/teams/5098');
+  });
+
   it('builds links that parse back to the same route', () => {
     const routes: Route[] = [{ page: 'dashboard' }, { page: 'forms', kind: 'pit' }, { page: 'team', team: 254 }, { page: 'data' }];
     for (const r of routes) expect(parseRoute(href(r))).toEqual(r);
