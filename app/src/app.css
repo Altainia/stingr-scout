@@ -79,6 +79,10 @@ main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .counter { display: flex; align-items: center; gap: 16px; }
 .counter output { font-size: 2rem; min-width: 3ch; text-align: center; }
 .counter button { width: 80px; height: 64px; font-size: 2rem; }
+.counter.jumps { gap: 8px; }
+.counter.jumps button { width: auto; min-width: 72px; padding: 0 12px; font-size: 1.5rem; }
+.counter.jumps button.big-jump { min-width: 64px; font-size: 1.2rem; }
+.counter.jumps output { margin: 0 8px; }
 .tabs { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
 .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
 .bar { display: flex; align-items: center; gap: 12px; }

@@ -1,4 +1,4 @@
-import type { AnswerValue, Answers, FormDef, Question, SummaryKind } from './types';
+import type { AnswerValue, Answers, CounterQuestion, FormDef, Question, SummaryKind } from './types';
 
 const KEY_RE = /^[a-z][a-z0-9_]*$/;
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -21,6 +21,16 @@ export function initialValue(q: Question): AnswerValue {
 
 export function initialAnswers(form: FormDef): Answers {
   return Object.fromEntries(allQuestions(form).map(q => [q.key, initialValue(q)]));
+}
+
+/**
+ * The jumps a counter offers, as multiples of its step: always 1×, plus 5× and 10× when the range is at least twice
+ * the jump (so one tap never covers more than half of it). An open-ended counter (no Max) offers all three.
+ */
+export function counterJumps(q: CounterQuestion): number[] {
+  if (q.max === undefined) return [1, 5, 10];
+  const range = q.max - q.min;
+  return [1, 5, 10].filter(m => m === 1 || range >= 2 * m * q.step);
 }
 
 /** What each summary is called in the hub. */

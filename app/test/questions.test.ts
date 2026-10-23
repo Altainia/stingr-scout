@@ -33,6 +33,30 @@ const stubRect = (el: Element) => {
 };
 
 describe('Counter', () => {
+  const labels = () => screen.getAllByRole('button').map(b => b.textContent);
+
+  it('adds bigger jumps of 5× and 10× the step when the range allows', async () => {
+    const onchange = vi.fn();
+    render(Counter, { question: { ...counter, max: undefined, step: 2 }, value: 8, onchange });
+    expect(labels()).toEqual(['−20', '−10', '−2', '+2', '+10', '+20']);
+    await fireEvent.click(screen.getByRole('button', { name: 'plus 20' }));
+    expect(onchange).toHaveBeenLastCalledWith(28);
+    expect((screen.getByRole('button', { name: 'minus 20' }) as HTMLButtonElement).disabled).toBe(true); // 8 − 20 is below 0
+    expect((screen.getByRole('button', { name: 'minus' }) as HTMLButtonElement).disabled).toBe(false); // the ±1-step buttons keep their names
+  });
+
+  it('keeps plain − and + when the range is too small for bigger jumps', () => {
+    render(Counter, { question: counter, value: 1, onchange: vi.fn() }); // 0 to 3
+    expect(labels()).toEqual(['−', '+']);
+  });
+
+  it('greys out a jump that would pass the maximum', () => {
+    render(Counter, { question: { ...counter, max: 12 }, value: 8, onchange: vi.fn() }); // ±1 and ±5
+    expect(labels()).toEqual(['−5', '−1', '+1', '+5']);
+    expect((screen.getByRole('button', { name: 'plus 5' }) as HTMLButtonElement).disabled).toBe(true); // 13 > 12
+    expect((screen.getByRole('button', { name: 'plus' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('steps within its limits', async () => {
     const onchange = vi.fn();
     render(Counter, { question: counter, value: 3, onchange });

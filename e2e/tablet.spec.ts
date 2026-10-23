@@ -43,8 +43,8 @@ test('scouts a match and syncs it to the hub', async ({ page }) => {
   await page.getByRole('button', { name: 'Start scouting' }).click();
 
   const coral = page.getByRole('region', { name: 'Coral scored' });
-  await coral.getByRole('button', { name: 'plus' }).click();
-  await coral.getByRole('button', { name: 'plus' }).click();
+  await coral.getByRole('button', { name: 'plus', exact: true }).click();
+  await coral.getByRole('button', { name: 'plus', exact: true }).click();
   await page.getByRole('button', { name: 'Endgame' }).click();
   await page.getByRole('region', { name: 'Climb' }).getByRole('button', { name: 'Deep' }).click();
   await page.getByRole('button', { name: 'Review' }).click();

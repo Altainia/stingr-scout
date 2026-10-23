@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allQuestions, findQuestion, initialAnswers, SUMMARY_NAMES, summaryKind, summaryOptions, validateFormDef } from '../src/form';
+import { allQuestions, counterJumps, findQuestion, initialAnswers, SUMMARY_NAMES, summaryKind, summaryOptions, validateFormDef } from '../src/form';
 import { matchForm, pitForm } from './fixtures';
 
 describe('initialAnswers', () => {
@@ -204,5 +204,24 @@ describe('defaults', () => {
     weight.q.default = 120.5;
     weight.q.integer = true;
     expect(validateFormDef(weight.f).errors).toEqual(['Weight (lb): Default must be a whole number']);
+  });
+});
+
+describe('counterJumps', () => {
+  const counter = (over: { min?: number; max?: number; step?: number }) =>
+    ({ key: 'c', label: 'C', type: 'counter' as const, required: false, min: 0, step: 1, default: 0, ...over });
+
+  it('offers 5× and 10× the step only when the range is at least twice the jump', () => {
+    expect(counterJumps(counter({ max: 3 }))).toEqual([1]);
+    expect(counterJumps(counter({ max: 9 }))).toEqual([1]);
+    expect(counterJumps(counter({ max: 10 }))).toEqual([1, 5]);
+    expect(counterJumps(counter({ max: 19 }))).toEqual([1, 5]);
+    expect(counterJumps(counter({ max: 20 }))).toEqual([1, 5, 10]);
+    expect(counterJumps(counter({ min: 5, max: 24, step: 2 }))).toEqual([1]); // 19 is less than 10 steps of 2
+    expect(counterJumps(counter({ min: 0, max: 40, step: 2 }))).toEqual([1, 5, 10]);
+  });
+
+  it('offers all three when there is no maximum', () => {
+    expect(counterJumps(counter({ step: 2 }))).toEqual([1, 5, 10]);
   });
 });
