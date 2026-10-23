@@ -4,19 +4,21 @@
   // One numeric question across a team's matches, beside the event's average. The line breaks where a value is
   // missing (missed, or the robot wasn't there), and the gap is marked, so it never reads as a zero.
   type Match = { label: string; scout: string; state: 'ok' | 'missed' | 'noshow' | 'blank'; value: number | null };
-  let { title, matches, eventAverage, refLabel = 'Event avg', alliance = false }: {
+  let { title, matches, eventAverage, refLabel = 'Event avg', alliance = false, large = false }: {
     title: string; matches: Match[]; eventAverage: number | null;
     /** what the reference line is (the event average, or for an alliance field the team's estimated share) */
     refLabel?: string;
     /** a whole-alliance value, drawn in its own colour so it isn't read as the robot's */
     alliance?: boolean;
+    /** enlarged (in the chart popup): roomier, with a label on more matches */
+    large?: boolean;
   } = $props();
 
-  const W = 320;
-  const H = 170;
+  let W = $derived(large ? 760 : 320);
+  let H = $derived(large ? 320 : 170);
   const M = { top: 12, right: 74, bottom: 24, left: 30 };
-  const plotW = W - M.left - M.right;
-  const plotH = H - M.top - M.bottom;
+  let plotW = $derived(W - M.left - M.right);
+  let plotH = $derived(H - M.top - M.bottom);
 
   let axis = $derived(niceAxis(Math.max(eventAverage ?? 0, ...matches.map(m => m.value ?? 0))));
   const x = (i: number) => M.left + (matches.length < 2 ? plotW / 2 : (i / (matches.length - 1)) * plotW);
@@ -58,7 +60,7 @@
   const describe = (m: Match) => (m.value !== null ? fmt(m.value) : m.state === 'noshow' ? 'robot not there' : m.state === 'blank' ? 'no answer' : 'missed');
   let known = $derived(matches.flatMap(m => (m.value === null ? [] : [m.value])));
   let summary = $derived(`${title} by match: ${matches.map(m => `${m.label} ${describe(m)}`).join(', ')}${eventAverage !== null ? `. ${refLabel} ${fmt(eventAverage)}` : ''}`);
-  let every = $derived(Math.max(1, Math.ceil(matches.length / 6)));
+  let every = $derived(Math.max(1, Math.ceil(matches.length / (large ? 20 : 6))));
 </script>
 
 <div class="chart line-chart" class:alliance>

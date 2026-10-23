@@ -5,6 +5,7 @@
   import { onHubChange } from '../lib/changes';
   import ErrorNote from '../components/ErrorNote.svelte';
   import FieldScatter from '../components/FieldScatter.svelte';
+  import ChartDialog, { type ChartSpec } from '../components/ChartDialog.svelte';
   import CompareChart from '../components/CompareChart.svelte';
   import MatchLineChart from '../components/MatchLineChart.svelte';
   import PointsChart from '../components/PointsChart.svelte';
@@ -134,9 +135,21 @@
     });
     return matches.some(m => m.value !== null) ? [{ key: a.item, label: a.label, share: a.value, matches }] : [];
   }));
+  // The small charts, in page order, for the enlarge popup to step through.
+  let smallCharts = $derived<ChartSpec[]>(!detail ? [] : comparing
+    ? numericQs.map(q => ({ kind: 'compare', title: q.label, series: questionSeries(q.key), eventAverage: detail?.eventAverages?.questions[q.key] ?? null }))
+    : [
+        ...numericQs.map(q => ({ kind: 'line' as const, title: q.label, matches: byMatch(q.key), eventAverage: detail?.eventAverages?.questions[q.key] ?? null })),
+        ...allianceFieldCharts.map(c => ({ kind: 'line' as const, title: `${c.label} — whole alliance`, matches: c.matches, eventAverage: c.share, refLabel: 'Est. share', alliance: true })),
+      ]);
+  let enlarged = $state<number | null>(null);
   let shareItems = $derived((detail?.allianceShares ?? []).filter(a => teamsShown.some(t => t.d.allianceShares?.find(x => x.item === a.item)?.value != null)));
   const shareOf = (d: TeamDetail, item: string) => d.allianceShares?.find(x => x.item === item)?.value ?? null;
 </script>
+
+{#snippet enlarge(label: string, i: number)}
+  <button type="button" class="small enlarge" aria-label="Enlarge {label}" title="Enlarge" onclick={e => { e.stopPropagation(); enlarged = i; }}>⤢</button>
+{/snippet}
 
 <p><a href="#/teams">‹ All teams</a></p>
 <h1>Team {team}</h1>
@@ -227,9 +240,10 @@
           <li><span class="ref-key"></span>Event average</li>
         </ul>
         <div class="charts">
-          {#each numericQs as q (q.key)}
-            <figure>
-              <figcaption>{q.label}</figcaption>
+          {#each numericQs as q, i (q.key)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+            <figure onclick={() => (enlarged = i)}>
+              <figcaption>{q.label}{@render enlarge(q.label, i)}</figcaption>
               <CompareChart title={q.label} legend={false} series={questionSeries(q.key)} eventAverage={detail.eventAverages?.questions[q.key] ?? null} />
             </figure>
           {/each}
@@ -252,16 +266,18 @@
           ⚠ missed · ✗ robot not there · – no answer
         </p>
         <div class="charts">
-          {#each numericQs as q (q.key)}
-            <figure>
-              <figcaption>{q.label}</figcaption>
+          {#each numericQs as q, i (q.key)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+            <figure onclick={() => (enlarged = i)}>
+              <figcaption>{q.label}{@render enlarge(q.label, i)}</figcaption>
               <MatchLineChart title={q.label} matches={byMatch(q.key)} eventAverage={detail.eventAverages?.questions[q.key] ?? null} />
             </figure>
           {/each}
           <!-- Alliance fields: the whole alliance's value in each of this team's matches, against the team's estimated share. -->
-          {#each allianceFieldCharts as c (c.key)}
-            <figure>
-              <figcaption>{c.label} <span class="hint">— whole alliance</span></figcaption>
+          {#each allianceFieldCharts as c, i (c.key)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+            <figure onclick={() => (enlarged = numericQs.length + i)}>
+              <figcaption><span>{c.label} <span class="hint">— whole alliance</span></span>{@render enlarge(`${c.label} — whole alliance`, numericQs.length + i)}</figcaption>
               <MatchLineChart title="{c.label} — whole alliance" alliance matches={c.matches} eventAverage={c.share} refLabel="Est. share" />
             </figure>
           {/each}
@@ -368,4 +384,7 @@
 
 {#if reading}
   <TextDialog title={reading.title} text={reading.text} onclose={() => (reading = null)} />
+{/if}
+{#if enlarged !== null && smallCharts[enlarged]}
+  <ChartDialog charts={smallCharts} index={enlarged} onclose={() => (enlarged = null)} />
 {/if}
