@@ -96,3 +96,15 @@ export interface SyncResponse {
   wantedPhotoIds: string[];
   config: HubConfig;
 }
+
+/** An alliance-level item for this year's game (e.g. balls in a shared hopper), recorded per match per alliance. */
+export interface AllianceField { key: string; label: string; /** The Blue Alliance score-breakdown item it is filled from */ tba?: string }
+export type AllianceSide = 'red' | 'blue';
+/** One recorded value: typed on the hub, or from The Blue Alliance (a typed value is never overwritten by TBA). */
+export interface AllianceEntry { value: number; source: 'manual' | 'tba' }
+/** A match's results: the alliances' teams, and values by item ('score' or a field key). */
+export interface AllianceMatch {
+  matchKey: string;
+  red: { teams: number[]; values: Record<string, AllianceEntry> };
+  blue: { teams: number[]; values: Record<string, AllianceEntry> };
+}

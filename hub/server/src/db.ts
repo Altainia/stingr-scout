@@ -36,6 +36,12 @@ const MIGRATIONS: string[] = [
   `CREATE TABLE team_names (team INTEGER PRIMARY KEY, name TEXT NOT NULL);`,
   // A missed-answer concern the scout captain has looked at, with how many misses it had then (it comes back if it grows).
   `CREATE TABLE missed_acks (event_key TEXT NOT NULL, concern TEXT NOT NULL, missed INTEGER NOT NULL, at TEXT NOT NULL, PRIMARY KEY (event_key, concern));`,
+  // Alliance results: one row per value (an alliance's score, or an alliance field) in a match.
+  `CREATE TABLE alliance_results (
+    event_key TEXT NOT NULL, match_key TEXT NOT NULL, alliance TEXT NOT NULL, item TEXT NOT NULL,
+    value REAL NOT NULL, source TEXT NOT NULL, updated_at TEXT NOT NULL,
+    PRIMARY KEY (event_key, match_key, alliance, item)
+  );`,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

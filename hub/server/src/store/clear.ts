@@ -24,7 +24,7 @@ export function deleteEvent(db: Db, key: string): EventCounts {
   if (!counts) throw new Error(`Unknown event "${key}"`);
   tx(db, () => {
     db.prepare('DELETE FROM photos WHERE record_id IN (SELECT id FROM records WHERE event_key = ?)').run(key);
-    for (const table of ['records', 'matches', 'teams', 'missed_acks']) db.prepare(`DELETE FROM ${table} WHERE event_key = ?`).run(key);
+    for (const table of ['records', 'matches', 'teams', 'missed_acks', 'alliance_results']) db.prepare(`DELETE FROM ${table} WHERE event_key = ?`).run(key);
     db.prepare('DELETE FROM events WHERE key = ?').run(key);
     if (getSetting(db, 'current_event') === key) setSetting(db, 'current_event', null);
   });
@@ -54,8 +54,10 @@ export function startNewSeason(db: Db): SeasonCounts {
       const floor = Math.max(latest, Number(getSetting(db, `form_version_floor:${kind}`) ?? 0));
       setSetting(db, `form_version_floor:${kind}`, String(floor));
     }
-    for (const table of ['photos', 'records', 'matches', 'teams', 'events', 'forms', 'form_drafts', 'devices', 'missed_acks']) db.exec(`DELETE FROM ${table}`);
+    for (const table of ['photos', 'records', 'matches', 'teams', 'events', 'forms', 'form_drafts', 'devices', 'missed_acks', 'alliance_results']) db.exec(`DELETE FROM ${table}`);
     setSetting(db, 'current_event', null);
+    setSetting(db, 'alliance_fields', null); // this year's game items
+    setSetting(db, 'tba_breakdown_items', null);
     newSeasonId(db);
   });
   return counts;
