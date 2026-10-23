@@ -1,12 +1,13 @@
 import type { EventInfo, FormDef, FormKind, ScheduleMatch, ScoutRecord, Side } from '@stingr/shared';
 import type { AdbStatus } from '../../../server/src/adb';
 import type { CoverageRow } from '../../../server/src/coverage';
+import type { MissedRef, MissedReport } from '../../../server/src/missed';
 import type { EventCounts, SeasonCounts } from '../../../server/src/store/clear';
 import type { DeviceRow } from '../../../server/src/store/devices';
 import type { PublishResult } from '../../../server/src/store/forms';
 import type { TeamSummary } from '../../../server/src/summaries';
 
-export type { AdbStatus, CoverageRow, DeviceRow, EventCounts, PublishResult, SeasonCounts, TeamSummary };
+export type { AdbStatus, CoverageRow, MissedRef, MissedReport, DeviceRow, EventCounts, PublishResult, SeasonCounts, TeamSummary };
 
 export class ApiError extends Error {
   readonly status: number;
@@ -83,6 +84,7 @@ export function createApi(http: Http = (input, init) => fetch(input, init)) {
     records: (kind: FormKind) => call<ScoutRecord[]>('GET', `/api/records?kind=${kind}`),
     history: (id: string) => call<ScoutRecord[]>('GET', `/api/records/${encodeURIComponent(id)}/history`),
     coverage: () => call<CoverageRow[]>('GET', '/api/coverage'),
+    missed: () => call<MissedReport>('GET', '/api/missed'),
     summaries: () => call<{ form: FormDef | null; summaries: TeamSummary[] }>('GET', '/api/summaries'),
     team: (team: number) => call<TeamDetail>('GET', `/api/summaries/${team}`),
     qr: (text: string) => call<QrResult>('POST', '/api/qr', { text }, { accept: [422] }),

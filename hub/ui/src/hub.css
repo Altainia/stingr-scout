@@ -91,3 +91,7 @@ table.grid.teams td { vertical-align: middle; }
 button.link.peek { min-height: 0; min-width: 0; padding: 0; text-align: left; color: var(--link); font: inherit; }
 td.text-cell { min-width: 9em; max-width: 11em; }
 .text-dialog .full-text { white-space: pre-wrap; line-height: 1.5; max-height: 60vh; overflow-y: auto; }
+.missed-list { padding-left: 20px; }
+.missed-list > li { margin-bottom: 10px; }
+.missed-list details { margin-top: 2px; }
+.missed-list summary { cursor: pointer; color: var(--link); }

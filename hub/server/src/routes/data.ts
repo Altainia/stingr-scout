@@ -2,6 +2,7 @@ import { compareMatchKeys, decodeRecordData, type FormKind, type ScoutRecord } f
 import type { FastifyInstance } from 'fastify';
 import type { HubContext } from '../app';
 import { buildCoverage } from '../coverage';
+import { buildMissedReport } from '../missed';
 import { bodyObject, HttpError, requireEvent } from '../http';
 import { getForm, latestForm } from '../store/forms';
 import { currentRecords } from '../store/records';
@@ -32,6 +33,11 @@ export function dataRoutes(app: FastifyInstance, ctx: HubContext): void {
   app.get('/api/coverage', async () => {
     const ev = requireEvent(ctx.db);
     return buildCoverage(listSchedule(ctx.db, ev.key), currentRecords(ctx.db, ev.key, 'match'));
+  });
+
+  app.get('/api/missed', async () => {
+    const ev = requireEvent(ctx.db);
+    return buildMissedReport(currentRecords(ctx.db, ev.key, 'match'), v => getForm(ctx.db, 'match', v), latestForm(ctx.db, 'match') ?? null);
   });
 
   app.get('/api/summaries', async () => {
