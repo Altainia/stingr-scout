@@ -138,3 +138,18 @@ describe('fetching alliance results from The Blue Alliance', () => {
     expect(res.json().error).toContain("Couldn't reach The Blue Alliance");
   });
 });
+
+describe('estimated shares in summaries', () => {
+  it('sends the score share with the Teams summaries, and every item with a team', async () => {
+    const { app, put } = await hub();
+    await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper' }] });
+    await put('qm1', 'red', 'score', 60);
+    const all = (await app.inject({ url: '/api/summaries' })).json();
+    expect(all.scoreShares).toHaveProperty('5098');
+    const team = (await app.inject({ url: '/api/summaries/5098' })).json();
+    expect(team.allianceShares).toEqual([
+      { item: 'score', label: 'Score', value: null, results: 1 },
+      { item: 'hopper', label: 'Balls in hopper', value: null, results: 0 },
+    ]);
+  });
+});
