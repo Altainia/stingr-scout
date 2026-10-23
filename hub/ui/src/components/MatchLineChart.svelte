@@ -4,7 +4,13 @@
   // One numeric question across a team's matches, beside the event's average. The line breaks where a value is
   // missing (missed, or the robot wasn't there), and the gap is marked, so it never reads as a zero.
   type Match = { label: string; scout: string; state: 'ok' | 'missed' | 'noshow' | 'blank'; value: number | null };
-  let { title, matches, eventAverage }: { title: string; matches: Match[]; eventAverage: number | null } = $props();
+  let { title, matches, eventAverage, refLabel = 'Event avg', alliance = false }: {
+    title: string; matches: Match[]; eventAverage: number | null;
+    /** what the reference line is (the event average, or for an alliance field the team's estimated share) */
+    refLabel?: string;
+    /** a whole-alliance value, drawn in its own colour so it isn't read as the robot's */
+    alliance?: boolean;
+  } = $props();
 
   const W = 320;
   const H = 170;
@@ -51,11 +57,11 @@
   }
   const describe = (m: Match) => (m.value !== null ? fmt(m.value) : m.state === 'noshow' ? 'robot not there' : m.state === 'blank' ? 'no answer' : 'missed');
   let known = $derived(matches.flatMap(m => (m.value === null ? [] : [m.value])));
-  let summary = $derived(`${title} by match: ${matches.map(m => `${m.label} ${describe(m)}`).join(', ')}${eventAverage !== null ? `. Event average ${fmt(eventAverage)}` : ''}`);
+  let summary = $derived(`${title} by match: ${matches.map(m => `${m.label} ${describe(m)}`).join(', ')}${eventAverage !== null ? `. ${refLabel} ${fmt(eventAverage)}` : ''}`);
   let every = $derived(Math.max(1, Math.ceil(matches.length / 6)));
 </script>
 
-<div class="chart line-chart">
+<div class="chart line-chart" class:alliance>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <svg bind:this={svg} viewBox="0 0 {W} {H}" role="img" aria-label={summary} tabindex="0"
     onpointermove={track} onpointerleave={() => (active = null)} onfocus={() => (active ??= 0)} onblur={() => (active = null)} onkeydown={key}>
@@ -67,7 +73,7 @@
     {#if eventAverage !== null}
       <g class="ref">
         <line x1={M.left} x2={M.left + plotW} y1={y(eventAverage)} y2={y(eventAverage)} />
-        <text x={M.left + plotW + 6} y={y(eventAverage) + 4}>Event avg {fmt(eventAverage)}</text>
+        <text x={M.left + plotW + 6} y={y(eventAverage) + 4}>{refLabel} {fmt(eventAverage)}</text>
       </g>
     {/if}
     {#if active !== null}<line class="crosshair" x1={x(active)} x2={x(active)} y1={M.top} y2={M.top + plotH} />{/if}
@@ -89,10 +95,10 @@
       {:else}
         <div><strong>{describe(m)}</strong></div>
       {/if}
-      {#if eventAverage !== null}<div class="muted">Event avg {fmt(eventAverage)}</div>{/if}
+      {#if eventAverage !== null}<div class="muted">{refLabel} {fmt(eventAverage)}</div>{/if}
     </div>
   {/if}
   {#if known.length}
-    <p class="hint">Team avg {fmt(known.reduce((a, b) => a + b, 0) / known.length)} over {known.length} {known.length === 1 ? 'match' : 'matches'}</p>
+    <p class="hint">{alliance ? 'Alliance' : 'Team'} avg {fmt(known.reduce((a, b) => a + b, 0) / known.length)} over {known.length} {known.length === 1 ? 'match' : 'matches'}</p>
   {/if}
 </div>

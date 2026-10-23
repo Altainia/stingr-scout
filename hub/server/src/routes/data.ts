@@ -89,6 +89,13 @@ export function dataRoutes(app: FastifyInstance, ctx: HubContext): void {
     return {
       summary, matchForm, pitForm: latestForm(ctx.db, 'pit') ?? null, matchRecords, pitRecords,
       eventAverages: eventAverages(matchForm, currentRecords(ctx.db, ev.key, 'match')), allianceShares: allianceSharesForTeam,
+      allianceByMatch: Object.fromEntries(alliances.flatMap(m => (['red', 'blue'] as const).filter(s => m[s].teams.includes(team)).map(side => {
+        const other = side === 'red' ? 'blue' : 'red';
+        return [m.matchKey, {
+          side, score: m[side].values.score?.value ?? null, opponent: m[other].values.score?.value ?? null,
+          fields: Object.fromEntries(fields.map(f => [f.key, m[side].values[f.key]?.value ?? null])),
+        }];
+      }))),
     };
   });
 }

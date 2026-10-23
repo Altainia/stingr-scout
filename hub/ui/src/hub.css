@@ -152,3 +152,9 @@ td.text-cell { min-width: 9em; max-width: 11em; }
 .fields-table { width: auto; }
 .fields-table td input { width: 18em; }
 .alliance-table td, .alliance-table th, .fields-table td { vertical-align: middle; }
+/* The team's alliance behind its points: a faint neutral column (not a series colour), and the match result. */
+.chart .alliance-col { fill: var(--muted); opacity: 0.16; }
+.chart text.result { fill: var(--muted); font-size: 11px; font-weight: 700; }
+.chart-legend .alliance-swatch { background: var(--muted); opacity: 0.3; }
+.line-chart.alliance .line { stroke: var(--chart-7); }
+.line-chart.alliance .dot { fill: var(--chart-7); }

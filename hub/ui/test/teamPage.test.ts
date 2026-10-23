@@ -16,7 +16,12 @@ const detail = {
   summary: buildTeamSummaries([5098], f, [r1, r2, r3], [pit])[0],
   matchForm: f, pitForm: pitForm(), matchRecords: [r1, r2, r3], pitRecords: [pit],
   eventAverages: eventAverages(f, [r1, r2, r3]),
-  allianceShares: [{ item: 'score', label: 'Score', value: 41.25, results: 4 }, { item: 'hopper', label: 'Balls in hopper', value: null, results: 1 }],
+  allianceShares: [{ item: 'score', label: 'Score', value: 41.25, results: 4 }, { item: 'hopper', label: 'Balls in hopper', value: 5.8, results: 4 }],
+  allianceByMatch: {
+    qm1: { side: 'red' as const, score: 87, opponent: 64, fields: { hopper: 31 } },
+    qm2: { side: 'red' as const, score: 50, opponent: 71, fields: { hopper: null } },
+    qm3: { side: 'red' as const, score: null, opponent: null, fields: { hopper: null } },
+  },
 };
 
 describe('TeamPage', () => {
@@ -124,6 +129,34 @@ describe('TeamPage: alliance estimates', () => {
     const card = await screen.findByRole('region', { name: 'Estimated from alliance results' });
     expect(within(card).getByText('41.3')).toBeTruthy();
     expect(within(card).getByText('Score').closest('div')!.textContent).toContain('4 alliances');
-    expect(within(card).getByText('Balls in hopper').closest('div')!.textContent).toContain('needs 3 alliance results, has 1');
+    expect(within(card).getByText('Balls in hopper').closest('div')!.textContent).toContain('4 alliances');
+  });
+});
+
+describe('TeamPage: alliance results in the charts', () => {
+  it('charts each alliance field for the whole alliance, against the team\'s estimated share', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    const chart = await screen.findByRole('img', { name: /^Balls in hopper — whole alliance by match/ });
+    expect(within(chart).getByText('Est. share 5.8')).toBeTruthy();
+    expect(chart.closest('figure')!.textContent).toContain('Alliance avg 31 over 1 match'); // not "Team avg"
+    expect(screen.getByText(/On whole-alliance charts it is the team's estimated share/)).toBeTruthy();
+  });
+
+  it('puts the alliance score and the result behind the points per match', async () => {
+    render(TeamPage, { api: fakeApi({ team: async () => detail }), team: 5098 });
+    const chart = await screen.findByRole('img', { name: /^Points per match/ });
+    expect(chart.querySelectorAll('.alliance-col')).toHaveLength(2);
+    expect(within(chart).getByText('W')).toBeTruthy();
+    expect(within(chart).getByText('L')).toBeTruthy();
+  });
+
+  it('adds the estimated shares to the side-by-side table when comparing', async () => {
+    const other = { ...detail, allianceShares: [{ item: 'score', label: 'Score', value: 20, results: 5 }, { item: 'hopper', label: 'Balls in hopper', value: 3, results: 5 }] };
+    render(TeamPage, { api: fakeApi({ team: async (t: number) => (t === 5098 ? detail : other), teams: async () => [254, 5098], teamNames: async () => ({}) }), team: 5098, vs: [{ team: 254, slot: 2 }] });
+    const table = await screen.findByRole('table', { name: 'Teams side by side' });
+    const header = within(table).getAllByRole('columnheader').map(h => h.textContent);
+    expect(header).toContain('Score share');
+    expect(header).toContain('Balls in hopper share');
+    expect(within(table).getByText('41.3')).toBeTruthy();
   });
 });

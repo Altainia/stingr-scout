@@ -35,7 +35,10 @@ export interface TeamDetail {
   eventAverages: EventAverages | null;
   /** the team's estimated share of the alliance score and each alliance field, with how many of its alliances have a result */
   allianceShares: AllianceShare[];
+  /** this team's alliance in each of its scheduled matches: side, scores and alliance fields */
+  allianceByMatch: Record<string, TeamAllianceResult>;
 }
+export interface TeamAllianceResult { side: AllianceSide; score: number | null; opponent: number | null; fields: Record<string, number | null> }
 export interface AllianceShare { item: string; label: string; value: number | null; results: number }
 export interface AllianceView {
   fields: AllianceField[];

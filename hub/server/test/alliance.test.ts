@@ -205,3 +205,19 @@ describe('alliance results: review fixes', () => {
     expect((await put('1', 'red', 'score', 3)).statusCode).toBe(200); // "1" is qualification match 1
   });
 });
+
+describe("a team's alliance results by match", () => {
+  it("sends, with a team, its alliance's score, the opponents' score and each field in each of its matches", async () => {
+    const { app, put } = await hub();
+    await app.inject({ method: 'PUT', url: '/api/alliance-fields', payload: [{ key: 'hopper', label: 'Balls in hopper' }] });
+    await put('qm1', 'red', 'score', 87);
+    await put('qm1', 'blue', 'score', 64);
+    await put('qm1', 'red', 'hopper', 31);
+    await put('qm2', 'blue', 'score', 50); // 5098 is red in qm2
+    const team = (await app.inject({ url: '/api/summaries/5098' })).json();
+    expect(team.allianceByMatch).toEqual({
+      qm1: { side: 'red', score: 87, opponent: 64, fields: { hopper: 31 } },
+      qm2: { side: 'red', score: null, opponent: 50, fields: { hopper: null } },
+    });
+  });
+});

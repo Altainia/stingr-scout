@@ -126,6 +126,16 @@
     const nums = records.flatMap(r => (!r.noShow && !r.missed.includes(key) && typeof r.answers[key] === 'number' ? [r.answers[key] as number] : []));
     return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
   };
+  // Each alliance field with any value in this team's matches, as the whole alliance's value by match.
+  let allianceFieldCharts = $derived((detail?.allianceShares ?? []).filter(a => a.item !== 'score').flatMap(a => {
+    const matches = (detail?.matchRecords ?? []).map(r => {
+      const v = detail?.allianceByMatch?.[r.matchKey ?? '']?.fields[a.item] ?? null;
+      return { label: matchLabel(r.matchKey ?? ''), scout: r.scout, state: v === null ? 'blank' as const : 'ok' as const, value: v };
+    });
+    return matches.some(m => m.value !== null) ? [{ key: a.item, label: a.label, share: a.value, matches }] : [];
+  }));
+  let shareItems = $derived((detail?.allianceShares ?? []).filter(a => teamsShown.some(t => t.d.allianceShares?.find(x => x.item === a.item)?.value != null)));
+  const shareOf = (d: TeamDetail, item: string) => d.allianceShares?.find(x => x.item === item)?.value ?? null;
 </script>
 
 <p><a href="#/teams">‹ All teams</a></p>
@@ -180,18 +190,19 @@
     {#if comparing && form}
       <div class="scroll-x">
         <table class="grid" aria-label="Teams side by side">
-          <thead><tr><th>Team</th><th>Matches</th><th>Est. points</th>{#each numericQs as q (q.key)}<th>{q.label}</th>{/each}</tr></thead>
+          <thead><tr><th>Team</th><th>Matches</th><th>Est. points</th>{#each shareItems as a (a.item)}<th>{a.label} share</th>{/each}{#each numericQs as q (q.key)}<th>{q.label}</th>{/each}</tr></thead>
           <tbody>
             {#each teamsShown as t (t.team)}
               <tr>
                 <td><span class="line-key" style:background="var(--chart-{t.slot})"></span> {nameOf(t.team)}</td>
                 <td>{t.d.summary.matchRecords}</td>
                 <td>{num(t.d.summary.estPoints)}</td>
+                {#each shareItems as a (a.item)}<td>{num(shareOf(t.d, a.item))}</td>{/each}
                 {#each numericQs as q (q.key)}<td>{num(avgOf(q.key, t.d.matchRecords))}</td>{/each}
               </tr>
             {/each}
             <tr class="muted">
-              <td>Event average</td><td></td><td>{num(detail.eventAverages?.points.total ?? null)}</td>
+              <td>Event average</td><td></td><td>{num(detail.eventAverages?.points.total ?? null)}</td>{#each shareItems as a (a.item)}<td></td>{/each}
               {#each numericQs as q (q.key)}<td>{num(detail.eventAverages?.questions[q.key] ?? null)}</td>{/each}
             </tr>
           </tbody>
@@ -229,18 +240,29 @@
     {#if scores}
       <section class="card points-chart">
         <h2>Points per match</h2>
-        <PointsChart matches={pointsData} sections={form.sections.map(s => ({ id: s.id, title: s.title }))} eventAverage={detail.eventAverages?.points.total ?? null} />
+        <PointsChart matches={pointsData} sections={form.sections.map(s => ({ id: s.id, title: s.title }))} eventAverage={detail.eventAverages?.points.total ?? null}
+          alliance={detail.matchRecords.map(r => ({ score: detail?.allianceByMatch?.[r.matchKey ?? '']?.score ?? null, opponent: detail?.allianceByMatch?.[r.matchKey ?? '']?.opponent ?? null }))} />
       </section>
     {/if}
-    {#if numericQs.length}
+    {#if numericQs.length || allianceFieldCharts.length}
       <section class="card">
         <h2>By match</h2>
-        <p class="hint">The dashed line is the average across every team at this event. ⚠ missed · ✗ robot not there · – no answer</p>
+        <p class="hint">
+          The dashed line is the average across every team at this event{#if allianceFieldCharts.length}. On whole-alliance charts it is the team's estimated share{/if}.
+          ⚠ missed · ✗ robot not there · – no answer
+        </p>
         <div class="charts">
           {#each numericQs as q (q.key)}
             <figure>
               <figcaption>{q.label}</figcaption>
               <MatchLineChart title={q.label} matches={byMatch(q.key)} eventAverage={detail.eventAverages?.questions[q.key] ?? null} />
+            </figure>
+          {/each}
+          <!-- Alliance fields: the whole alliance's value in each of this team's matches, against the team's estimated share. -->
+          {#each allianceFieldCharts as c (c.key)}
+            <figure>
+              <figcaption>{c.label} <span class="hint">— whole alliance</span></figcaption>
+              <MatchLineChart title="{c.label} — whole alliance" alliance matches={c.matches} eventAverage={c.share} refLabel="Est. share" />
             </figure>
           {/each}
         </div>

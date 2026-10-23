@@ -4,7 +4,12 @@
   // A column per match: the robot's estimated points, stacked by form section, beside the event's average.
   // Missed answers and robots that weren't there leave a marked gap, never a zero.
   type Match = { label: string; scout: string; state: 'ok' | 'missed' | 'noshow'; sections: (number | null)[] };
-  let { matches, sections, eventAverage }: { matches: Match[]; sections: { id: string; title: string }[]; eventAverage: number | null } = $props();
+  type Alliance = { score: number | null; opponent: number | null };
+  let { matches, sections, eventAverage, alliance = [] }: {
+    matches: Match[]; sections: { id: string; title: string }[]; eventAverage: number | null;
+    /** the team's alliance in each match (from Alliance results): drawn as a faint column behind, with the result */
+    alliance?: Alliance[];
+  } = $props();
 
   const W = 640;
   const H = 230;
@@ -14,7 +19,16 @@
   const GAP = 2; // surface gap between stacked segments
 
   const total = (m: Match) => (m.state === 'ok' ? m.sections.reduce<number>((a, v) => a + (v ?? 0), 0) : null);
-  let axis = $derived(niceAxis(Math.max(eventAverage ?? 0, ...matches.map(m => total(m) ?? 0))));
+  let hasAlliance = $derived(alliance.some(a => a.score !== null));
+  let axis = $derived(niceAxis(Math.max(eventAverage ?? 0, ...matches.map(m => total(m) ?? 0), ...alliance.map(a => a.score ?? 0))));
+  let allianceW = $derived(Math.min(40, band * 0.85));
+  const result = (a: Alliance | undefined) =>
+    a?.score === null || a?.score === undefined || a.opponent === null ? null : a.score > a.opponent ? 'W' : a.score < a.opponent ? 'L' : 'T';
+  const resultWord = { W: 'won', L: 'lost', T: 'tied' } as const;
+  const allianceLine = (a: Alliance) => {
+    const r = result(a);
+    return `Alliance ${fmt(a.score ?? 0)}${a.opponent !== null ? ` · opponents ${fmt(a.opponent)}` : ''}${r ? ` (${resultWord[r]})` : ''}`;
+  };
   let band = $derived(plotW / Math.max(matches.length, 1));
   let barW = $derived(Math.min(24, band * 0.6));
   const y = (v: number) => M.top + plotH - (v / axis.top) * plotH;
@@ -65,6 +79,14 @@
       {#each axis.ticks as t (t)}<text x={M.left - 6} y={y(t) + 4} text-anchor="end">{fmt(t)}</text>{/each}
       {#each matches as m, i (i)}{#if i % every === 0}<text x={cx(i)} y={H - 8} text-anchor="middle">{shortMatch(m.label)}</text>{/if}{/each}
     </g>
+    {#each alliance as a, i (i)}
+      {#if a.score !== null && i < matches.length}
+        <rect class="alliance-col" x={cx(i) - allianceW / 2} y={y(a.score)} width={allianceW} height={y(0) - y(a.score)} rx="3" />
+      {/if}
+      {#if result(a) && i < matches.length}
+        <text class="result" x={cx(i)} y={y(Math.max(a.score ?? 0, total(matches[i]) ?? 0)) - 5} text-anchor="middle">{result(a)}</text>
+      {/if}
+    {/each}
     {#each stacks as parts, i (i)}
       {#each parts as p (p.s)}<path class="segment" d={p.d} fill={colour(p.s)} opacity={active === null || active === i ? 1 : 0.55} />{/each}
       {#if matches[i].state !== 'ok'}
@@ -87,6 +109,9 @@
     <div class="chart-tip" role="tooltip" style:left="{tipX}px" style:top="{tipY}px">
       <div><strong>{m.label}</strong> <span class="muted">· {m.scout}</span></div>
       <div><strong>{describe(m)}</strong></div>
+      {#if alliance[active]?.score !== null && alliance[active]?.score !== undefined}
+        <div class="muted">{allianceLine(alliance[active])}</div>
+      {/if}
       {#if m.state === 'ok'}
         {#each scoring as s (s.id)}
           <div class="row"><span class="key" style:background={colour(s.i)}></span><strong>{fmt(m.sections[s.i] ?? 0)}</strong> {s.title}</div>
@@ -96,12 +121,13 @@
   {/if}
   <ul class="chart-legend" aria-label="Sections">
     {#each scoring as s (s.id)}<li><span class="swatch" style:background={colour(s.i)}></span>{s.title}</li>{/each}
+    {#if hasAlliance}<li><span class="swatch alliance-swatch"></span>Alliance score</li>{/if}
     {#if eventAverage !== null}<li class="ref-item"><span class="ref-key"></span>Event average</li>{/if}
   </ul>
   <details>
     <summary>Show as a table</summary>
     <table class="grid" aria-label="Points by section">
-      <thead><tr><th>Match</th><th>Scout</th>{#each scoring as s (s.id)}<th>{s.title}</th>{/each}<th>Total</th></tr></thead>
+      <thead><tr><th>Match</th><th>Scout</th>{#each scoring as s (s.id)}<th>{s.title}</th>{/each}<th>Total</th>{#if hasAlliance}<th>Alliance</th><th>Opponents</th>{/if}</tr></thead>
       <tbody>
         {#each matches as m, i (i)}
           <tr>
@@ -110,6 +136,9 @@
               {#each scoring as s (s.id)}<td>{fmt(m.sections[s.i] ?? 0)}</td>{/each}<td><strong>{fmt(total(m) ?? 0)}</strong></td>
             {:else}
               <td colspan={scoring.length + 1} class="muted">{m.state === 'noshow' ? 'not there' : 'missed'}</td>
+            {/if}
+            {#if hasAlliance}
+              <td>{alliance[i]?.score ?? '—'}</td><td>{alliance[i]?.opponent ?? '—'}</td>
             {/if}
           </tr>
         {/each}
